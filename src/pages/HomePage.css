@@ -1,0 +1,421 @@
+/* Home page + Settings sheet. Tokens only — no literal colours or spacing. */
+
+.home-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+
+/* Pull the 44px hit area back so the gear ink lines up with the page padding. */
+.home-header .icon-btn {
+  margin-right: calc(-1 * var(--s3));
+  flex: none;
+}
+
+/* --------------------------------------------------------------------------
+   Week counter + goal ring
+   -------------------------------------------------------------------------- */
+
+.home-week {
+  display: flex;
+  align-items: center;
+  gap: var(--s4);
+}
+
+.home-week-text {
+  min-width: 0;
+}
+
+.home-week-count {
+  font-size: 17px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.home-week-goal {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+.home-streak {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1);
+  margin-top: var(--s2);
+  padding: 2px var(--s2);
+  border-radius: var(--r-full);
+  background: var(--warn-soft);
+  color: var(--warn);
+  font-size: 13px;
+  font-weight: 650;
+}
+
+.ring {
+  flex: none;
+  width: 72px;
+  height: 72px;
+}
+
+.ring-track,
+.ring-fill {
+  fill: none;
+  stroke-width: 6;
+}
+
+.ring-track {
+  stroke: var(--border);
+}
+
+.ring-fill {
+  stroke: var(--accent);
+  stroke-linecap: round;
+  /* Start the arc at 12 o'clock instead of 3 o'clock. */
+  transform: rotate(-90deg);
+  transform-origin: 50% 50%;
+  transition: stroke-dashoffset 0.5s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+.ring-value {
+  fill: var(--text);
+  font-family: var(--font-num);
+  font-size: 24px;
+  font-weight: 700;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .ring-fill {
+    transition: none;
+  }
+}
+
+/* --------------------------------------------------------------------------
+   Today's training
+   -------------------------------------------------------------------------- */
+
+.home-done {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin-bottom: var(--s2);
+}
+
+.home-done-label {
+  font-size: 13px;
+  color: var(--text-dim);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.home-card {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  text-align: left;
+}
+
+.home-card:disabled {
+  opacity: 0.6;
+  pointer-events: none;
+}
+
+.home-card-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.home-card-title {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.home-card .pill + .home-card-title {
+  margin-top: var(--s2);
+}
+
+.home-card-parts {
+  font-size: 14px;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+.home-card-last {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: var(--s1);
+  font-size: 12px;
+  color: var(--text-faint);
+  margin-top: var(--s2);
+}
+
+.home-card-dot {
+  color: var(--text-faint);
+}
+
+.home-card-cta {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1);
+  margin-top: var(--s3);
+  color: var(--accent);
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.home-card-cta-icon {
+  width: 15px;
+  height: 15px;
+}
+
+.home-card-chevron {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  color: var(--text-faint);
+}
+
+/* --------------------------------------------------------------------------
+   Backup banner
+   -------------------------------------------------------------------------- */
+
+.home-banner {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s1);
+  background: var(--warn-soft);
+  border: 1px solid var(--warn);
+  border-radius: var(--r-lg);
+  padding: var(--s1) var(--s1) var(--s1) 0;
+}
+
+.home-banner-main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s3);
+  padding: var(--s3);
+  text-align: left;
+  border-radius: var(--r-md);
+}
+
+.home-banner-main:active {
+  opacity: 0.7;
+}
+
+.home-banner-main:disabled {
+  opacity: 0.5;
+  pointer-events: none;
+}
+
+.home-banner-icon {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  color: var(--warn);
+  margin-top: 1px;
+}
+
+.home-banner-text {
+  min-width: 0;
+}
+
+.home-banner-title {
+  display: block;
+  font-size: 15px;
+  font-weight: 650;
+  color: var(--text);
+}
+
+.home-banner-body {
+  display: block;
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
+.home-banner-dismiss {
+  flex: none;
+  color: var(--text-dim);
+}
+
+/* --------------------------------------------------------------------------
+   Error state
+   -------------------------------------------------------------------------- */
+
+.home-error {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s3);
+}
+
+.home-error-icon {
+  flex: none;
+  width: 22px;
+  height: 22px;
+  color: var(--danger);
+  margin-top: 1px;
+}
+
+.home-error-body {
+  min-width: 0;
+}
+
+.home-error-title {
+  font-size: 16px;
+  font-weight: 650;
+}
+
+.home-error-text {
+  font-size: 14px;
+  color: var(--text-dim);
+  margin-top: var(--s1);
+  word-break: break-word;
+}
+
+.home-error-body .btn {
+  margin-top: var(--s3);
+}
+
+/* --------------------------------------------------------------------------
+   Settings sheet
+   -------------------------------------------------------------------------- */
+
+.settings-block + .settings-block {
+  margin-top: var(--s5);
+}
+
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+  min-height: 44px;
+}
+
+.settings-row-label {
+  font-size: 16px;
+}
+
+.stepper {
+  display: flex;
+  align-items: center;
+  gap: var(--s1);
+  background: var(--bg-raised-2);
+  border-radius: var(--r-md);
+  padding: var(--s1);
+}
+
+.stepper-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-sm);
+  font-size: 22px;
+  font-weight: 600;
+  line-height: 1;
+  color: var(--text);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.stepper-btn:active {
+  background: var(--bg-raised);
+}
+
+.stepper-btn:disabled {
+  opacity: 0.35;
+  pointer-events: none;
+}
+
+.stepper-value {
+  min-width: 34px;
+  text-align: center;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.settings-btn-icon {
+  width: 18px;
+  height: 18px;
+  flex: none;
+}
+
+.settings-hint {
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--text-dim);
+  margin-top: var(--s2);
+}
+
+/* Native file input, stretched invisibly over its label so the whole
+   button-shaped label opens the picker. */
+.settings-file {
+  position: relative;
+  overflow: hidden;
+}
+
+.settings-file-input {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  opacity: 0;
+  font-size: 16px;
+}
+
+.settings-import {
+  margin-top: var(--s3);
+  padding: var(--s3);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  background: var(--bg-raised-2);
+}
+
+.settings-import .settings-hint + .btn {
+  margin-top: var(--s3);
+}
+
+.settings-file-name {
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-bottom: var(--s3);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.settings-error {
+  margin-top: var(--s4);
+  padding: var(--s3);
+  border-radius: var(--r-md);
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: 14px;
+}
+
+.settings-ok {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin-top: var(--s4);
+  padding: var(--s3);
+  border-radius: var(--r-md);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 14px;
+}
+
+.settings-version {
+  margin-top: var(--s6);
+  text-align: center;
+  font-size: 12px;
+  color: var(--text-faint);
+}

@@ -1,0 +1,179 @@
+/* Shared exercise card — used by Exercises, Trainings and the picker. */
+
+.ex-card {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--r-lg);
+  overflow: hidden;
+}
+
+/* Fixed width so cards snap predictably inside a horizontal carousel. */
+.ex-card-carousel {
+  flex: none;
+  width: 78vw;
+  max-width: 320px;
+  scroll-snap-align: center;
+}
+
+.ex-card-block {
+  width: 100%;
+}
+
+.ex-card-media {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background: var(--bg-sunken);
+  display: block;
+  overflow: hidden;
+}
+
+.ex-card-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Lettered tile for custom exercises with no photo. */
+.ex-card-placeholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 44px;
+  font-weight: 700;
+  color: var(--text-faint);
+  background: var(--bg-raised-2);
+}
+
+.ex-card-media::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0);
+  transition: background 0.12s;
+}
+
+.ex-card-media:active::after {
+  background: rgba(0, 0, 0, 0.14);
+}
+
+.ex-card-body {
+  padding: var(--s3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+  flex: 1;
+  min-height: 0;
+}
+
+.ex-card-name {
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  /* Two lines max, so cards in a row keep a consistent height. */
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.ex-card-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s1);
+}
+
+.ex-card-latest {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s2);
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.ex-card-none {
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+.ex-card-remove {
+  position: absolute;
+  top: var(--s1);
+  right: var(--s1);
+  width: 36px;
+  height: 36px;
+  border-radius: var(--r-full);
+  background: color-mix(in srgb, var(--bg) 70%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  color: var(--danger);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ex-card-remove svg {
+  width: 18px;
+  height: 18px;
+}
+
+/* --- set matrix ---------------------------------------------------------- */
+
+.set-matrix {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.set-matrix th {
+  text-align: left;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+  padding-bottom: 2px;
+}
+
+.set-matrix td {
+  padding: 1px 0;
+  color: var(--text);
+  font-variant-numeric: tabular-nums;
+}
+
+.set-matrix td:last-child,
+.set-matrix th:last-child {
+  text-align: right;
+}
+
+/* --- history sheet ------------------------------------------------------- */
+
+.ex-history-entry + .ex-history-entry {
+  margin-top: var(--s5);
+  padding-top: var(--s4);
+  border-top: 1px solid var(--border);
+}
+
+.ex-history-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s2);
+  margin-bottom: var(--s2);
+}
+
+.ex-history-date {
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.ex-history-ago {
+  font-size: 12px;
+  color: var(--text-dim);
+}

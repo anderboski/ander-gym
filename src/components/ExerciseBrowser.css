@@ -1,0 +1,200 @@
+/* ==========================================================================
+   ExerciseBrowser — search box, facet chips, match count, results.
+   Also styles CustomExerciseForm (bottom of file): the two ship together and
+   the form is reachable from anywhere the browser is, so they share a sheet.
+   ========================================================================== */
+
+.browser {
+  display: flex;
+  flex-direction: column;
+}
+
+/* --- search --------------------------------------------------------------- */
+
+/* Sticky against whichever container scrolls (.page or .sheet-body). */
+.browser-search {
+  position: sticky;
+  top: 0;
+  z-index: 3;
+  padding: var(--s2) var(--s4) var(--s3);
+  background: var(--bg);
+}
+
+.browser-search-field {
+  position: relative;
+}
+
+/* Room for the clear button so long queries never run underneath it. */
+.browser-search .input {
+  padding-right: 44px;
+}
+
+.browser-search-clear {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  transform: translateY(-50%);
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-full);
+  color: var(--text-faint);
+  font-size: 22px;
+  line-height: 1;
+}
+
+.browser-search-clear:active {
+  color: var(--text);
+}
+
+/* Visually hidden, still announced. */
+.browser-sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+}
+
+/* --- facets --------------------------------------------------------------- */
+
+.browser-facets {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  /* .chip-row bleeds by this amount so chips scroll under the edges. */
+  padding: 0 var(--s4);
+}
+
+.browser-facet .section-title {
+  margin-bottom: var(--s1);
+}
+
+.browser-facets-actions {
+  display: flex;
+  justify-content: flex-end;
+}
+
+/* --- count ---------------------------------------------------------------- */
+
+.browser-count {
+  padding: var(--s4) var(--s4) var(--s2);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-dim);
+  font-variant-numeric: tabular-nums;
+}
+
+/* --- results -------------------------------------------------------------- */
+
+.browser-strip {
+  display: flex;
+  gap: var(--s3);
+  overflow-x: auto;
+  overscroll-behavior-x: contain;
+  scroll-snap-type: x mandatory;
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: none;
+  /* keeps the first and last card off the screen edges */
+  padding: var(--s1) var(--s4) var(--s2);
+}
+
+.browser-strip::-webkit-scrollbar {
+  display: none;
+}
+
+.browser-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+  padding: var(--s1) var(--s4) var(--s2);
+}
+
+/* Windowing trigger. Sized so it exists in the flow without taking space. */
+.browser-sentinel {
+  flex: none;
+  width: 1px;
+  min-height: 1px;
+  align-self: stretch;
+}
+
+/* ==========================================================================
+   CustomExerciseForm
+   ========================================================================== */
+
+.cxf {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+}
+
+.cxf-field {
+  display: flex;
+  flex-direction: column;
+}
+
+/* Native file input: the picker button is restyled to match .btn. */
+.cxf-file {
+  width: 100%;
+  font-size: 15px;
+  color: var(--text-dim);
+}
+
+/* Split rule: an unknown pseudo-element would invalidate the whole selector
+   list, so the -webkit- fallback for older iOS Safari is declared separately. */
+.cxf-file::file-selector-button {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 44px;
+  margin-right: var(--s3);
+  padding: 0 var(--s4);
+  border: none;
+  border-radius: var(--r-md);
+  background: var(--bg-raised-2);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+}
+
+.cxf-file::-webkit-file-upload-button {
+  -webkit-appearance: none;
+  appearance: none;
+  height: 44px;
+  margin-right: var(--s3);
+  padding: 0 var(--s4);
+  border: none;
+  border-radius: var(--r-md);
+  background: var(--bg-raised-2);
+  color: var(--text);
+  font: inherit;
+  font-weight: 600;
+}
+
+.cxf-preview {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  margin-top: var(--s3);
+}
+
+.cxf-preview img {
+  width: 72px;
+  height: 72px;
+  object-fit: cover;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border);
+  background: var(--bg-sunken);
+}
+
+.cxf-error {
+  padding: var(--s3);
+  border-radius: var(--r-md);
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: 14px;
+}

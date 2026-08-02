@@ -1,0 +1,71 @@
+let's think together. I have the following use case. I want to have an app on my iphone to track my gym-going. I haven't found any that quite satisfies my need and I think this is a good chance to explore. The requirements:
+- List of exercises, filterable by name (even not exactly precise, fuzzy match), muscle group, and equipment type. Option to add additional exercise if not available.
+- The list of exercises is under data/exercises.json and it references images under data/images/
+- Option to start new workout - it will pull the current date and time and add it to the list of workouts
+- iPhone optimized
+
+Web app setup:
+Split in 4 pages (navigation: icons on the bottom):
+    - Home
+    - Exercises: Ane exercise is a single entry of the data/exercises.json
+    - Trainings: A training is a set of exercises bundled into a single record of data/training_days.txt
+    - My Session: An actual event of a training, where multiple sets are done by the user.
+    - Session History: History of saved sessions.
+
+* Home:
+    - Displays how many trainings have happened in the current week
+    - Displays what is the training that I should do today. It should always be in order, taken from data/training_days.txt.
+        - Click/tap starts a new session
+    - Any additional ideas?
+* Exercises:
+    - All the information is in data/exercises.json.
+    - At the top, a box to write + find exercises. It should leverage fuzzy matching for easier finding
+    - Below, box-like selectors (allow multiselect). Order (up-down):
+        - Category
+        - Equipment
+        - Target muscle
+    - At the bottom of the page, display of nº of matches
+    - Below, card style items, scrollable left to right, of matching exercises, including:
+        - Name of exercise
+        - Image of exercise (as per data/images)
+        - Latest training data:
+            - Date and days back (i.e. 2026-07-23, -9 days)
+            - Training matrix: 1 row per record, 2 columns (nº or reps, weight)
+        - Tap/click on image shows full history of training for the exercise (i.e. datetimes + training matrix)
+* Trainings:
+    - Initial cards for each item in data/training_days.txt, displaying:
+        - Body parts being hit (split each entry by "-" and case correctly)
+        - Last datetime with training + days back
+    - Clicking on a card displays all exercises in the training.
+        - A "+" card to add a new exercise (chosen from Exercises page)
+        - When an exercise is added, card shows the same data as in Exercises + same functionality. Only difference is a "Trash" icon top right to remove exercise from training.
+* My Session:
+    - If no session in place, simple box asking for New Session.
+        - This allows to pick from one of the data/training_days.txt and kicks of a new session.
+    - If session is in place, it will show all current exercises in the chosen training day in table format, with each record having:
+        - exercise name
+        - small-image
+        - reps: starts off empty
+        - "+" button: clicking/tapping on this asks for nº of reps and weight. User inputs and clicks save. Also small "x" top right to leave without saving results. When input, added to "reps" as simple nº reps x weight (i.e. "10x25kg"). If multiple entries, saved in "reps" as different rows
+        At the very botton of the page, two buttons:
+            - Big, green, "Save session" button. This closes the current session and adds an entry to "Session history"
+            - Small, red, "Discard session" button. This closes the current session without saving the entry.
+* Session history:
+    - It has the actual information used by other pages (i.e. training's latest session + reps/weight, etc.)
+    - Order from most recent to oldest
+    - Table-like including:
+        - Date and time
+        - Training day record name
+    - Clicking/tapping on a record opens it up to display detail, which is the same detail as given in "My Session"
+
+
+Technical requirements:
+- This is to be used on an iPhone, keep in mind for design, etc.
+- I don't want to publish this to the app store. This was your proposal from another session. I'm familiar with GH pages so that may be a good option to consider:
+    Option A — local-first PWA, no backend
+    Static files on Cloudflare Pages / GitHub Pages / Netlify (free, HTTPS, global CDN), data in IndexedDB on the device, service worker for offline. Add to Home Screen on iOS gives you a real icon, no Safari chrome, and since iOS 16.4 even web push.
+    Safety: nothing to breach. There is no server holding your data and no login to compromise. The risk shifts to device loss and to Safari's storage eviction, so you want a manual JSON export and ideally navigator.storage.persist().
+    Cost: €0.
+    Performance: best possible. Works with airplane mode on.
+    Cost of this choice: the app is public in the sense that anyone with the URL loads the code — but they see an empty app, because the data never left your phone. Also no PC↔phone sync without extra work.
+- I want this project to be done via Spec Driven Development. Make sure to ask all clarifying questions as needed before creating an initial spec which will then be dispatched to subagents to build and iterate.
