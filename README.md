@@ -1,10 +1,12 @@
 # ander-gym
-
 A local-first gym tracker for the iPhone. No backend, no account, no app store —
 a static PWA you add to your Home Screen. Your training data never leaves the
 device.
-
 **Live:** https://anderboski.github.io/ander-gym/
+
+## Non-AI words
+I've created this app because none of the ones I find in the App Store I find really to fit what I want to track and how I want to track it. This is simple, to the point, and useful for my workouts. Based on the work of https://github.com/hasaneyldrm/exercises-dataset.
+I kept it as simple as possible. It runs on GitHub Pages and doesn't have any remote backend - data is stored on device. Careful as it may get flushed, so export from time to time :)
 
 ## What it does
 
