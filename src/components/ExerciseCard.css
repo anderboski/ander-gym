@@ -31,6 +31,14 @@
   overflow: hidden;
 }
 
+/* Training day view: exercises are already grouped, so the photo only needs
+   to confirm the movement — shrink it and centre it instead of running edge
+   to edge. */
+.ex-card-block .ex-card-media {
+  width: 50%;
+  margin: 0 auto;
+}
+
 .ex-card-media img {
   width: 100%;
   height: 100%;

@@ -98,7 +98,7 @@ export function HomePage() {
         <div>
           <h1 className="page-title">Home</h1>
           <div className="page-sub">
-            {now.toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long' })}
+            {now.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' })}
           </div>
         </div>
         <button className="icon-btn" aria-label="Settings" onClick={() => setSettingsOpen(true)}>
