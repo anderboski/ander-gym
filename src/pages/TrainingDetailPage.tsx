@@ -3,7 +3,7 @@ import { ExerciseBrowser } from '../components/ExerciseBrowser';
 import { ExerciseCard } from '../components/ExerciseCard';
 import { Sheet, Toast } from '../components/Sheet';
 import { ChevronLeftIcon, PlusIcon } from '../components/icons';
-import { bodyPartsLabel, titleCase } from '../data/parse';
+import { titleCase } from '../data/parse';
 import { useGym } from '../data/store';
 import type { Exercise } from '../data/types';
 import { navigate } from '../router';
@@ -86,7 +86,7 @@ export function TrainingDetailPage({ trainingId }: { trainingId: string }) {
       </button>
 
       <div className="page-header" style={{ paddingTop: 'var(--s2)' }}>
-        <h1 className="page-title">{bodyPartsLabel(training.label)}</h1>
+        <h1 className="page-title">{training.label}</h1>
         <div className="page-sub">
           {exercises.length} {exercises.length === 1 ? 'exercise' : 'exercises'}
         </div>

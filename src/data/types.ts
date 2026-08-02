@@ -45,13 +45,19 @@ export type CustomExercise = {
   createdAt: string;
 };
 
-/** One training day. Names/order come from data/training_days.txt; membership is the user's. */
+/**
+ * One training day. Fully user-managed: created and renamed freely, reordered
+ * by drag (order determines rotation), never deleted — a session's
+ * `trainingId` must always resolve so history stays intact.
+ */
 export type Training = {
   id: string;
   label: string;
   order: number;
   exerciseIds: string[];
 };
+
+export const TRAINING_ID_PREFIX = 't-';
 
 export type SetEntry = {
   reps: number;

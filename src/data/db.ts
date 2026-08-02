@@ -3,7 +3,15 @@
  * device. See SPEC.md §3.
  */
 import { openDB, type IDBPDatabase, type DBSchema } from 'idb';
-import { DEFAULT_SETTINGS, type ActiveSession, type CustomExercise, type Session, type Settings, type Training } from './types';
+import {
+  DEFAULT_SETTINGS,
+  TRAINING_ID_PREFIX,
+  type ActiveSession,
+  type CustomExercise,
+  type Session,
+  type Settings,
+  type Training,
+} from './types';
 
 export const DB_NAME = 'ander-gym';
 export const DB_VERSION = 1;
@@ -60,41 +68,51 @@ export async function putTraining(training: Training): Promise<void> {
   await (await getDB()).put('trainings', training);
 }
 
+/** Creates a training day with no exercises yet, appended to the end of the rotation. */
+export async function createTraining(label: string): Promise<Training> {
+  const existing = await getTrainings();
+  const order = existing.reduce((max, t) => Math.max(max, t.order + 1), 0);
+  const training: Training = {
+    id: `${TRAINING_ID_PREFIX}${crypto.randomUUID()}`,
+    label,
+    order,
+    exerciseIds: [],
+  };
+  await putTraining(training);
+  return training;
+}
+
 /**
- * Reconcile the stored trainings against data/training_days.txt.
- *
- * Insert new lines, refresh label/order on existing ones, and never delete a
- * training the user has put exercises into — a line removed from the file
- * keeps its data and is pushed to the end of the rotation.
+ * Renames a training in place — the id (and therefore every session's
+ * `trainingId`) never changes, so history stays intact.
  */
-export async function seedTrainings(
-  parsed: { id: string; label: string; order: number }[],
-): Promise<Training[]> {
+export async function renameTraining(id: string, label: string): Promise<Training | null> {
+  const training = (await getTrainings()).find((t) => t.id === id);
+  if (!training) return null;
+  const updated = { ...training, label };
+  await putTraining(updated);
+  return updated;
+}
+
+/**
+ * Applies a new rotation order from a full list of training ids (as dragged
+ * into place). Any id missing from `orderedIds` — should not normally happen
+ * — is kept, appended after the given ones in its previous relative order.
+ */
+export async function reorderTrainings(orderedIds: string[]): Promise<Training[]> {
+  const existing = await getTrainings();
+  const byId = new Map(existing.map((t) => [t.id, t]));
+  const known = orderedIds.filter((id) => byId.has(id));
+  const leftover = existing.filter((t) => !known.includes(t.id));
+
   const db = await getDB();
   const tx = db.transaction('trainings', 'readwrite');
   const store = tx.objectStore('trainings');
-  const existing = await store.getAll();
-  const byId = new Map(existing.map((t) => [t.id, t]));
-  const fromFile = new Set(parsed.map((p) => p.id));
-
-  for (const p of parsed) {
-    const prev = byId.get(p.id);
-    await store.put({
-      id: p.id,
-      label: p.label,
-      order: p.order,
-      exerciseIds: prev?.exerciseIds ?? [],
-    });
-  }
-
-  // Orphans: kept, but ordered after everything still in the file.
-  let tail = parsed.length;
-  for (const t of existing) {
-    if (fromFile.has(t.id)) continue;
-    await store.put({ ...t, order: tail++ });
-  }
-
+  let order = 0;
+  for (const id of known) await store.put({ ...byId.get(id)!, order: order++ });
+  for (const t of leftover) await store.put({ ...t, order: order++ });
   await tx.done;
+
   return getTrainings();
 }
 

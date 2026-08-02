@@ -16,7 +16,6 @@ export default defineConfig({
     viteStaticCopy({
       targets: [
         { src: 'data/exercises.json', dest: 'data' },
-        { src: 'data/training_days.txt', dest: 'data' },
         { src: 'data/images', dest: 'data' },
       ],
     }),
@@ -49,11 +48,7 @@ export default defineConfig({
       workbox: {
         // Deliberately excludes data/images/**.jpg (11 MB, 1324 files) from the
         // precache; those are cached lazily at runtime instead. See SPEC.md D5.
-        globPatterns: [
-          '**/*.{js,css,html,svg,png,ico,webmanifest}',
-          'data/exercises.json',
-          'data/training_days.txt',
-        ],
+        globPatterns: ['**/*.{js,css,html,svg,png,ico,webmanifest}', 'data/exercises.json'],
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
         cleanupOutdatedCaches: true,
         navigateFallback: `${BASE}index.html`,

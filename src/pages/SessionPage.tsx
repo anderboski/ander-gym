@@ -12,7 +12,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { useGym } from '../data/store';
 import { formatElapsed, latestFor } from '../data/derive';
-import { bodyPartsLabel, formatSet, formatWeight } from '../data/parse';
+import { formatSet, formatWeight } from '../data/parse';
 import type { ActiveSession, Exercise, SessionEntry, Session, Training } from '../data/types';
 import { ConfirmSheet, Sheet } from '../components/Sheet';
 import { ChevronRightIcon, ClockIcon, PlusIcon } from '../components/icons';
@@ -68,7 +68,6 @@ function NewSessionView({ trainings }: { trainings: Training[] }) {
               >
                 <span className="sess-new-row-text">
                   <span className="sess-new-label">{t.label}</span>
-                  <span className="sess-new-parts">{bodyPartsLabel(t.label)}</span>
                 </span>
                 <span className="sess-new-count num">
                   {t.exerciseIds.length === 1 ? '1 exercise' : `${t.exerciseIds.length} exercises`}
@@ -143,7 +142,6 @@ function ActiveView({ active }: { active: ActiveSession }) {
       <div className="page-header sess-head">
         <div>
           <h1 className="page-title">{active.trainingLabel}</h1>
-          <div className="page-sub">{bodyPartsLabel(active.trainingLabel)}</div>
         </div>
         <div className="sess-elapsed num" aria-label="Elapsed time">
           <ClockIcon />

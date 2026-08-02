@@ -10,7 +10,7 @@
 import { useState } from 'react';
 import { useGym } from '../data/store';
 import { formatDateTime, formatElapsed, setCount, totalVolume } from '../data/derive';
-import { bodyPartsLabel, formatWeight } from '../data/parse';
+import { formatWeight } from '../data/parse';
 import { navigate } from '../router';
 import { SetMatrix } from '../components/ExerciseCard';
 import { ConfirmSheet } from '../components/Sheet';
@@ -100,7 +100,6 @@ function SessionDetail({ session, onDeleted }: { session: Session; onDeleted: ()
 
   const sets = setCount(session);
   const volume = Math.round(totalVolume(session));
-  const bodyPart = bodyPartsLabel(session.trainingLabel);
 
   async function onDelete() {
     setConfirming(false);
@@ -116,10 +115,7 @@ function SessionDetail({ session, onDeleted }: { session: Session; onDeleted: ()
       <div className="page-header history-detail-header">
         <BackButton />
         <h1 className="page-title num">{formatDateTime(session.startedAt)}</h1>
-        <div className="page-sub">
-          {session.trainingLabel}
-          {bodyPart && ` — ${bodyPart}`}
-        </div>
+        <div className="page-sub">{session.trainingLabel}</div>
 
         <div className="history-stats">
           <Stat value={String(sets)} label={sets === 1 ? 'Set' : 'Sets'} />

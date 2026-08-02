@@ -138,12 +138,6 @@
   margin-top: var(--s2);
 }
 
-.home-card-parts {
-  font-size: 14px;
-  color: var(--text-dim);
-  margin-top: 2px;
-}
-
 .home-card-last {
   display: flex;
   flex-wrap: wrap;
