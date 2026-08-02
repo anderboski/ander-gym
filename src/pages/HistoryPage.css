@@ -1,0 +1,203 @@
+/* ==========================================================================
+   History — saved-session list and its read-only detail view.
+   Shared by HistoryPage.tsx and HistoryDetailPage.tsx.
+   Tokens only: no literal colours, radii or spacing.
+   ========================================================================== */
+
+/* --------------------------------------------------------------------------
+   List
+   -------------------------------------------------------------------------- */
+
+.history-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+
+/* A whole row is the tap target — 44px minimum comes from the padding + text. */
+.history-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  width: 100%;
+  min-height: 44px;
+  padding: var(--s3) var(--s3) var(--s3) var(--s4);
+  text-align: left;
+}
+
+.history-row-main {
+  display: block;
+  flex: 1;
+  min-width: 0;
+}
+
+.history-row-date {
+  display: block;
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+}
+
+.history-row-training {
+  display: block;
+  font-size: 13px;
+  color: var(--text-dim);
+  /* Long training labels must never widen the page. */
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.history-row-summary {
+  display: block;
+  margin-top: var(--s1);
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+.history-row-chevron {
+  flex: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  color: var(--text-faint);
+}
+
+.history-row-chevron svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* --------------------------------------------------------------------------
+   Detail
+   -------------------------------------------------------------------------- */
+
+.history-back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1);
+  height: 44px;
+  padding: 0 var(--s3) 0 var(--s2);
+  margin-left: calc(-1 * var(--s2));
+  border-radius: var(--r-md);
+  color: var(--text-dim);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.history-back:active {
+  background: var(--bg-raised-2);
+}
+
+.history-back svg {
+  width: 20px;
+  height: 20px;
+}
+
+.history-detail-header {
+  padding: var(--s3) var(--s4) var(--s4);
+}
+
+/* Sets · volume · duration, in a row that wraps rather than scrolls. */
+.history-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+  margin-top: var(--s3);
+}
+
+.history-stat {
+  flex: 1 1 90px;
+  padding: var(--s2) var(--s3);
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+
+.history-stat-value {
+  font-size: 17px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.history-stat-label {
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+}
+
+/* --- entry rows ---------------------------------------------------------- */
+
+.history-entries {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+
+.history-entry {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s3);
+  padding: var(--s3);
+}
+
+/* Read-only: the thumbnail is decoration, never a control. */
+.history-entry-thumb {
+  flex: none;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--r-sm);
+  background: var(--bg-sunken);
+  overflow: hidden;
+}
+
+.history-entry-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Lettered tile for custom exercises with no photo. */
+.history-entry-letter {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-faint);
+  background: var(--bg-raised-2);
+}
+
+.history-entry-body {
+  flex: 1;
+  min-width: 0;
+}
+
+.history-entry-name {
+  font-size: 15px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  margin-bottom: var(--s1);
+}
+
+.history-entry-none {
+  font-size: 12px;
+  color: var(--text-faint);
+}
+
+/* Exercises that were part of the training but never logged are kept in the
+   record, dimmed rather than hidden. */
+.history-entry-empty {
+  opacity: 0.55;
+}
+
+.history-detail-danger {
+  margin-top: var(--s6);
+}

@@ -1,0 +1,297 @@
+/* Session page — new-session picker, live set log, save/discard actions. */
+
+/* --------------------------------------------------------------------------
+   State A — new session
+   -------------------------------------------------------------------------- */
+
+.sess-centre {
+  display: flex;
+  justify-content: center;
+  margin-top: var(--s4);
+}
+
+.sess-new {
+  width: 100%;
+  max-width: 420px;
+}
+
+.sess-new-head {
+  padding: var(--s4) var(--s4) var(--s3);
+  border-bottom: 1px solid var(--border);
+}
+
+.sess-new-title {
+  font-size: 18px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+}
+
+.sess-new-sub {
+  margin-top: 2px;
+  font-size: 14px;
+  color: var(--text-dim);
+}
+
+.sess-new-row {
+  width: 100%;
+  min-height: 62px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto 18px;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s3) var(--s4);
+  text-align: left;
+  color: var(--text);
+}
+
+.sess-new-row + .sess-new-row {
+  border-top: 1px solid var(--border);
+}
+
+.sess-new-row:disabled {
+  opacity: 0.5;
+}
+
+.sess-new-row-text {
+  min-width: 0;
+}
+
+.sess-new-label {
+  display: block;
+  font-size: 16px;
+  font-weight: 650;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+
+.sess-new-parts {
+  display: block;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.sess-new-count {
+  font-size: 12px;
+  color: var(--text-faint);
+  white-space: nowrap;
+}
+
+.sess-new-chevron {
+  width: 18px;
+  height: 18px;
+  color: var(--text-faint);
+}
+
+/* --------------------------------------------------------------------------
+   State B — header
+   -------------------------------------------------------------------------- */
+
+.sess-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+
+.sess-head .page-title {
+  overflow-wrap: anywhere;
+}
+
+.sess-elapsed {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1);
+  min-height: 32px;
+  padding: 0 var(--s3);
+  border-radius: var(--r-full);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.sess-elapsed svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* --------------------------------------------------------------------------
+   State B — exercise rows
+   -------------------------------------------------------------------------- */
+
+.sess-row {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) auto 44px;
+  align-items: start;
+  gap: var(--s3);
+  padding: var(--s3);
+}
+
+.sess-row + .sess-row {
+  border-top: 1px solid var(--border);
+}
+
+.sess-thumb {
+  width: 48px;
+  height: 48px;
+  border-radius: var(--r-sm);
+  background: var(--bg-sunken);
+  object-fit: contain;
+}
+
+.sess-thumb-letter {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-raised-2);
+  color: var(--text-faint);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.sess-name {
+  align-self: center;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
+}
+
+.sess-sets {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--s1);
+  min-width: 0;
+}
+
+.sess-sets-empty {
+  align-self: center;
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  color: var(--text-faint);
+  font-size: 14px;
+}
+
+/* One logged set. 44px tall so it stays a legitimate tap target for delete. */
+.sess-set {
+  min-height: 44px;
+  min-width: 84px;
+  padding: 0 var(--s3);
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  border-radius: var(--r-sm);
+  background: var(--bg-raised-2);
+  color: var(--text);
+  font-size: 14px;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.sess-set:active {
+  background: var(--danger-soft);
+  color: var(--danger);
+}
+
+/* Accent-tinted variant of .icon-btn. main.tsx imports styles.css before App,
+   so page CSS comes later in the bundle and wins at equal specificity. */
+.sess-add {
+  align-self: center;
+  flex: none;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.sess-add:active {
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+
+/* Empty training hint */
+.sess-hint {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s2);
+}
+
+.sess-hint-title {
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.sess-hint-body {
+  font-size: 14px;
+  color: var(--text-dim);
+}
+
+/* --------------------------------------------------------------------------
+   State B — bottom actions
+   -------------------------------------------------------------------------- */
+
+.sess-actions {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--s3);
+  margin-top: var(--s6);
+}
+
+.sess-actions .btn-block {
+  width: 100%;
+}
+
+.sess-summary {
+  font-size: 13px;
+  color: var(--text-faint);
+}
+
+.sess-notice {
+  width: 100%;
+  padding: var(--s3);
+  border-radius: var(--r-md);
+  background: var(--warn-soft);
+  color: var(--warn);
+  font-size: 14px;
+}
+
+/* --------------------------------------------------------------------------
+   Add-set sheet
+   -------------------------------------------------------------------------- */
+
+.sess-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+
+.sess-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--s3);
+}
+
+.sess-form-hint {
+  font-size: 13px;
+  color: var(--text-faint);
+}
+
+.sess-error {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--danger);
+}
+
+/* Off-screen submit so the iOS keyboard's return key saves the set. */
+.sess-submit-proxy {
+  position: absolute;
+  left: -9999px;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
