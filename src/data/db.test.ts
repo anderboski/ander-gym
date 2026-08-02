@@ -2,10 +2,7 @@ import { beforeEach, describe, expect, it } from 'vitest';
 import { deleteDB } from 'idb';
 import * as db from './db';
 import { applyBackup, backupFilename, buildBackup, dataUrlToBlob, parseBackup, BackupError } from './backup';
-import { parseTrainingDays } from './parse';
 import type { Session } from './types';
-
-const FILE = 'Shoulder-bicep-tricep\nLeg-abs\nPecs-back';
 
 beforeEach(async () => {
   await db.closeDB();
@@ -23,56 +20,65 @@ function session(id: string, trainingId = 'leg-abs'): Session {
   };
 }
 
-describe('seedTrainings', () => {
-  it('creates one training per line, in file order', async () => {
-    const trainings = await db.seedTrainings(parseTrainingDays(FILE));
-    expect(trainings.map((t) => t.id)).toEqual(['shoulder-bicep-tricep', 'leg-abs', 'pecs-back']);
-    expect(trainings.every((t) => t.exerciseIds.length === 0)).toBe(true);
+describe('createTraining', () => {
+  it('appends a new training with no exercises, at the end of the rotation', async () => {
+    const first = await db.createTraining('Push day');
+    const second = await db.createTraining('Pull day');
+
+    expect(first).toMatchObject({ label: 'Push day', order: 0, exerciseIds: [] });
+    expect(second).toMatchObject({ label: 'Pull day', order: 1, exerciseIds: [] });
+    expect(first.id).not.toBe(second.id);
+
+    const trainings = await db.getTrainings();
+    expect(trainings.map((t) => t.label)).toEqual(['Push day', 'Pull day']);
   });
 
-  it('is idempotent', async () => {
-    await db.seedTrainings(parseTrainingDays(FILE));
-    const again = await db.seedTrainings(parseTrainingDays(FILE));
-    expect(again).toHaveLength(3);
+  it('allows duplicate names — ids stay unique regardless', async () => {
+    const a = await db.createTraining('Push day');
+    const b = await db.createTraining('Push day');
+    expect(a.id).not.toBe(b.id);
+  });
+});
+
+describe('renameTraining', () => {
+  it('changes the label without touching the id or order', async () => {
+    const training = await db.createTraining('Push day');
+    const renamed = await db.renameTraining(training.id, 'Upper body A');
+
+    expect(renamed).toMatchObject({ id: training.id, label: 'Upper body A', order: 0 });
+    expect((await db.getTrainings())[0]).toMatchObject({ id: training.id, label: 'Upper body A' });
   });
 
-  it('preserves exercises the user added when reseeding', async () => {
-    await db.seedTrainings(parseTrainingDays(FILE));
-    await db.putTraining({
-      id: 'leg-abs',
-      label: 'Leg-abs',
-      order: 1,
-      exerciseIds: ['0001', '0002'],
-    });
+  it('preserves exerciseIds', async () => {
+    const training = await db.createTraining('Push day');
+    await db.putTraining({ ...training, exerciseIds: ['0001', '0002'] });
 
-    const reseeded = await db.seedTrainings(parseTrainingDays(FILE));
-    expect(reseeded.find((t) => t.id === 'leg-abs')?.exerciseIds).toEqual(['0001', '0002']);
+    const renamed = await db.renameTraining(training.id, 'Upper body A');
+    expect(renamed?.exerciseIds).toEqual(['0001', '0002']);
   });
 
-  it('picks up a line added to the file', async () => {
-    await db.seedTrainings(parseTrainingDays(FILE));
-    const trainings = await db.seedTrainings(parseTrainingDays(`${FILE}\nCardio`));
-    expect(trainings.map((t) => t.id)).toEqual([
-      'shoulder-bicep-tricep',
-      'leg-abs',
-      'pecs-back',
-      'cardio',
-    ]);
+  it('returns null for an unknown id', async () => {
+    expect(await db.renameTraining('nope', 'X')).toBeNull();
+  });
+});
+
+describe('reorderTrainings', () => {
+  it('applies a new order from a list of ids', async () => {
+    const a = await db.createTraining('A');
+    const b = await db.createTraining('B');
+    const c = await db.createTraining('C');
+
+    const trainings = await db.reorderTrainings([c.id, a.id, b.id]);
+    expect(trainings.map((t) => t.label)).toEqual(['C', 'A', 'B']);
+    expect(trainings.map((t) => t.order)).toEqual([0, 1, 2]);
   });
 
-  it('reorders when the file order changes', async () => {
-    await db.seedTrainings(parseTrainingDays(FILE));
-    const trainings = await db.seedTrainings(parseTrainingDays('Pecs-back\nLeg-abs\nShoulder-bicep-tricep'));
-    expect(trainings.map((t) => t.id)).toEqual(['pecs-back', 'leg-abs', 'shoulder-bicep-tricep']);
-  });
+  it('keeps a training missing from the given ids, appended at the end', async () => {
+    const a = await db.createTraining('A');
+    const b = await db.createTraining('B');
 
-  it('keeps a training whose line was deleted, ordered last', async () => {
-    await db.seedTrainings(parseTrainingDays(FILE));
-    await db.putTraining({ id: 'pecs-back', label: 'Pecs-back', order: 2, exerciseIds: ['0009'] });
-
-    const trainings = await db.seedTrainings(parseTrainingDays('Shoulder-bicep-tricep\nLeg-abs'));
-    expect(trainings.map((t) => t.id)).toEqual(['shoulder-bicep-tricep', 'leg-abs', 'pecs-back']);
-    expect(trainings[2]?.exerciseIds).toEqual(['0009']);
+    const trainings = await db.reorderTrainings([b.id]);
+    expect(trainings.map((t) => t.id)).toEqual([b.id, a.id]);
   });
 });
 
@@ -116,7 +122,6 @@ describe('settings', () => {
 
 describe('backup round trip', () => {
   it('exports and restores everything, including a custom-exercise photo', async () => {
-    await db.seedTrainings(parseTrainingDays(FILE));
     await db.putTraining({ id: 'leg-abs', label: 'Leg-abs', order: 1, exerciseIds: ['0001'] });
     await db.putSession(session('s1'));
     await db.putSetting('weeklyGoal', 4);

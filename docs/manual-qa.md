@@ -26,19 +26,33 @@ Target: `https://anderboski.github.io/ander-gym/`
 
 ## 3. Core flow
 
-- [ ] Home shows `0 trainings this week` and today's training as
-      **Shoulder-bicep-tricep** on a fresh install.
-- [ ] Trainings → open a day → add 3 exercises via the **+** card.
-- [ ] Home → tap today's training. It opens Session with those 3 exercises.
+- [ ] Home shows `0 trainings this week` and an empty state — no trainings exist
+      yet on a fresh install.
+- [ ] Trainings → **+ Add training day** → name it **Push day** → Save. It appears
+      as the only card. Add two more, **Pull day** and **Legs**, the same way.
+- [ ] Trainings → open **Push day** → add 3 exercises via the **+** card.
+- [ ] Home → tap today's training (**Push day**). It opens Session with those 3
+      exercises.
 - [ ] Log a set: tap **+**, enter reps and weight, save. The row shows `10x25kg`.
 - [ ] Log a second set on the same exercise. Both lines appear.
 - [ ] Log a bodyweight set (weight `0`). It reads `12 reps`, not `12x0kg`.
 - [ ] **Save session** → lands on History with the session at the top.
 - [ ] Home now shows `1 training this week` and today's training has advanced to
-      **Leg-abs**.
+      **Pull day**.
 - [ ] Exercises → find one of the exercises you logged. Its card shows the date,
       the days-back, and the reps/weight matrix.
 - [ ] Tap that card's image → full history sheet opens with the same data.
+
+## 3b. Training management
+
+- [ ] Trainings → tap the pencil on **Pull day** → rename it to **Back & biceps** →
+      Save. The card updates immediately.
+- [ ] History → the session already logged under the old name **Pull day** still
+      shows **Pull day** — renaming does not rewrite past sessions.
+- [ ] Trainings → press and drag the grip handle on the left of **Legs** up above
+      **Push day**. Release — the list reflects the new order immediately.
+- [ ] Home → today's training now follows the new rotation order.
+- [ ] Confirm there is no way to delete a training day anywhere in the UI.
 
 ## 4. Keyboard behaviour
 

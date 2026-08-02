@@ -7,7 +7,6 @@
 import { useMemo } from 'react';
 import { useGym } from '../data/store';
 import { formatDateTime, setCount, totalVolume } from '../data/derive';
-import { bodyPartsLabel } from '../data/parse';
 import { navigate } from '../router';
 import { ChevronRightIcon } from '../components/icons';
 import type { Session } from '../data/types';
@@ -47,8 +46,6 @@ function groupByMonth(sessions: Session[]): MonthGroup[] {
 }
 
 function SessionRow({ session }: { session: Session }) {
-  const bodyPart = bodyPartsLabel(session.trainingLabel);
-
   return (
     <button
       className="card card-tappable history-row"
@@ -57,10 +54,7 @@ function SessionRow({ session }: { session: Session }) {
     >
       <span className="history-row-main">
         <span className="history-row-date num">{formatDateTime(session.startedAt)}</span>
-        <span className="history-row-training">
-          {session.trainingLabel}
-          {bodyPart && ` — ${bodyPart}`}
-        </span>
+        <span className="history-row-training">{session.trainingLabel}</span>
         <span className="history-row-summary">{sessionSummary(session)}</span>
       </span>
       <span className="history-row-chevron" aria-hidden="true">

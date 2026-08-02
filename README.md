@@ -16,7 +16,7 @@ Five tabs:
 |---|---|
 | **Home** | Trainings this week against a weekly goal, current streak, and the training you should do today — tap to start it. |
 | **Exercises** | 1324 exercises, fuzzy-searchable, filterable by category, equipment and target muscle. Each card shows your latest sets for that exercise; tap the image for full history. |
-| **Trainings** | Your training days from `data/training_days.txt`. Open one to add or remove the exercises it contains. |
+| **Trainings** | Your training days — add as many as you like, rename anytime, reorder by dragging the grip on the left of a card (that order is the rotation). Never deletable. Open one to add or remove the exercises it contains. |
 | **Session** | The workout you're doing right now. Log reps × weight per exercise, then save or discard. |
 | **History** | Every saved session, newest first. Read-only — it's the record everything else derives from. |
 
@@ -48,12 +48,10 @@ The service worker is disabled in dev. To test offline behaviour, use
   `gif_url` points at a directory that doesn't exist — all three are ignored).
 - **`images/`** — 1324 JPEGs, 11 MB. Deliberately *not* precached; the service
   worker caches each one the first time you view it.
-- **`training_days.txt`** — one training day per line. Line order is the rotation
-  order used by Home. Editing this file adds, renames or reorders training days on
-  the next load; a day you remove keeps its data and moves to the end.
 
-Everything you create — which exercises are in which training, your sessions,
-custom exercises, settings — lives in IndexedDB on the phone.
+Everything else — your training days and their order, which exercises are in which
+training, your sessions, custom exercises, settings — is created in-app and lives in
+IndexedDB on the phone.
 
 ## Backup
 

@@ -103,3 +103,17 @@ export const AlertIcon = (p: P) => (
     <circle cx="12" cy="12" r="8.5" />
   </svg>
 );
+
+/** Two columns of dots — a drag handle. */
+export const GripIcon = (p: P) => (
+  <svg {...base} {...p} strokeWidth={2.4}>
+    <path d="M9 6h.01M9 12h.01M9 18h.01M15 6h.01M15 12h.01M15 18h.01" />
+  </svg>
+);
+
+export const PencilIcon = (p: P) => (
+  <svg {...base} {...p}>
+    <path d="M14.5 5.5 18.5 9.5 8 20H4v-4z" />
+    <path d="M12.5 7.5 16.5 11.5" />
+  </svg>
+);

@@ -19,7 +19,6 @@ import {
   nextTraining,
   weeklyStreak,
 } from '../data/derive';
-import { bodyPartsLabel } from '../data/parse';
 import { navigate } from '../router';
 import { AlertIcon, ChevronRightIcon, CloseIcon, GearIcon, PlayIcon } from '../components/icons';
 import { SettingsSheet } from '../components/SettingsSheet';
@@ -167,7 +166,6 @@ export function HomePage() {
                 <div className="home-card-main">
                   <span className="pill pill-accent">In progress</span>
                   <div className="home-card-title">{active.trainingLabel}</div>
-                  <div className="home-card-parts">{bodyPartsLabel(active.trainingLabel)}</div>
                   <div className="home-card-cta">Resume session</div>
                 </div>
                 <ChevronRightIcon className="home-card-chevron" />
@@ -180,7 +178,6 @@ export function HomePage() {
               >
                 <div className="home-card-main">
                   <div className="home-card-title">{today.label}</div>
-                  <div className="home-card-parts">{bodyPartsLabel(today.label)}</div>
                   <div className="home-card-last">
                     {lastForToday ? (
                       <>
@@ -203,9 +200,14 @@ export function HomePage() {
               </button>
             ) : (
               <div className="card card-pad">
-                <div className="empty">
-                  No training days yet — they are seeded from data/training_days.txt.
-                </div>
+                <div className="empty">No training days yet — add one from the Trainings tab.</div>
+                <button
+                  className="btn btn-sm"
+                  style={{ marginTop: 'var(--s3)' }}
+                  onClick={() => navigate('/trainings')}
+                >
+                  Go to Trainings
+                </button>
               </div>
             )}
           </section>

@@ -17,11 +17,9 @@ import {
   customToExercise,
   downscaleImage,
   fetchRawExercises,
-  fetchTrainingDaysText,
   normaliseExercise,
   revokeCustomUrls,
 } from './exercises';
-import { parseTrainingDays } from './parse';
 import {
   DEFAULT_SETTINGS,
   type ActiveSession,
@@ -39,7 +37,7 @@ export type GymState = {
   /** Built-in catalogue plus the user's custom exercises. */
   exercises: Exercise[];
   exerciseById: Map<string, Exercise>;
-  /** Ordered by the rotation order from training_days.txt. */
+  /** Ordered by the user's drag-reordered rotation. */
   trainings: Training[];
   /** Saved sessions, newest first. */
   sessions: Session[];
@@ -59,6 +57,11 @@ type Mutations = {
 
   addExerciseToTraining: (trainingId: string, exerciseId: string) => Promise<void>;
   removeExerciseFromTraining: (trainingId: string, exerciseId: string) => Promise<void>;
+
+  addTraining: (label: string) => Promise<Training>;
+  renameTraining: (trainingId: string, label: string) => Promise<void>;
+  /** Full new rotation order, as dragged into place. */
+  reorderTrainings: (orderedIds: string[]) => Promise<void>;
 
   /** Replaces any session already in progress — confirm with the user first. */
   startSession: (trainingId: string) => Promise<void>;
@@ -109,13 +112,9 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
 
   /** Full reload from disk. Used on boot and after an import. */
   const reload = useCallback(async () => {
-    const [rawExercises, trainingDaysText] = await Promise.all([
+    const [rawExercises, trainings, custom, sessions, active, settings] = await Promise.all([
       fetchRawExercises(),
-      fetchTrainingDaysText(),
-    ]);
-
-    const trainings = await db.seedTrainings(parseTrainingDays(trainingDaysText));
-    const [custom, sessions, active, settings] = await Promise.all([
+      db.getTrainings(),
       db.getCustomExercises(),
       db.getSessions(),
       db.getActiveSession(),
@@ -220,6 +219,33 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
           ...s,
           trainings: s.trainings.map((t) => (t.id === trainingId ? updated : t)),
         }));
+      },
+
+      async addTraining(label) {
+        const trimmed = label.trim();
+        if (!trimmed) throw new Error('Name is required.');
+        const training = await db.createTraining(trimmed);
+        setState((s) => ({
+          ...s,
+          trainings: [...s.trainings, training].sort((a, b) => a.order - b.order),
+        }));
+        return training;
+      },
+
+      async renameTraining(trainingId, label) {
+        const trimmed = label.trim();
+        if (!trimmed) throw new Error('Name is required.');
+        const updated = await db.renameTraining(trainingId, trimmed);
+        if (!updated) return;
+        setState((s) => ({
+          ...s,
+          trainings: s.trainings.map((t) => (t.id === trainingId ? updated : t)),
+        }));
+      },
+
+      async reorderTrainings(orderedIds) {
+        const trainings = await db.reorderTrainings(orderedIds);
+        setState((s) => ({ ...s, trainings }));
       },
 
       async startSession(trainingId) {

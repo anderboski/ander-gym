@@ -7,31 +7,64 @@
   padding: 0 var(--s4);
 }
 
+/* One row: a drag handle, the tappable body, and a rename button. */
 .tr-card {
   width: 100%;
-  text-align: left;
   display: flex;
   align-items: center;
-  gap: var(--s3);
-  padding: var(--s4);
+  gap: var(--s1);
+  padding: 0 var(--s2);
   background: var(--bg-raised);
   border: 1px solid var(--border);
   border-radius: var(--r-lg);
 }
 
-.tr-card:active {
-  background: var(--bg-raised-2);
+/* The row currently being dragged stays in its slot, dimmed — the ghost
+   overlay is what actually follows the pointer. */
+.tr-card-dragging {
+  opacity: 0.35;
+}
+
+.tr-card-grip {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-faint);
+  touch-action: none;
+}
+
+.tr-card-grip svg {
+  width: 20px;
+  height: 20px;
 }
 
 .tr-card-main {
   flex: 1;
   min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  text-align: left;
+  padding: var(--s4) 0;
 }
 
-.tr-card-parts {
+.tr-card-main:active .tr-card-label {
+  color: var(--text-dim);
+}
+
+.tr-card-main-inner {
+  flex: 1;
+  min-width: 0;
+}
+
+.tr-card-label {
   font-size: 17px;
   font-weight: 650;
   letter-spacing: -0.01em;
+  overflow-wrap: anywhere;
 }
 
 .tr-card-sub {
@@ -47,11 +80,61 @@
   color: var(--text-faint);
 }
 
-.tr-card svg {
+.tr-card-chevron {
   flex: none;
   width: 20px;
   height: 20px;
   color: var(--text-faint);
+}
+
+.tr-card-edit {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  margin-right: var(--s1);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-faint);
+}
+
+.tr-card-edit svg {
+  width: 19px;
+  height: 19px;
+}
+
+.tr-card-edit:active,
+.tr-card-grip:active {
+  color: var(--text);
+}
+
+/* The dragged card's floating copy, tracking the pointer. */
+.tr-card-ghost {
+  position: fixed;
+  z-index: 60;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+
+/* --- add-training form ----------------------------------------------------- */
+
+.tr-name-form {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s4);
+}
+
+.tr-name-field {
+  display: flex;
+  flex-direction: column;
+}
+
+.tr-name-error {
+  padding: var(--s3);
+  border-radius: var(--r-md);
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: 14px;
 }
 
 /* --- detail -------------------------------------------------------------- */

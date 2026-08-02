@@ -52,12 +52,6 @@ export async function fetchRawExercises(): Promise<RawExercise[]> {
   return (await res.json()) as RawExercise[];
 }
 
-export async function fetchTrainingDaysText(): Promise<string> {
-  const res = await fetch(`${BASE}data/training_days.txt`);
-  if (!res.ok) throw new Error(`training_days.txt: ${res.status}`);
-  return await res.text();
-}
-
 /**
  * Downscale a picked photo so custom-exercise images stay small in IndexedDB
  * and in the JSON export. Longest edge is capped; output is JPEG.

@@ -14,7 +14,7 @@ anything written here.
 |---|---|---|
 | D1 | Navigation | 5 bottom tabs: Home · Exercises · Trainings · Session · History |
 | D2 | Stack | Vite + React + TypeScript, `vite-plugin-pwa`, deployed to GitHub Pages via Actions. Hash routing, hand-rolled (~50 lines) — every React Router 7.x release carries an open advisory, and hash routing also avoids the Pages reload-404 |
-| D3 | Training days | Names fixed, seeded from `data/training_days.txt`. Exercise membership is editable in-app |
+| D3 | Training days | Fully user-managed: create as many as you like, rename anytime, reorder by drag. Never deletable — a training's id must always resolve so session history stays intact. Exercise membership is editable in-app |
 | D4 | Home extras | Weekly goal + streak; backup reminder. (No PR tracking, no last-session recap in v1) |
 | D5 | Offline | Lazy cache-first for images; app shell + `exercises.json` precached |
 | D6 | Custom exercise image | Optional photo from camera/library, downscaled, stored as a blob; lettered placeholder otherwise |
@@ -59,22 +59,6 @@ Verified facts the implementation must rely on:
 
 Facet cardinalities: `category` 10 · `equipment` 28 · `target` 19.
 
-### `data/training_days.txt`
-Newline-separated, no trailing newline:
-
-```
-Shoulder-bicep-tricep
-Leg-abs
-Pecs-back
-```
-
-Parsing rules:
-- Trim each line, drop empty lines. Line order **is** the rotation order.
-- `id` = slug of the line, lowercased, non-alphanumerics collapsed to `-` (`shoulder-bicep-tricep`).
-- Display label = the raw line.
-- **Body parts** = split the raw line on `-`, drop empty segments (note `Pecs-back` and the double
-  hyphen risk), title-case each: `Shoulder-bicep-tricep` → `Shoulder · Bicep · Tricep`.
-
 ### Asset pipeline
 `data/` stays at the repo root as the source of truth. Vite must serve it in dev and copy it to
 `dist/data/` on build (use `vite-plugin-static-copy`; `publicDir` would flatten the paths). All runtime
@@ -100,8 +84,11 @@ type SessionEntry = { exerciseId: string; sets: SetEntry[] };
 ```
 
 Rules:
-- **Seeding.** On boot, reconcile `trainings` against `training_days.txt`: insert missing lines, update
-  `label`/`order` on existing ones by `id`, and never delete a training that has `exerciseIds`.
+- **Trainings are user-created**, not seeded. A new one gets a fresh id (`t-<uuid>`) and joins the end of
+  the rotation with no exercises. Renaming updates only `label` — the id (and therefore every session's
+  `trainingId`) never changes, so history stays attributed correctly. Reordering rewrites `order` on every
+  training to match the dragged sequence. **Trainings are never deleted** — a `Session.trainingId` must
+  always resolve.
 - **One active session.** Starting a session while one exists must prompt: resume, or discard and start new.
 - Every write to `activeSession` is immediate — a mid-workout app kill must lose nothing.
 - Call `navigator.storage.persist()` once, on the first successful session save.
@@ -128,11 +115,12 @@ All dates are handled in the device's local timezone.
 **`currentWeekCount(sessions, now)`** — number of saved sessions whose `startedAt` falls in the current
 ISO week (Monday 00:00 → Sunday 23:59:59).
 
-**`nextTraining(trainings, sessions)`** — strict rotation over `order`:
+**`nextTraining(trainings, sessions)`** — strict rotation over `order` (the drag-reordered sequence):
 - No saved sessions → `trainings[0]`.
 - Otherwise take the most recent session by `startedAt`, find its `trainingId` in the ordered list, return
   the next one, wrapping to index 0.
-- A training that has since been removed from the file → fall back to `trainings[0]`.
+- A session's `trainingId` that isn't in `trainings` (e.g. after a partial import) → fall back to
+  `trainings[0]`.
 
 **`weeklyStreak(sessions, goal, now)`** — count of consecutive ISO weeks, walking backwards from last week,
 where the session count ≥ `goal`. The current week is included only if it already meets the goal (so a
@@ -169,8 +157,8 @@ the fixed bottom nav.
 - **Gear icon** (top right) — Settings sheet: weekly goal, export, import, storage usage
   (`navigator.storage.estimate()`), app version.
 
-**Acceptance:** with zero data the page shows 0/3, no streak, no banner, and "Shoulder-bicep-tricep" as
-today's training.
+**Acceptance:** with zero data and no trainings created yet, the page shows 0/3, no streak, no banner, and
+an empty state prompting the user to add a training day from the Trainings tab.
 
 ### 5.2 Exercises
 Vertical order, exactly as briefed:
@@ -198,10 +186,26 @@ Vertical order, exactly as briefed:
 - Optional `onRemove` prop renders a trash icon in the top-right (Trainings context only).
 
 ### 5.3 Trainings
-- One card per training day, in file order: body parts (title-cased), and last session datetime + days-back
-  for that training, plus the exercise count.
-- Tapping a card opens its detail view: the training's exercises rendered as `ExerciseCard`s **with** the
-  trash icon (removal is immediate, undoable via a toast for 5 s), and a trailing **"+"** card.
+Training days are fully user-managed — there is no fixed list and nothing is seeded.
+
+- One card per training day, in rotation order: the label as typed, last session datetime + days-back for
+  that training, and the exercise count.
+- **Add.** A trailing "+ Add training day" card opens a sheet with a single name field. Saving appends a
+  new, empty training to the end of the rotation. Names may repeat; ids are always unique and hidden from
+  the user.
+- **Rename.** A pencil icon on each card opens the same sheet, prefilled with the current name. Only
+  `label` changes — the id is stable, so every session already logged under that training keeps pointing
+  at it correctly (a session's `trainingLabel` is a snapshot taken at start time, so past records keep
+  showing whatever the name was then).
+- **Reorder.** A grip handle on the left edge of each card is a drag handle: press and drag vertically to
+  move a card past its neighbours, in either direction. The drop position becomes each training's new
+  `order`, and that is exactly the sequence `nextTraining()` rotates through on Home.
+- **No delete.** Trainings cannot be removed, ever — only renamed — so a `Session.trainingId` always
+  resolves to something. A training day that stops being useful can simply be renamed and left with zero
+  exercises, or drag-reordered to the end.
+- Tapping a card's body (not the grip or pencil) opens its detail view: the training's exercises rendered
+  as `ExerciseCard`s **with** the trash icon (removal is immediate, undoable via a toast for 5 s), and a
+  trailing **"+"** card.
 - The "+" card opens an exercise picker — the same search + facet UI as the Exercises page in selection
   mode. Picking one appends it to `exerciseIds`. Already-included exercises are shown as disabled.
 - Duplicate exercises within one training are rejected.
@@ -246,7 +250,7 @@ Bottom of the page, above the nav:
 - Web app manifest: `display: standalone`, portrait, theme + background colours, 180×180 apple-touch-icon,
   192/512 PNG icons, maskable variant.
 - Service worker (`vite-plugin-pwa`, `registerType: 'autoUpdate'`):
-  - Precache: app shell, CSS/JS, `data/exercises.json`, `data/training_days.txt`, icons.
+  - Precache: app shell, CSS/JS, `data/exercises.json`, icons.
   - Runtime: `data/images/**` → `CacheFirst`, 30-day expiration, max 1500 entries.
   - An "update available" toast when a new SW takes control.
 - Minimum 44×44 pt tap targets; `-webkit-tap-highlight-color: transparent`; `user-select: none` on controls.
@@ -270,8 +274,8 @@ Bottom of the page, above the nav:
 
 ## 8. Quality bar
 
-- **Vitest** unit tests covering every function in §4, the `training_days.txt` parser, the seeding
-  reconciliation, and an export→import round trip (including a custom-exercise blob).
+- **Vitest** unit tests covering every function in §4, training creation/rename/reorder, and an
+  export→import round trip (including a custom-exercise blob).
 - **Typecheck + lint** clean; `strict: true` in `tsconfig`.
 - No `any` in the data layer; a single `Exercise` type covers built-in and custom records.
 - Lighthouse (mobile) PWA installable, performance ≥ 90 on a filtered Exercises view.

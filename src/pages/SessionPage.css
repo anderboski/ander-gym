@@ -64,12 +64,6 @@
   overflow-wrap: anywhere;
 }
 
-.sess-new-parts {
-  display: block;
-  font-size: 13px;
-  color: var(--text-dim);
-}
-
 .sess-new-count {
   font-size: 12px;
   color: var(--text-faint);
