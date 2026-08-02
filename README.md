@@ -39,6 +39,49 @@ npm run preview    # serve dist/ (needed to exercise the service worker)
 The service worker is disabled in dev. To test offline behaviour, use
 `npm run build && npm run preview`.
 
+## Publishing to GitHub Pages
+
+Deployment is automatic: **every push to `main` publishes**, via
+[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml). The workflow runs
+`npm ci`, `npm run typecheck`, `npm test` and `npm run build`, then uploads
+`dist/` to Pages. A failing typecheck or test blocks the deploy.
+
+### One-time setup
+
+Pages has to be enabled **before** the first deploy, otherwise the
+`actions/configure-pages` step fails with
+`Get Pages site failed … Error: Not Found`. That error means only this — it is
+not a build problem.
+
+In the repo: **Settings → Pages → Build and deployment → Source = `GitHub Actions`**.
+
+Or from the CLI:
+
+```bash
+gh api -X POST repos/<owner>/<repo>/pages -f build_type=workflow
+```
+
+Then re-run the failed workflow (`gh run rerun <run-id> --failed`) — no new commit
+needed.
+
+### Watching a deploy
+
+```bash
+gh run list --limit 5          # recent runs
+gh run watch                   # follow the run in progress
+gh run view <run-id> --log-failed
+```
+
+The site is at **https://anderboski.github.io/ander-gym/**. First publish can take
+a couple of minutes to become reachable after the run goes green.
+
+### If you fork this
+
+`base` in [`vite.config.ts`](vite.config.ts) is hardcoded to `/ander-gym/`, which
+must match the repo name, and the same value appears in `start_url`/`scope` in the
+PWA manifest and in the `apple-touch-icon` path in `index.html`. Rename the repo
+and you must change all three, or every asset 404s.
+
 ## Data
 
 `data/` is the source of truth and ships as static assets:
