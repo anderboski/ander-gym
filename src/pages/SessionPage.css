@@ -134,6 +134,7 @@
 }
 
 .sess-thumb {
+  align-self: center;
   width: 48px;
   height: 48px;
   border-radius: var(--r-sm);
