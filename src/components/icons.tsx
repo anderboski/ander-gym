@@ -117,3 +117,16 @@ export const PencilIcon = (p: P) => (
     <path d="M12.5 7.5 16.5 11.5" />
   </svg>
 );
+
+export const SunIcon = (p: P) => (
+  <svg {...base} {...p}>
+    <circle cx="12" cy="12" r="4.2" />
+    <path d="M12 2.5v2.3M12 19.2v2.3M4.9 4.9l1.6 1.6M17.5 17.5l1.6 1.6M2.5 12h2.3M19.2 12h2.3M4.9 19.1l1.6-1.6M17.5 6.5l1.6-1.6" />
+  </svg>
+);
+
+export const MoonIcon = (p: P) => (
+  <svg {...base} {...p}>
+    <path d="M20 14.2A8.5 8.5 0 1 1 9.8 4a6.7 6.7 0 0 0 10.2 10.2z" />
+  </svg>
+);

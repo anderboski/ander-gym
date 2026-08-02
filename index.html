@@ -7,8 +7,31 @@
       content="width=device-width, initial-scale=1, viewport-fit=cover, user-scalable=no"
     />
     <meta name="color-scheme" content="dark light" />
-    <meta name="theme-color" content="#0f1216" media="(prefers-color-scheme: dark)" />
-    <meta name="theme-color" content="#f7f8fa" media="(prefers-color-scheme: light)" />
+    <meta name="theme-color" content="#0f1216" />
+
+    <!--
+      Applies the user's light/dark override (src/data/theme.ts) before first
+      paint, so toggling in-app never causes a flash on the next load. Falls
+      back to the OS preference when nothing has been chosen yet.
+    -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('ander-gym-theme');
+          var theme =
+            stored === 'light' || stored === 'dark'
+              ? stored
+              : window.matchMedia('(prefers-color-scheme: light)').matches
+                ? 'light'
+                : 'dark';
+          document.documentElement.setAttribute('data-theme', theme);
+          document.querySelector('meta[name="theme-color"]').setAttribute(
+            'content',
+            theme === 'light' ? '#f7f8fa' : '#0f1216',
+          );
+        } catch (e) {}
+      })();
+    </script>
 
     <!-- iOS standalone -->
     <meta name="apple-mobile-web-app-capable" content="yes" />

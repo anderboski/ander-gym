@@ -57,8 +57,16 @@
   --font-num: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace;
 }
 
+/*
+ * Light tokens apply either automatically (OS prefers light, and the user
+ * hasn't explicitly picked dark) or because the user explicitly picked light
+ * via the Home toggle (`documentElement[data-theme]`, set in theme.ts and
+ * mirrored by the inline bootstrap script in index.html so it lands before
+ * first paint). The explicit-choice selector below has higher specificity
+ * than the bare `:root` dark defaults, so it wins regardless of OS setting.
+ */
 @media (prefers-color-scheme: light) {
-  :root {
+  :root:not([data-theme='dark']) {
     --bg: #f7f8fa;
     --bg-raised: #ffffff;
     --bg-raised-2: #eef1f5;
@@ -83,6 +91,32 @@
     --shadow: 0 6px 24px rgba(16, 24, 40, 0.12);
     --shadow-sheet: 0 -10px 40px rgba(16, 24, 40, 0.18);
   }
+}
+
+:root[data-theme='light'] {
+  --bg: #f7f8fa;
+  --bg-raised: #ffffff;
+  --bg-raised-2: #eef1f5;
+  --bg-sunken: #e7eaef;
+  --border: #dde2e9;
+  --border-strong: #c3cbd6;
+
+  --text: #101418;
+  --text-dim: #5b6673;
+  --text-faint: #8a94a2;
+
+  --accent: #15a349;
+  --accent-press: #0f7f39;
+  --accent-fg: #ffffff;
+  --accent-soft: rgba(21, 163, 73, 0.12);
+
+  --danger: #d92d20;
+  --danger-soft: rgba(217, 45, 32, 0.1);
+  --warn: #b45309;
+  --warn-soft: rgba(180, 83, 9, 0.12);
+
+  --shadow: 0 6px 24px rgba(16, 24, 40, 0.12);
+  --shadow-sheet: 0 -10px 40px rgba(16, 24, 40, 0.18);
 }
 
 /* --------------------------------------------------------------------------
