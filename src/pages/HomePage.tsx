@@ -20,9 +20,18 @@ import {
   weeklyStreak,
 } from '../data/derive';
 import { navigate } from '../router';
-import { AlertIcon, ChevronRightIcon, CloseIcon, GearIcon, PlayIcon } from '../components/icons';
+import {
+  AlertIcon,
+  ChevronRightIcon,
+  CloseIcon,
+  GearIcon,
+  MoonIcon,
+  PlayIcon,
+  SunIcon,
+} from '../components/icons';
 import { SettingsSheet } from '../components/SettingsSheet';
 import { Toast } from '../components/Sheet';
+import { getTheme, otherTheme, setTheme, type Theme } from '../data/theme';
 import './HomePage.css';
 
 /** A backup older than this is stale enough to nag about. */
@@ -44,6 +53,13 @@ export function HomePage() {
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useState<string | null>(null);
+  const [theme, setThemeState] = useState<Theme>(() => getTheme());
+
+  function toggleTheme() {
+    const next = otherTheme(theme);
+    setTheme(next);
+    setThemeState(next);
+  }
 
   useEffect(() => {
     if (!toast) return;
@@ -100,9 +116,18 @@ export function HomePage() {
             {now.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' })}
           </div>
         </div>
-        <button className="icon-btn" aria-label="Settings" onClick={() => setSettingsOpen(true)}>
-          <GearIcon />
-        </button>
+        <div className="home-header-actions">
+          <button
+            className="icon-btn"
+            aria-label={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
+            onClick={toggleTheme}
+          >
+            {theme === 'light' ? <SunIcon /> : <MoonIcon />}
+          </button>
+          <button className="icon-btn" aria-label="Settings" onClick={() => setSettingsOpen(true)}>
+            <GearIcon />
+          </button>
+        </div>
       </header>
 
       {status === 'loading' && <div className="spinner" role="status" aria-label="Loading" />}

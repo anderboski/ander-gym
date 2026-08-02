@@ -7,10 +7,19 @@
   gap: var(--s3);
 }
 
-/* Pull the 44px hit area back so the gear ink lines up with the page padding. */
-.home-header .icon-btn {
-  margin-right: calc(-1 * var(--s3));
+.home-header-actions {
+  display: flex;
+  align-items: center;
   flex: none;
+}
+
+.home-header-actions .icon-btn {
+  flex: none;
+}
+
+/* Pull the trailing 44px hit area back so its ink lines up with the page padding. */
+.home-header-actions .icon-btn:last-child {
+  margin-right: calc(-1 * var(--s3));
 }
 
 /* --------------------------------------------------------------------------

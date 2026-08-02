@@ -156,6 +156,10 @@ the fixed bottom nav.
   Tapping it runs an export immediately.
 - **Gear icon** (top right) — Settings sheet: weekly goal, export, import, storage usage
   (`navigator.storage.estimate()`), app version.
+- **Theme toggle** (top right, beside the gear icon) — sun/moon icon button that flips between light
+  and dark, overriding the OS `prefers-color-scheme`. Persisted in `localStorage` (not the `settings`
+  IndexedDB store, so it can be read and applied synchronously before first paint — see the inline
+  bootstrap script in `index.html`). Defaults to the OS preference until the user picks explicitly.
 
 **Acceptance:** with zero data and no trainings created yet, the page shows 0/3, no streak, no banner, and
 an empty state prompting the user to add a training day from the Trainings tab.
@@ -255,7 +259,8 @@ Bottom of the page, above the nav:
   - An "update available" toast when a new SW takes control.
 - Minimum 44×44 pt tap targets; `-webkit-tap-highlight-color: transparent`; `user-select: none` on controls.
 - All inputs ≥16 px font size.
-- Dark mode via `prefers-color-scheme`, both themes fully styled.
+- Dark mode via `prefers-color-scheme`, both themes fully styled, with a manual override toggle on
+  Home (§5.1) for users who want light or dark regardless of the OS setting.
 - Momentum scrolling in the card carousel; `overscroll-behavior: contain` in sheets to stop rubber-banding
   the page behind them.
 - The app must be fully usable with the network off, for any exercise whose image has been viewed once.
