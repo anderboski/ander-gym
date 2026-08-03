@@ -74,6 +74,72 @@ export function formatElapsed(fromIso: string, now: Date): string {
 }
 
 /* -------------------------------------------------------------------------- */
+/* Rest timer                                                                  */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * A rest in progress.
+ *
+ * `targetMs` is an absolute wall-clock deadline, never a counter something has
+ * to decrement: iOS suspends timers in a backgrounded tab, so an interval that
+ * subtracts a second at a time drifts or stops outright. Every reader derives
+ * what is left from `Date.now()` instead, which stays correct across a suspend
+ * because nothing was being counted in the first place.
+ *
+ * `totalSeconds` is kept only so the progress bar has a denominator.
+ */
+export type RestTimer = { targetMs: number; totalSeconds: number };
+
+/** How long a finished rest stays on screen before it clears itself. */
+export const REST_DONE_MS = 30_000;
+
+export function startRest(seconds: number, nowMs: number): RestTimer {
+  return { targetMs: nowMs + seconds * 1000, totalSeconds: seconds };
+}
+
+/** Whole seconds left, rounded up so "0:01" is shown for its full second. */
+export function remainingSeconds(targetMs: number, nowMs: number): number {
+  return Math.max(0, Math.ceil((targetMs - nowMs) / 1000));
+}
+
+/** `1:30`, `0:05`, `10:00` — mm:ss, minutes uncapped. */
+export function formatCountdown(seconds: number): string {
+  const whole = Math.max(0, Math.floor(seconds));
+  return `${Math.floor(whole / 60)}:${pad(whole % 60)}`;
+}
+
+/** 0 → 1 across the rest. Clamped, so an adjusted timer cannot overflow the bar. */
+export function restProgress(rest: RestTimer, nowMs: number): number {
+  const totalMs = rest.totalSeconds * 1000;
+  if (totalMs <= 0) return 1;
+  const elapsed = totalMs - (rest.targetMs - nowMs);
+  return Math.min(1, Math.max(0, elapsed / totalMs));
+}
+
+export type RestPhase = 'running' | 'done' | 'expired';
+
+/**
+ * `expired` is the backgrounded-tab case: returning to the app long after a
+ * rest ended should clear it silently rather than announce a rest that finished
+ * ten minutes ago.
+ */
+export function restPhase(rest: RestTimer, nowMs: number): RestPhase {
+  if (nowMs < rest.targetMs) return 'running';
+  return nowMs - rest.targetMs > REST_DONE_MS ? 'expired' : 'done';
+}
+
+/**
+ * Inline ±30 s. The deadline never moves behind `now` — shortening a rest past
+ * its remaining time simply ends it — and `totalSeconds` is re-derived from the
+ * original start so the progress bar keeps telling the truth.
+ */
+export function adjustRest(rest: RestTimer, deltaSeconds: number, nowMs: number): RestTimer {
+  const startedMs = rest.targetMs - rest.totalSeconds * 1000;
+  const targetMs = Math.max(nowMs, rest.targetMs + deltaSeconds * 1000);
+  return { targetMs, totalSeconds: Math.max(1, Math.round((targetMs - startedMs) / 1000)) };
+}
+
+/* -------------------------------------------------------------------------- */
 /* Sessions                                                                    */
 /* -------------------------------------------------------------------------- */
 

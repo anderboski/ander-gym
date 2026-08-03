@@ -54,6 +54,25 @@ Target: `https://anderboski.github.io/ander-gym/`
 - [ ] Home → today's training now follows the new rotation order.
 - [ ] Confirm there is no way to delete a training day anywhere in the UI.
 
+## 3c. Rest timer
+
+- [ ] Session → the bar under the title reads **Rest 90s** with 60 / 90 / 120
+      presets. Tap **120** — it stays selected after leaving and re-entering the
+      tab, and only for this training day.
+- [ ] Log a set. The countdown starts at 2:00 and the exercise table does not
+      move when it appears, or when it later clears.
+- [ ] Scroll the exercise list — the bar stays pinned below the status bar,
+      clear of the notch.
+- [ ] Tap **+30** then **−30** — the countdown and the progress bar agree.
+- [ ] Tap **Skip** — the countdown is gone at once and the layout is unchanged.
+- [ ] Log a set, switch to another app for ~20 s, come back. The countdown shows
+      the *real* time left (not 20 s more), within a second.
+- [ ] Log a set with a 60 s rest, background the app and come back after 3+
+      minutes. The rest has cleared itself rather than announcing a finished one.
+- [ ] Let a rest reach zero with the app open: it reads **Rest done** and clears
+      itself after 30 s. On iOS there is no vibration — this is expected, and the
+      note under the bar says so.
+
 ## 4. Keyboard behaviour
 
 - [ ] Focusing the Exercises search box does **not** zoom the viewport.
