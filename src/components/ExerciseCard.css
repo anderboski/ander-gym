@@ -110,6 +110,32 @@
   color: var(--text-faint);
 }
 
+/* Personal record (SPEC §5.2). Overlaid rather than placed in the body flow so
+   a card with a record is exactly as tall as one without — the carousel row
+   height and the media aspect ratio are untouched. Left-aligned to stay clear
+   of the trash button in the Trainings context. */
+.ex-card-pr {
+  position: absolute;
+  top: var(--s1);
+  left: var(--s1);
+  z-index: 1;
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1);
+  padding: 2px var(--s2);
+  border-radius: var(--r-full);
+  font-size: 11px;
+  font-weight: 700;
+  color: var(--warn);
+  /* Tokenised on both sides, so light and dark follow --bg / --warn. */
+  background: color-mix(in srgb, var(--bg) 78%, transparent);
+  border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  /* Never intercept the tap that opens the history sheet. */
+  pointer-events: none;
+}
+
 .ex-card-remove {
   position: absolute;
   top: var(--s1);

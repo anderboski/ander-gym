@@ -11,10 +11,10 @@
  */
 import { useCallback, useEffect, useState } from 'react';
 import { useGym } from '../data/store';
-import { formatElapsed, latestFor } from '../data/derive';
+import { beatsPersonalRecord, formatElapsed, latestFor, personalRecords } from '../data/derive';
 import { formatSet, formatWeight } from '../data/parse';
 import type { ActiveSession, Exercise, SessionEntry, Session, Training } from '../data/types';
-import { ConfirmSheet, Sheet } from '../components/Sheet';
+import { ConfirmSheet, Sheet, Toast } from '../components/Sheet';
 import { ChevronRightIcon, ClockIcon, PlusIcon } from '../components/icons';
 import { navigate } from '../router';
 import './SessionPage.css';
@@ -109,6 +109,9 @@ function useNow(intervalMs: number): Date {
 
 type PendingDelete = { exerciseId: string; index: number; name: string; label: string };
 
+/** The set that just took a record, announced once and then forgotten. */
+type NewRecord = { reps: number; weight: number };
+
 function ActiveView({ active }: { active: ActiveSession }) {
   const { sessions, getExercise, addSet, removeSet, saveSession, discardSession } = useGym();
   const now = useNow(30_000);
@@ -117,8 +120,17 @@ function ActiveView({ active }: { active: ActiveSession }) {
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
+  const [newRecord, setNewRecord] = useState<NewRecord | null>(null);
 
   const totalSets = active.entries.reduce((n, e) => n + e.sets.length, 0);
+
+  // A fresh object per PR, so back-to-back records restart the timer instead of
+  // inheriting the first one's remaining time.
+  useEffect(() => {
+    if (!newRecord) return;
+    const t = setTimeout(() => setNewRecord(null), 4000);
+    return () => clearTimeout(t);
+  }, [newRecord]);
 
   const onSave = () => {
     saveSession()
@@ -202,10 +214,18 @@ function ActiveView({ active }: { active: ActiveSession }) {
           onSave={(reps, weight) => {
             const id = addingTo;
             setAddingTo(null);
+            // The baseline includes this session's own sets — `active` still
+            // holds the pre-save entries here — so three ascending sets report
+            // three distinct PRs instead of the same one three times.
+            if (beatsPersonalRecord({ reps, weight }, personalRecords(id, [...sessions, active]))) {
+              setNewRecord({ reps, weight });
+            }
             void addSet(id, reps, weight);
           }}
         />
       )}
+
+      {newRecord && <Toast message={`🏆 New PR — ${formatSet(newRecord.reps, newRecord.weight)}`} />}
 
       {pendingDelete && (
         <ConfirmSheet
