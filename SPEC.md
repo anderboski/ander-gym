@@ -307,8 +307,9 @@ exercise:
 - Exercises may be logged in any order; rows with no sets are kept in the saved record with an empty `sets`
   array.
 
-**Rest timer.** A bar pinned under the session title, sticky over the scrolling table, rendered in
-both states so a rest starting or ending never moves the exercise rows.
+**Rest timer.** A bar pinned under the session title, both fixed in place above the scrolling table
+so neither ever overlaps the other, rendered in both states so a rest starting or ending never moves
+the exercise rows.
 - Saving a set starts (or restarts) a countdown of that training day's `restSeconds`, defaulting to
   90 s. The deadline is absolute — see §4 — so a backgrounded tab resumes at the right number rather
   than at wherever it froze; the display also re-derives on `visibilitychange`.
@@ -320,8 +321,8 @@ both states so a rest starting or ending never moves the exercise rows.
   the device has it — feature-detected, so its absence on iOS is a no-op, not an error.
 - Timer state is deliberately ephemeral: it lives in the page, not in `activeSession`. A reload
   clears it; a half-finished rest is not training data.
-- The bar carries a permanent one-line note that the countdown is on-screen only (§6), and the
-  Settings sheet states the same limitation in full.
+- The Settings sheet states in full that the countdown is on-screen only (§6); the bar itself
+  carries no such note, to keep the fixed header compact.
 
 Bottom of the page, above the nav:
 - **"Save session"** — large, full-width, green. Writes to `sessions` with `savedAt`, clears

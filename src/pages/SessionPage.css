@@ -77,8 +77,34 @@
 }
 
 /* --------------------------------------------------------------------------
-   State B — header
+   State B — layout
+
+   The header and rest bar stay put; only the exercise table and the actions
+   below it scroll. Two sticky elements at different offsets (title + rest
+   bar) used to fight each other and let rows peek out from behind the rest
+   bar mid-scroll — a fixed top block with its own scroll container underneath
+   removes the ambiguity instead of tuning `top` offsets against it.
    -------------------------------------------------------------------------- */
+
+.sess-page {
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding-bottom: 0;
+}
+
+.sess-fixed {
+  flex: none;
+}
+
+.sess-scroll {
+  flex: 1;
+  min-height: 0;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+  padding-top: var(--s4);
+  padding-bottom: calc(var(--tabbar-h) + var(--safe-bottom) + var(--s6));
+}
 
 .sess-head {
   display: flex;
@@ -115,18 +141,12 @@
    State B — rest timer
 
    Always rendered, in both the idle and running states, so a rest starting or
-   ending never moves the exercise table. Sticky against .page: the bar is the
-   thing you look at between sets, and the table is longer than the screen.
+   ending never moves the exercise table. Lives in `.sess-fixed`, which does
+   not scroll, so it never competes with the table for the same screen space.
    -------------------------------------------------------------------------- */
 
 .sess-rest {
-  position: sticky;
-  /* .page's own padding-top scrolls away with the content — offset by the inset
-     directly, or the bar would slide under the status bar in standalone mode. */
-  top: var(--safe-top);
-  z-index: 5;
   padding: var(--s2) var(--s4) var(--s3);
-  margin-bottom: var(--s4);
   background: var(--bg);
   border-bottom: 1px solid var(--border);
 }
@@ -186,16 +206,6 @@
   border-radius: var(--r-full);
   background: var(--accent);
   transition: width 0.3s linear;
-}
-
-/* One line, always: the text changes between states but the height must not. */
-.sess-rest-note {
-  margin-top: var(--s1);
-  font-size: 12px;
-  color: var(--text-faint);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
 @media (prefers-reduced-motion: reduce) {
