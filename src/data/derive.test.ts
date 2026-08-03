@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  allLatestFor,
   allPersonalRecords,
   beatsPersonalRecord,
   completedToday,
@@ -202,6 +203,20 @@ describe('per-exercise history', () => {
   it('returns null for an exercise never logged', () => {
     expect(latestFor('9999', sessions, now)).toBeNull();
     expect(historyFor('9999', sessions, now)).toEqual([]);
+  });
+
+  it('allLatestFor matches latestFor for every exercise in one pass', () => {
+    const all = allLatestFor(sessions, now);
+    expect(all.get('0001')).toEqual(latestFor('0001', sessions, now));
+    expect(all.get('0002')).toEqual(latestFor('0002', sessions, now));
+    // Bodyweight sets still count as "logged" here, unlike personal records.
+    expect(all.get('0002')?.sets).toEqual([{ reps: 12, weight: 0, at: at(2026, 7, 28) }]);
+    // Never-logged exercises are simply absent.
+    expect(all.has('9999')).toBe(false);
+  });
+
+  it('allLatestFor is empty for no sessions', () => {
+    expect(allLatestFor([]).size).toBe(0);
   });
 });
 
