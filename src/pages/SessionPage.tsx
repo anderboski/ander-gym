@@ -135,14 +135,6 @@ function useNow(intervalMs: number): Date {
 /* Rest timer                                                                  */
 /* -------------------------------------------------------------------------- */
 
-/**
- * Stated permanently rather than as a dismissible warning: iOS Safari ships no
- * Vibration API and a standalone PWA cannot post notifications, so a rest that
- * ends while the app is hidden or the phone is locked ends silently. Better on
- * screen than discovered by missing a set.
- */
-const REST_CAVEAT = 'On screen only — iOS gives no alert or vibration.';
-
 /** Present on Android Chrome, absent on iOS. Feature-detected, never depended on. */
 function buzz(): void {
   if (typeof navigator.vibrate === 'function') navigator.vibrate(180);
@@ -270,8 +262,6 @@ function RestBar({
           style={{ width: `${(rest ? restProgress(rest, nowMs) : 0) * 100}%` }}
         />
       </div>
-
-      <p className="sess-rest-note">{REST_CAVEAT}</p>
     </div>
   );
 }
@@ -339,68 +329,72 @@ function ActiveView({ active }: { active: ActiveSession }) {
   const addingName = addingTo === null ? '' : addingExercise?.name ?? addingTo;
 
   return (
-    <div className="page">
-      <div className="page-header sess-head">
-        <div>
-          <h1 className="page-title">{active.trainingLabel}</h1>
+    <div className="page sess-page">
+      <div className="sess-fixed">
+        <div className="page-header sess-head">
+          <div>
+            <h1 className="page-title">{active.trainingLabel}</h1>
+          </div>
+          <div className="sess-elapsed num" aria-label="Elapsed time">
+            <ClockIcon />
+            {formatElapsed(active.startedAt, now)}
+          </div>
         </div>
-        <div className="sess-elapsed num" aria-label="Elapsed time">
-          <ClockIcon />
-          {formatElapsed(active.startedAt, now)}
-        </div>
+
+        <RestBar
+          rest={rest}
+          defaultSeconds={restSeconds}
+          onAdjust={adjustRestBy}
+          onDismiss={dismissRest}
+          onPickDefault={(seconds) => void setTrainingRest(active.trainingId, seconds)}
+        />
       </div>
 
-      <RestBar
-        rest={rest}
-        defaultSeconds={restSeconds}
-        onAdjust={adjustRestBy}
-        onDismiss={dismissRest}
-        onPickDefault={(seconds) => void setTrainingRest(active.trainingId, seconds)}
-      />
+      <div className="sess-scroll">
+        <div className="section">
+          {active.entries.length === 0 ? (
+            <div className="card card-pad sess-hint">
+              <p className="sess-hint-title">This training has no exercises yet.</p>
+              <p className="sess-hint-body">
+                Add some from the Trainings tab, then come back — the session keeps running.
+              </p>
+              <button className="btn btn-sm" onClick={() => navigate('/trainings')}>
+                Go to Trainings
+              </button>
+            </div>
+          ) : (
+            <div className="card sess-table">
+              {active.entries.map((entry) => (
+                <SessionRow
+                  key={entry.exerciseId}
+                  entry={entry}
+                  exercise={getExercise(entry.exerciseId)}
+                  onAdd={() => openAdd(entry.exerciseId)}
+                  onPickSet={(index, name, label) =>
+                    setPendingDelete({ exerciseId: entry.exerciseId, index, name, label })
+                  }
+                />
+              ))}
+            </div>
+          )}
+        </div>
 
-      <div className="section">
-        {active.entries.length === 0 ? (
-          <div className="card card-pad sess-hint">
-            <p className="sess-hint-title">This training has no exercises yet.</p>
-            <p className="sess-hint-body">
-              Add some from the Trainings tab, then come back — the session keeps running.
+        <div className="section sess-actions">
+          {notice && (
+            <p className="sess-notice" role="alert">
+              {notice}
             </p>
-            <button className="btn btn-sm" onClick={() => navigate('/trainings')}>
-              Go to Trainings
-            </button>
+          )}
+          <button className="btn btn-primary btn-lg btn-block" onClick={onSave}>
+            Save session
+          </button>
+          <div className="sess-summary num">
+            {totalSets === 1 ? '1 set logged' : `${totalSets} sets logged`}
           </div>
-        ) : (
-          <div className="card sess-table">
-            {active.entries.map((entry) => (
-              <SessionRow
-                key={entry.exerciseId}
-                entry={entry}
-                exercise={getExercise(entry.exerciseId)}
-                onAdd={() => openAdd(entry.exerciseId)}
-                onPickSet={(index, name, label) =>
-                  setPendingDelete({ exerciseId: entry.exerciseId, index, name, label })
-                }
-              />
-            ))}
-          </div>
-        )}
-      </div>
-
-      <div className="section sess-actions">
-        {notice && (
-          <p className="sess-notice" role="alert">
-            {notice}
-          </p>
-        )}
-        <button className="btn btn-primary btn-lg btn-block" onClick={onSave}>
-          Save session
-        </button>
-        <div className="sess-summary num">
-          {totalSets === 1 ? '1 set logged' : `${totalSets} sets logged`}
+          <button className="btn btn-danger btn-sm" onClick={() => setConfirmDiscard(true)}>
+            Discard session
+          </button>
         </div>
-        <button className="btn btn-danger btn-sm" onClick={() => setConfirmDiscard(true)}>
-          Discard session
-        </button>
       </div>
 
       {addingTo !== null && (
