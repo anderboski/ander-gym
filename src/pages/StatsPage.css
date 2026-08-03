@@ -1,0 +1,31 @@
+/* Stats push view. Tokens only — the charts themselves are styled in Chart.css. */
+
+/* Same back affordance as the History detail view: 44px tall, ink aligned with
+   the page padding. */
+.stats-back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1);
+  height: 44px;
+  padding: 0 var(--s3) 0 var(--s2);
+  margin-left: calc(-1 * var(--s2));
+  border-radius: var(--r-md);
+  color: var(--text-dim);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.stats-back:active {
+  background: var(--bg-raised-2);
+}
+
+.stats-back svg {
+  width: 20px;
+  height: 20px;
+}
+
+.stats-empty {
+  font-size: 14px;
+  color: var(--text-faint);
+  padding: var(--s4) 0;
+}

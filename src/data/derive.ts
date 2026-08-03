@@ -4,7 +4,7 @@
  *
  * All date maths is local-timezone. Weeks are ISO weeks (Monday 00:00 start).
  */
-import type { Session, SetEntry, Training } from './types';
+import type { Exercise, Session, SetEntry, Training } from './types';
 
 /* -------------------------------------------------------------------------- */
 /* Dates                                                                       */
@@ -57,6 +57,18 @@ export function formatDate(iso: string): string {
 export function formatDateTime(iso: string): string {
   const d = new Date(iso);
   return `${formatDate(iso)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+}
+
+const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+/**
+ * `23 Jul` — chart axes only, where `2026-07-23` is too wide for a phone.
+ * Spelled out here rather than via `toLocaleDateString` so the output does not
+ * depend on the device locale, which would move the axis labels under the user.
+ */
+export function formatShortDate(iso: string): string {
+  const d = new Date(iso);
+  return `${d.getDate()} ${MONTHS[d.getMonth()] ?? ''}`;
 }
 
 /** `today`, `-1 day`, `-9 days` */
@@ -409,4 +421,158 @@ export function beatsPersonalRecord(
 
   const atReps = records.byReps.get(set.reps);
   return atReps !== undefined && set.weight > atReps.weight;
+}
+
+/* -------------------------------------------------------------------------- */
+/* Progress over time                                                          */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Estimated one-rep max, Epley: `weight × (1 + reps/30)`.
+ *
+ * An estimate, not a measurement — its job is to make sets at different rep
+ * counts comparable on one axis, so that 8×30 and 5×35 sit on the same trend
+ * line instead of on two unrelated ones.
+ */
+export function epley1RM(reps: number, weight: number): number {
+  return weight * (1 + reps / 30);
+}
+
+/** Which number a progress chart plots. */
+export type ProgressMetric = 'topWeight' | 'e1rm';
+
+const METRIC: Record<ProgressMetric, (set: SetEntry) => number> = {
+  topWeight: (set) => set.weight,
+  e1rm: (set) => epley1RM(set.reps, set.weight),
+};
+
+/** One session's best set under the chosen metric. */
+export type ProgressPoint = {
+  /** `startedAt` of the session the point came from. */
+  at: string;
+  value: number;
+  /** The set the value was read from, so the chart can label it `8x30kg`. */
+  set: SetEntry;
+};
+
+/**
+ * The per-session trend for one exercise, **oldest first** — charts read left
+ * to right, while `historyFor` returns newest first.
+ *
+ * Each session contributes exactly one point: its best set under the metric,
+ * ties going to the earlier set (same rule as `personalRecords`). Bodyweight
+ * sets are skipped, so a session logged entirely at `weight: 0` contributes no
+ * point rather than a phantom zero that would crater the line.
+ */
+export function exerciseProgress(
+  history: ExerciseRecord[],
+  metric: ProgressMetric,
+): ProgressPoint[] {
+  const measure = METRIC[metric];
+  const out: ProgressPoint[] = [];
+
+  for (const record of history) {
+    let best: ProgressPoint | null = null;
+    for (const set of record.sets) {
+      if (set.weight <= 0) continue;
+      const value = measure(set);
+      if (!best || value > best.value) best = { at: record.session.startedAt, value, set };
+    }
+    if (best) out.push(best);
+  }
+
+  return out.reverse();
+}
+
+/* -------------------------------------------------------------------------- */
+/* Volume and consistency                                                      */
+/* -------------------------------------------------------------------------- */
+
+/** One ISO week's totals. `start` is the local Monday 00:00 of that week. */
+export type WeekStat = {
+  start: string;
+  sessions: number;
+  volume: number;
+};
+
+/**
+ * The last `weeks` ISO weeks ending with the one containing `now`, oldest
+ * first. Weeks with nothing logged are present with zeros: a gap is the whole
+ * point of a consistency chart, and dropping empty weeks would silently
+ * compress a month off training into a flat line.
+ */
+export function weeklySummary(sessions: Session[], weeks: number, now: Date): WeekStat[] {
+  const buckets = new Map<number, { sessions: number; volume: number }>();
+  for (const s of sessions) {
+    const key = startOfWeek(new Date(s.startedAt)).getTime();
+    const bucket = buckets.get(key) ?? { sessions: 0, volume: 0 };
+    bucket.sessions += 1;
+    bucket.volume += totalVolume(s);
+    buckets.set(key, bucket);
+  }
+
+  const out: WeekStat[] = [];
+  const thisWeek = startOfWeek(now);
+  for (let i = weeks - 1; i >= 0; i -= 1) {
+    const start = addWeeks(thisWeek, -i);
+    const bucket = buckets.get(start.getTime());
+    out.push({
+      start: start.toISOString(),
+      sessions: bucket?.sessions ?? 0,
+      volume: bucket?.volume ?? 0,
+    });
+  }
+  return out;
+}
+
+/** Bucket for sets whose exercise id resolves to nothing in the catalogue. */
+export const UNKNOWN_TARGET = 'unknown';
+
+export type TargetVolume = {
+  /** An `Exercise.target` value, or `UNKNOWN_TARGET`. */
+  target: string;
+  volume: number;
+  sets: number;
+};
+
+/**
+ * Volume per muscle `target` over the last `days` calendar days, heaviest
+ * first — the "am I skipping legs?" view.
+ *
+ * `target` lives on the catalogue, never on a `SessionEntry` (which snapshots
+ * ids only, SPEC §3), so the lookup is passed in and this stays pure. An id
+ * that resolves to nothing — a custom exercise deleted by a Replace import —
+ * is bucketed under `UNKNOWN_TARGET` rather than dropped, so the breakdown
+ * still adds up to the volume the user actually lifted.
+ *
+ * Targets trained only at bodyweight are kept with `volume: 0`: they carry no
+ * load but they are not skipped days either, and `sets` says so.
+ */
+export function volumeByTarget(
+  sessions: Session[],
+  exercises: ReadonlyMap<string, Pick<Exercise, 'target'>>,
+  days: number,
+  now: Date,
+): TargetVolume[] {
+  const totals = new Map<string, { volume: number; sets: number }>();
+
+  for (const session of sessions) {
+    const age = daysBetween(new Date(session.startedAt), now);
+    if (age < 0 || age >= days) continue;
+
+    for (const entry of session.entries) {
+      if (entry.sets.length === 0) continue;
+      const target = exercises.get(entry.exerciseId)?.target ?? UNKNOWN_TARGET;
+      const total = totals.get(target) ?? { volume: 0, sets: 0 };
+      for (const set of entry.sets) {
+        total.volume += set.reps * set.weight;
+        total.sets += 1;
+      }
+      totals.set(target, total);
+    }
+  }
+
+  return [...totals]
+    .map(([target, total]) => ({ target, ...total }))
+    .sort((a, b) => b.volume - a.volume || b.sets - a.sets || a.target.localeCompare(b.target));
 }

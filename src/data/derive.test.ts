@@ -7,9 +7,12 @@ import {
   completedToday,
   currentWeekCount,
   daysBetween,
+  epley1RM,
+  exerciseProgress,
   formatCountdown,
   formatDaysAgo,
   formatElapsed,
+  formatShortDate,
   historyFor,
   lastSessionForTraining,
   latestFor,
@@ -24,7 +27,10 @@ import {
   startOfWeek,
   startRest,
   totalVolume,
+  UNKNOWN_TARGET,
+  volumeByTarget,
   weeklyStreak,
+  weeklySummary,
 } from './derive';
 import type { Session, SessionEntry, Training } from './types';
 
@@ -391,6 +397,225 @@ describe('beatsPersonalRecord', () => {
   });
 });
 
+/* -------------------------------------------------------------------------- */
+/* Progress over time                                                          */
+/* -------------------------------------------------------------------------- */
+
+describe('epley1RM', () => {
+  it('adds a rep-count bonus to the load', () => {
+    expect(epley1RM(1, 100)).toBeCloseTo(103.33);
+    expect(epley1RM(10, 30)).toBe(40);
+    expect(epley1RM(30, 20)).toBe(40);
+  });
+
+  it('is zero for a bodyweight set — there is no load to extrapolate', () => {
+    expect(epley1RM(20, 0)).toBe(0);
+  });
+});
+
+describe('exerciseProgress', () => {
+  const now = new Date(2026, 7, 1);
+
+  /** One session logging `[reps, weight]` pairs against exercise `0001`. */
+  function logged(date: string, sets: [number, number][]): Session {
+    return session(date, 'a', [
+      { exerciseId: '0001', sets: sets.map(([reps, weight]) => ({ reps, weight, at: date })) },
+    ]);
+  }
+
+  const history = (sessions: Session[]) => historyFor('0001', sessions, now);
+
+  it('is empty with no history', () => {
+    expect(exerciseProgress([], 'topWeight')).toEqual([]);
+    expect(exerciseProgress(history([]), 'e1rm')).toEqual([]);
+  });
+
+  it('returns one point per session, oldest first', () => {
+    const sessions = [
+      logged(at(2026, 7, 10), [[10, 25]]),
+      logged(at(2026, 7, 24), [[8, 30]]),
+      logged(at(2026, 7, 17), [[10, 27.5]]),
+    ];
+    expect(exerciseProgress(history(sessions), 'topWeight')).toEqual([
+      { at: at(2026, 7, 10), value: 25, set: { reps: 10, weight: 25, at: at(2026, 7, 10) } },
+      { at: at(2026, 7, 17), value: 27.5, set: { reps: 10, weight: 27.5, at: at(2026, 7, 17) } },
+      { at: at(2026, 7, 24), value: 30, set: { reps: 8, weight: 30, at: at(2026, 7, 24) } },
+    ]);
+  });
+
+  it('picks the session set that is best under the chosen metric', () => {
+    // 5x40 is the heavier set; 15x32 is the better estimated max (48 vs 46.7).
+    const sessions = [
+      logged(at(2026, 7, 10), [
+        [5, 40],
+        [15, 32],
+      ]),
+    ];
+    expect(exerciseProgress(history(sessions), 'topWeight')[0]?.set.reps).toBe(5);
+
+    const best = exerciseProgress(history(sessions), 'e1rm')[0];
+    expect(best?.set.reps).toBe(15);
+    expect(best?.value).toBe(48);
+  });
+
+  it('keeps the earlier set on a tie, like a personal record', () => {
+    const day = at(2026, 7, 10);
+    const s = session(day, 'a', [
+      {
+        exerciseId: '0001',
+        sets: [
+          { reps: 10, weight: 25, at: 'first' },
+          { reps: 10, weight: 25, at: 'second' },
+        ],
+      },
+    ]);
+    expect(exerciseProgress(history([s]), 'topWeight')[0]?.set.at).toBe('first');
+  });
+
+  it('skips bodyweight sets, and sessions made only of them', () => {
+    const sessions = [
+      logged(at(2026, 7, 10), [[20, 0]]),
+      logged(at(2026, 7, 17), [
+        [20, 0],
+        [8, 30],
+      ]),
+    ];
+    const points = exerciseProgress(history(sessions), 'topWeight');
+    expect(points).toHaveLength(1);
+    expect(points[0]).toMatchObject({ at: at(2026, 7, 17), value: 30 });
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Volume and consistency                                                      */
+/* -------------------------------------------------------------------------- */
+
+describe('weeklySummary', () => {
+  const now = new Date(2026, 7, 2, 10); // Sunday of the week starting Mon 2026-07-27
+
+  /** One session with a single 10 x `weight` kg set. */
+  function lifted(date: string, weight: number): Session {
+    return session(date, 'a', [
+      { exerciseId: '0001', sets: [{ reps: 10, weight, at: date }] },
+    ]);
+  }
+
+  it('returns the requested number of weeks, oldest first, ending with this one', () => {
+    const weeks = weeklySummary([], 4, now);
+    expect(weeks.map((w) => w.start)).toEqual([
+      new Date(2026, 6, 6).toISOString(),
+      new Date(2026, 6, 13).toISOString(),
+      new Date(2026, 6, 20).toISOString(),
+      new Date(2026, 6, 27).toISOString(),
+    ]);
+  });
+
+  it('reports empty weeks as zeros rather than dropping them', () => {
+    const weeks = weeklySummary([lifted(at(2026, 7, 28), 25)], 3, now);
+    expect(weeks.map((w) => w.sessions)).toEqual([0, 0, 1]);
+    expect(weeks.map((w) => w.volume)).toEqual([0, 0, 250]);
+  });
+
+  it('sums sessions and volume within a week', () => {
+    const weeks = weeklySummary(
+      [lifted(at(2026, 7, 27), 25), lifted(at(2026, 7, 30), 30), lifted(at(2026, 8, 2, 9), 0)],
+      1,
+      now,
+    );
+    expect(weeks[0]).toMatchObject({ sessions: 3, volume: 550 });
+  });
+
+  it('splits on the Monday boundary in local time', () => {
+    const weeks = weeklySummary(
+      [lifted(at(2026, 7, 26, 23, 59), 10), lifted(at(2026, 7, 27, 0, 0), 10)],
+      2,
+      now,
+    );
+    expect(weeks.map((w) => w.sessions)).toEqual([1, 1]);
+  });
+
+  it('ignores sessions older than the window', () => {
+    expect(weeklySummary([lifted(at(2026, 6, 1), 25)], 4, now).map((w) => w.sessions)).toEqual([
+      0, 0, 0, 0,
+    ]);
+  });
+
+  it('returns nothing for a non-positive window', () => {
+    expect(weeklySummary([lifted(at(2026, 7, 28), 25)], 0, now)).toEqual([]);
+  });
+});
+
+describe('volumeByTarget', () => {
+  const now = new Date(2026, 7, 1, 12);
+
+  const catalogue = new Map([
+    ['0001', { target: 'pectorals' }],
+    ['0002', { target: 'quads' }],
+    ['0003', { target: 'abs' }],
+  ]);
+
+  /** One session, `[exerciseId, reps, weight]` per set. */
+  function mixed(date: string, sets: [string, number, number][]): Session {
+    const entries: SessionEntry[] = [];
+    for (const [exerciseId, reps, weight] of sets) {
+      const entry = entries.find((e) => e.exerciseId === exerciseId);
+      if (entry) entry.sets.push({ reps, weight, at: date });
+      else entries.push({ exerciseId, sets: [{ reps, weight, at: date }] });
+    }
+    return session(date, 'a', entries);
+  }
+
+  it('is empty with no sessions', () => {
+    expect(volumeByTarget([], catalogue, 30, now)).toEqual([]);
+  });
+
+  it('aggregates by target, heaviest first', () => {
+    const sessions = [
+      mixed(at(2026, 7, 30), [
+        ['0001', 10, 40],
+        ['0001', 8, 40],
+        ['0002', 10, 60],
+      ]),
+      mixed(at(2026, 7, 20), [['0002', 10, 50]]),
+    ];
+    expect(volumeByTarget(sessions, catalogue, 30, now)).toEqual([
+      { target: 'quads', volume: 1100, sets: 2 },
+      { target: 'pectorals', volume: 720, sets: 2 },
+    ]);
+  });
+
+  it('buckets an exercise the catalogue no longer knows', () => {
+    const sessions = [mixed(at(2026, 7, 30), [['c-deleted', 10, 20]])];
+    expect(volumeByTarget(sessions, catalogue, 30, now)).toEqual([
+      { target: UNKNOWN_TARGET, volume: 200, sets: 1 },
+    ]);
+  });
+
+  it('keeps a bodyweight-only target at zero volume rather than hiding it', () => {
+    const sessions = [mixed(at(2026, 7, 30), [['0003', 20, 0]])];
+    expect(volumeByTarget(sessions, catalogue, 30, now)).toEqual([
+      { target: 'abs', volume: 0, sets: 1 },
+    ]);
+  });
+
+  it('counts calendar days, inclusive of today and exclusive of the far edge', () => {
+    const sessions = [
+      mixed(at(2026, 8, 1, 20), [['0001', 1, 1]]), // today, later than `now`
+      mixed(at(2026, 7, 3), [['0002', 1, 10]]), // 29 days back
+      mixed(at(2026, 7, 2), [['0003', 1, 100]]), // 30 days back
+    ];
+    expect(volumeByTarget(sessions, catalogue, 30, now).map((t) => t.target)).toEqual([
+      'quads',
+      'pectorals',
+    ]);
+  });
+
+  it('ignores exercises that were listed but never logged', () => {
+    const sessions = [session(at(2026, 7, 30), 'a', [{ exerciseId: '0001', sets: [] }])];
+    expect(volumeByTarget(sessions, catalogue, 30, now)).toEqual([]);
+  });
+});
+
 describe('session summaries', () => {
   const s = session(at(2026, 8, 1), 'a', [
     { exerciseId: '0001', sets: [{ reps: 10, weight: 25, at: '' }, { reps: 8, weight: 30, at: '' }] },
@@ -438,6 +663,11 @@ describe('display helpers', () => {
     expect(formatDaysAgo(0)).toBe('today');
     expect(formatDaysAgo(1)).toBe('-1 day');
     expect(formatDaysAgo(9)).toBe('-9 days');
+  });
+
+  it('formats a short axis date without depending on the locale', () => {
+    expect(formatShortDate(at(2026, 7, 23))).toBe('23 Jul');
+    expect(formatShortDate(at(2026, 1, 5))).toBe('5 Jan');
   });
 
   it('formats elapsed time', () => {

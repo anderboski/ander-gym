@@ -21,11 +21,11 @@ anything written here.
 | D7 | Session history | Read-only; whole sessions may be deleted with confirmation |
 | D8 | Units | Kilograms only in v1 |
 
-**Non-goals for v1:** cross-device sync, accounts, plate calculators, charts/graphs,
+**Non-goals for v1:** cross-device sync, accounts, plate calculators,
 video/GIF playback, notifications, unit switching, editing past sets.
 
-Rest timers were on that list and have since landed (§5.4). The list records what v1 shipped without,
-not what the app is forbidden to grow — an entry leaves it when the feature arrives.
+Rest timers (§5.4) and charts (§5.2, §5.6) were on that list and have since landed. The list records what
+v1 shipped without, not what the app is forbidden to grow — an entry leaves it when the feature arrives.
 
 ---
 
@@ -157,6 +157,26 @@ heaviest ever, or the best at its own rep count. Deliberately narrower than "set
 set, or the first at some rep count, becomes the record but beat nothing, and announcing those would fire
 on nearly every set a new user logs.
 
+**`epley1RM(reps, weight)`** — estimated one-rep max, `weight × (1 + reps/30)`. An estimate whose only job
+is to put sets logged at different rep counts on one axis.
+
+**`exerciseProgress(history, metric)`** — the per-session trend for one exercise, **oldest first**, over the
+output of `historyFor`. `metric` is `topWeight` (heaviest set) or `e1rm` (best estimated max, which need not
+be the same set). One point per session: its best set under the metric, ties going to the earlier set.
+Bodyweight sets are skipped, so a session logged entirely at `weight: 0` contributes no point rather than a
+zero that would crater the line.
+
+**`weeklySummary(sessions, weeks, now)`** — the last `weeks` ISO weeks ending with the current one, oldest
+first, each `{ start, sessions, volume }`. Weeks with nothing logged are present with zeros: a gap is the
+point of a consistency chart, and dropping empty weeks would compress a month off training into a flat line.
+
+**`volumeByTarget(sessions, exercises, days, now)`** — volume per muscle `target` over the last `days`
+calendar days, heaviest first. `target` lives on the catalogue and never on a `SessionEntry` (§3), so the
+lookup is passed in as a map and the function stays pure. An id that resolves to nothing — a custom exercise
+lost to a Replace import — is bucketed under `unknown` rather than dropped, so the breakdown still adds up
+to what was actually lifted. A target trained only at bodyweight is kept at `volume: 0` with its set count:
+no load, but not a skipped day either.
+
 **Rest timer** — a `RestTimer` is `{ targetMs, totalSeconds }`, where `targetMs` is an absolute
 wall-clock deadline and never a counter anything decrements: iOS suspends timers in a backgrounded
 tab, so everything is re-derived from `Date.now()` instead.
@@ -192,6 +212,8 @@ the fixed bottom nav.
   - If a session was already saved today, show a "Completed today" badge above the card; the card still
     offers the next training in rotation.
   - If a session is currently active, the card is replaced by "Resume session →".
+- **"See all stats"** — a row under the week counter, pushing to the Stats view (§5.6). Hidden until at
+  least one session exists, so a fresh install keeps its empty state.
 - **Backup banner** — shown when `lastExportAt` is unset (and ≥1 session exists) or older than 30 days.
   Tapping it runs an export immediately.
 - **Gear icon** (top right) — Settings sheet: weekly goal, export, import, storage usage
@@ -228,8 +250,15 @@ Vertical order, exactly as briefed:
 - **Personal-record badge** — `🏆 8x30kg` from `personalRecords().heaviest`, top-left. Overlaid on the card
   rather than placed in the body flow, so a card with a record is exactly as tall as one without and the
   media aspect ratio is untouched. Hidden entirely when there is no weighted history.
-- **Tap the image** → full-screen sheet with the complete history: each session as a datetime heading plus
-  its set matrix, newest first.
+- **Tap the image** → full-screen sheet with the complete history: a progress chart, then each session as a
+  datetime heading plus its set matrix, newest first.
+- **Progress chart** (top of that sheet) — a line over `exerciseProgress()`, toggling between top-set weight
+  and estimated 1RM. Three states, because one data point is not a chart:
+  - never logged with weight → no chart, one line saying so;
+  - one session → the reading as a figure, not a line, and what it takes to start a trend;
+  - two or more → the line, with the latest value as the headline and `n sessions · first → last · ±Δ`.
+  The y axis is padded around the data rather than anchored at zero (a 30 → 32.5 kg climb is a flat line on
+  a 0-based axis) and both bounds are labelled so the cropped baseline is never a surprise.
 - Optional `onRemove` prop renders a trash icon in the top-right (Trainings context only).
 
 ### 5.3 Trainings
@@ -306,6 +335,32 @@ Bottom of the page, above the nav:
 - The detail view has a destructive "Delete session" action with confirmation. Deleting recomputes
   everything downstream (Home counter, latest-training data on cards) reactively.
 - Empty state: "No sessions yet — start one from Home."
+
+### 5.6 Stats
+A push view off Home (`#/stats`), **not** a sixth tab: D1 locks the navigation at five, so `tabOf()` maps
+this route to `home` and the tab bar stays lit on Home while it is open — the same arrangement as a training
+or a session detail. Reached from the "See all stats" row in §5.1; a back control returns to Home.
+
+Three views, all derived from `sessions`, nothing stored:
+- **Weekly volume** — a line over the last 12 weeks (`weeklySummary`), headlined with this week's kg and
+  captioned with the 12-week average and the best week.
+- **Sessions per week** — a bar strip over the same 12 weeks, with the weekly goal as a reference line.
+  Weeks that met the goal wear the accent; the rest go recessive, so "did I hit it?" is answered by the
+  picture. A week with nothing logged is drawn as a flat stub, not a gap.
+- **Muscle balance** — `volumeByTarget` over the last 30 days as a ranked bar list, labels and values as
+  real text. A muscle never trained in the window is absent from the list rather than shown at zero; the
+  caption says so, since "what is missing" is the question this view exists to answer.
+
+Both aggregates walk every session, so both are memoised on the `sessions` identity and on a `now` captured
+once per mount.
+
+**Charts** are hand-rolled inline SVG in `components/Chart.tsx` — `Plot` owns the box, the scales, the
+gridlines and the axis labels; `LineChart` and `BarStrip` are marks-only layers on top of it; `BarList` is
+the HTML ranked list, where the category labels must wrap and stay selectable. No charting dependency: one
+would cost more bundle than the three charts are worth against the Lighthouse target in §8. Every chart is
+a single series in `--accent` — no categorical palette to keep colourblind-safe — carries `role="img"` with
+an `aria-label` stating the trend in words, and scrolls inside its own container rather than widening the
+page. Colours and spacing come only from the tokens in `styles.css`, so both themes follow automatically.
 
 ---
 

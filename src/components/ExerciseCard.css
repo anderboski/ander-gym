@@ -186,6 +186,57 @@
   text-align: right;
 }
 
+/* --- progress chart (history sheet) -------------------------------------- */
+
+.ex-progress {
+  margin-bottom: var(--s5);
+  padding-bottom: var(--s4);
+  border-bottom: 1px solid var(--border);
+}
+
+.ex-progress-none {
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+/* Segmented metric switch. 44px minimum on each half — it is the only control
+   in the sheet and it sits under a thumb. */
+.ex-progress-toggle {
+  flex: none;
+  display: flex;
+  gap: var(--s1);
+  padding: var(--s1);
+  border-radius: var(--r-md);
+  background: var(--bg-raised-2);
+}
+
+.ex-progress-metric {
+  min-height: 44px;
+  min-width: 44px;
+  padding: 0 var(--s3);
+  border-radius: var(--r-sm);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.ex-progress-metric[aria-pressed='true'] {
+  background: var(--bg-raised);
+  color: var(--text);
+}
+
+.ex-progress-metric:active {
+  opacity: 0.7;
+}
+
+/* One reading is a figure, not a line — so it is set as one. */
+.ex-progress-single {
+  font-size: 15px;
+  color: var(--text-dim);
+  padding: var(--s2) 0;
+}
+
 /* --- history sheet ------------------------------------------------------- */
 
 .ex-history-entry + .ex-history-entry {

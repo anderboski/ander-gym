@@ -27,6 +27,17 @@ export function formatWeight(weight: number): string {
   return String(Math.round(weight * 100) / 100);
 }
 
+/**
+ * `840` / `4.2k` / `12k` — a weekly volume in kg is a five-digit number, and a
+ * chart axis on a phone has room for about four characters.
+ */
+export function formatCompact(value: number): string {
+  const abs = Math.abs(value);
+  if (abs < 1000) return String(Math.round(value));
+  const thousands = value / 1000;
+  return `${Math.abs(thousands) < 10 ? Math.round(thousands * 10) / 10 : Math.round(thousands)}k`;
+}
+
 /** Title-case a facet value for display: `body weight` -> `Body weight`. */
 export function titleCase(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1);

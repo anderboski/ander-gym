@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatSet, formatWeight, parseRestSeconds } from './parse';
+import { formatCompact, formatSet, formatWeight, parseRestSeconds } from './parse';
 import { REST_MAX_SECONDS, REST_MIN_SECONDS } from './types';
 
 describe('formatting', () => {
@@ -15,6 +15,15 @@ describe('formatting', () => {
   it('trims float noise from weights', () => {
     expect(formatWeight(25.0)).toBe('25');
     expect(formatWeight(22.5)).toBe('22.5');
+  });
+
+  it('compacts axis numbers to four characters', () => {
+    expect(formatCompact(0)).toBe('0');
+    expect(formatCompact(840)).toBe('840');
+    expect(formatCompact(999.6)).toBe('1000');
+    expect(formatCompact(4200)).toBe('4.2k');
+    expect(formatCompact(12_400)).toBe('12k');
+    expect(formatCompact(-4200)).toBe('-4.2k');
   });
 });
 

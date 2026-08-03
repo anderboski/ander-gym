@@ -73,6 +73,36 @@ Target: `https://anderboski.github.io/ander-gym/`
       itself after 30 s. On iOS there is no vibration — this is expected, and the
       note under the bar says so.
 
+## 3d. Charts and stats
+
+Only a phone can tell you whether a 320-unit chart is legible in a hand.
+
+- [ ] Exercises → tap the image of an exercise logged in **three or more** sessions.
+      The history sheet opens with a line chart above the set matrices: both axis
+      bounds readable, the dates under the ends not clipped.
+- [ ] Tap **Est. 1RM**, then **Top set**. Each tap lands first time (44 pt) and the
+      headline number, the caption and the line all change together.
+- [ ] Open an exercise logged **once**. There is no one-point line — a figure and a
+      line explaining that a second session starts the trend.
+- [ ] Open an exercise logged **only at bodyweight** (weight `0`). One sentence, no
+      empty axes.
+- [ ] Nothing in the sheet scrolls sideways, and the chart never pushes the page
+      wider than the screen.
+- [ ] Home → **See all stats**. The bottom tab bar still highlights **Home** — the
+      navigation is five tabs and Stats is a push view, not a sixth (D1).
+- [ ] The back control returns to Home, and so does the iOS back-swipe / the
+      browser back gesture.
+- [ ] Sessions-per-week: weeks that met your goal are green, the rest grey, and a
+      week you did not train reads as a flat stub rather than as missing data.
+- [ ] Muscle balance: long target names wrap instead of truncating, and every bar
+      has its kg value beside it.
+- [ ] Toggle iOS Dark/Light while a chart is on screen. Lines, bars, gridlines and
+      dot rings all follow — no invisible marks, no white halo on a dark card.
+- [ ] With **VoiceOver** on, swipe onto a chart: it is announced as a sentence
+      ("…12 kg this week against a 12-week average of…"), not skipped or read as
+      "image".
+- [ ] Settings → Display → larger text. Captions wrap; no chart card overflows.
+
 ## 4. Keyboard behaviour
 
 - [ ] Focusing the Exercises search box does **not** zoom the viewport.
@@ -136,4 +166,7 @@ Target: `https://anderboski.github.io/ander-gym/`
 - Exercise images are cached **lazily**. A brand-new install in airplane mode
   shows placeholder-free but image-less cards until it has been online once.
 - There is no cross-device sync. The JSON export is the only way to move data.
+- Charts have no tap-a-point tooltip. Every value they plot is also written out
+  in the set matrices below the chart, or in the caption and the muscle-balance
+  list — the picture never holds a number on its own.
 - Sessions are immutable once saved; the only correction is delete and re-enter.
