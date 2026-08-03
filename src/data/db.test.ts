@@ -62,6 +62,21 @@ describe('renameTraining', () => {
   });
 });
 
+describe('setTrainingRest', () => {
+  it('adds the rest length to a training that never had one', async () => {
+    const training = await db.createTraining('Push day');
+    await db.putTraining({ ...training, exerciseIds: ['0001'] });
+
+    const updated = await db.setTrainingRest(training.id, 120);
+    expect(updated).toMatchObject({ id: training.id, restSeconds: 120, exerciseIds: ['0001'] });
+    expect((await db.getTrainings())[0]?.restSeconds).toBe(120);
+  });
+
+  it('returns null for an unknown id', async () => {
+    expect(await db.setTrainingRest('nope', 90)).toBeNull();
+  });
+});
+
 describe('reorderTrainings', () => {
   it('applies a new order from a list of ids', async () => {
     const a = await db.createTraining('A');
@@ -157,6 +172,47 @@ describe('backup round trip', () => {
     expect(new Uint8Array((await custom!.imageBlob!.arrayBuffer()))).toEqual(
       new Uint8Array([1, 2, 3, 250, 251, 252]),
     );
+  });
+
+  it("round-trips a training day's rest length", async () => {
+    await db.putTraining({
+      id: 'leg-abs',
+      label: 'Leg-abs',
+      order: 0,
+      exerciseIds: ['0001'],
+      restSeconds: 120,
+    });
+    await db.putTraining({ id: 'push', label: 'Push', order: 1, exerciseIds: [] });
+
+    const restored = parseBackup(JSON.stringify(await buildBackup()));
+    await db.clearAll();
+    await applyBackup(restored, 'replace');
+
+    const trainings = await db.getTrainings();
+    expect(trainings.find((t) => t.id === 'leg-abs')?.restSeconds).toBe(120);
+    // A training that never set one stays without the field, i.e. on the default.
+    expect(trainings.find((t) => t.id === 'push')?.restSeconds).toBeUndefined();
+  });
+
+  it('drops a rest length that could not run a countdown', async () => {
+    const backup = parseBackup(
+      JSON.stringify({
+        schemaVersion: 1,
+        exportedAt: '2026-08-01T00:00:00.000Z',
+        trainings: [
+          { id: 'a', label: 'A', order: 0, exerciseIds: [], restSeconds: 'ninety' },
+          { id: 'b', label: 'B', order: 1, exerciseIds: [], restSeconds: -5 },
+          { id: 'c', label: 'C', order: 2, exerciseIds: [], restSeconds: 5000 },
+        ],
+        sessions: [],
+        customExercises: [],
+        settings: { weeklyGoal: 3, lastExportAt: null },
+      }),
+    );
+    await applyBackup(backup, 'replace');
+
+    const trainings = await db.getTrainings();
+    expect(trainings.map((t) => t.restSeconds)).toEqual([undefined, undefined, 600]);
   });
 
   it('merge keeps existing records and lets the incoming file win on conflict', async () => {

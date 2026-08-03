@@ -1,4 +1,21 @@
 /** Parsing and text helpers with no I/O — all unit-tested. */
+import { REST_MAX_SECONDS, REST_MIN_SECONDS } from './types';
+
+/**
+ * A rest duration from an untrusted source — an imported backup file, or a
+ * control that could be given a bad value. Returns null for anything that could
+ * not run a countdown: `Date.now() + NaN` produces a deadline that never
+ * arrives and a timer stuck at "0:00".
+ *
+ * A usable but silly number is clamped rather than rejected — 5 s was meant as
+ * a rest, 0 or -3 was not.
+ */
+export function parseRestSeconds(value: unknown): number | null {
+  if (typeof value !== 'number' || !Number.isFinite(value)) return null;
+  const whole = Math.round(value);
+  if (whole <= 0) return null;
+  return Math.min(REST_MAX_SECONDS, Math.max(REST_MIN_SECONDS, whole));
+}
 
 /** `10 x 25 kg`, or `10 reps` when the weight is zero (bodyweight). */
 export function formatSet(reps: number, weight: number): string {

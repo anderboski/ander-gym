@@ -13,6 +13,7 @@ import { createContext, useCallback, useContext, useEffect, useMemo, useRef, use
 import * as db from './db';
 import { applyBackup, buildBackup, downloadBackup, parseBackup, type ImportMode } from './backup';
 import { allPersonalRecords, type RecordsByExercise } from './derive';
+import { parseRestSeconds } from './parse';
 import {
   CUSTOM_ID_PREFIX,
   customToExercise,
@@ -61,6 +62,8 @@ type Mutations = {
 
   addTraining: (label: string) => Promise<Training>;
   renameTraining: (trainingId: string, label: string) => Promise<void>;
+  /** Rest countdown default for this training day, in seconds. Clamped. */
+  setTrainingRest: (trainingId: string, seconds: number) => Promise<void>;
   /** Full new rotation order, as dragged into place. */
   reorderTrainings: (orderedIds: string[]) => Promise<void>;
 
@@ -242,6 +245,17 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
         const trimmed = label.trim();
         if (!trimmed) throw new Error('Name is required.');
         const updated = await db.renameTraining(trainingId, trimmed);
+        if (!updated) return;
+        setState((s) => ({
+          ...s,
+          trainings: s.trainings.map((t) => (t.id === trainingId ? updated : t)),
+        }));
+      },
+
+      async setTrainingRest(trainingId, seconds) {
+        const restSeconds = parseRestSeconds(seconds);
+        if (restSeconds === null) return;
+        const updated = await db.setTrainingRest(trainingId, restSeconds);
         if (!updated) return;
         setState((s) => ({
           ...s,
