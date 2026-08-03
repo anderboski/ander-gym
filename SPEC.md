@@ -131,6 +131,23 @@ streak is never broken mid-week).
 
 **`historyFor(exerciseId, sessions)`** — every session containing the exercise, newest first.
 
+**`personalRecords(exerciseId, sessions)`** — best-ever sets, derived from history; nothing is stored.
+Returns `{ heaviest, byReps }` — the heaviest set ever, and the heaviest set at each rep count — or `null`
+when the exercise has never been logged with weight. Bodyweight sets (`weight: 0`) are excluded: they are
+real training data but carry no load to rank, and a "0 kg" record could never be beaten by weight. On a tie
+the earlier set keeps the record, so a repeat performance is not a new PR. Accepts the active session
+alongside saved ones — both carry `startedAt` + `entries`, which is all the scan reads.
+
+**`allPersonalRecords(sessions)`** — the same records for every exercise in **one** pass, keyed by exercise
+id. The Exercises carousel renders a card per exercise out of 1324; per-card scanning would be
+O(cards × sessions) on every scroll. The store memoises this on the identity of `sessions` (which every
+mutation replaces wholesale) and exposes it as `useGym().exerciseRecords`.
+
+**`beatsPersonalRecord(set, records)`** — true when a set strictly beats a record that already existed:
+heaviest ever, or the best at its own rep count. Deliberately narrower than "sets a record" — a first-ever
+set, or the first at some rep count, becomes the record but beat nothing, and announcing those would fire
+on nearly every set a new user logs.
+
 **`search(query, facets, exercises)`** —
 - Facets: multi-select **within** a facet is OR, **across** facets is AND.
 - Query is fuzzy over `name` using Fuse.js (`threshold: 0.4`, `ignoreLocation: true`, `minMatchCharLength: 2`).
@@ -185,6 +202,9 @@ Vertical order, exactly as briefed:
   without a photo).
 - Latest training data: `2026-07-23 · -9 days`, then a 2-column matrix — one row per set, reps × weight.
   When the exercise has never been logged: "No history yet".
+- **Personal-record badge** — `🏆 8x30kg` from `personalRecords().heaviest`, top-left. Overlaid on the card
+  rather than placed in the body flow, so a card with a record is exactly as tall as one without and the
+  media aspect ratio is untouched. Hidden entirely when there is no weighted history.
 - **Tap the image** → full-screen sheet with the complete history: each session as a datetime heading plus
   its set matrix, newest first.
 - Optional `onRemove` prop renders a trash icon in the top-right (Trainings context only).
@@ -229,6 +249,9 @@ exercise:
   `"decimal"`), prefilled from that exercise's previous set in this session, or from its last recorded set
   historically. **Save** appends the set; a small **"×"** top-right dismisses without saving.
 - Tapping an existing set line offers Delete (confirm).
+- Saving a set that satisfies `beatsPersonalRecord()` raises a self-dismissing **"🏆 New PR"** toast. The
+  baseline is saved sessions **plus the sets already logged in this session**, so three ascending sets
+  announce three distinct records rather than the same one three times.
 - Exercises may be logged in any order; rows with no sets are kept in the saved record with an empty `sets`
   array.
 

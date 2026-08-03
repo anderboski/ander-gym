@@ -217,3 +217,104 @@ export function latestFor(
 ): ExerciseRecord | null {
   return historyFor(exerciseId, sessions, now)[0] ?? null;
 }
+
+/* -------------------------------------------------------------------------- */
+/* Personal records                                                            */
+/* -------------------------------------------------------------------------- */
+
+/** A saved session or the one in progress — records read the same fields from both. */
+export type LoggedSession = Pick<Session, 'startedAt' | 'entries'>;
+
+export type PersonalRecords = {
+  /** Heaviest set ever logged for the exercise. */
+  heaviest: SetEntry;
+  /** Heaviest set at each rep count, keyed by reps. */
+  byReps: Map<number, SetEntry>;
+};
+
+export type RecordsByExercise = Map<string, PersonalRecords>;
+
+/**
+ * Fold one set into the accumulator, creating the exercise's entry on demand.
+ *
+ * Bodyweight sets (`weight: 0`) are skipped: they are real training data but
+ * carry no load to rank, and admitting them would badge every unweighted
+ * exercise with a "0 kg" record that no later set could ever beat by weight.
+ *
+ * Comparisons are strictly greater-than and callers walk sessions oldest-first,
+ * so an equal set logged later leaves the earlier record standing.
+ */
+function absorb(into: RecordsByExercise, exerciseId: string, set: SetEntry): void {
+  if (set.weight <= 0) return;
+
+  const current = into.get(exerciseId);
+  if (!current) {
+    into.set(exerciseId, { heaviest: set, byReps: new Map([[set.reps, set]]) });
+    return;
+  }
+
+  if (set.weight > current.heaviest.weight) current.heaviest = set;
+
+  const atReps = current.byReps.get(set.reps);
+  if (!atReps || set.weight > atReps.weight) current.byReps.set(set.reps, set);
+}
+
+/** Oldest first, which is what makes ties resolve in favour of the earlier set. */
+function chronological(sessions: LoggedSession[]): LoggedSession[] {
+  return [...sessions].sort(
+    (a, b) => new Date(a.startedAt).getTime() - new Date(b.startedAt).getTime(),
+  );
+}
+
+/**
+ * Records for every exercise in one pass over the history.
+ *
+ * The Exercises carousel renders cards from a 1324-record catalogue; calling
+ * `personalRecords` per card would rescan every session per card. Callers build
+ * this map once per change to `sessions` instead (see `useGym().exerciseRecords`).
+ */
+export function allPersonalRecords(sessions: LoggedSession[]): RecordsByExercise {
+  const out: RecordsByExercise = new Map();
+  for (const session of chronological(sessions)) {
+    for (const entry of session.entries) {
+      for (const set of entry.sets) absorb(out, entry.exerciseId, set);
+    }
+  }
+  return out;
+}
+
+/**
+ * Records for a single exercise, or null when it has never been logged with
+ * weight. Use `allPersonalRecords` when more than one exercise is needed.
+ */
+export function personalRecords(
+  exerciseId: string,
+  sessions: LoggedSession[],
+): PersonalRecords | null {
+  const out: RecordsByExercise = new Map();
+  for (const session of chronological(sessions)) {
+    const entry = session.entries.find((e) => e.exerciseId === exerciseId);
+    if (!entry) continue;
+    for (const set of entry.sets) absorb(out, exerciseId, set);
+  }
+  return out.get(exerciseId) ?? null;
+}
+
+/**
+ * True when `set` beats a record that already existed — heaviest ever, or the
+ * best at its own rep count.
+ *
+ * Deliberately narrower than "sets a record": a first-ever set, or the first at
+ * some rep count, becomes the record but beat nothing, and announcing those
+ * would fire on nearly every set a new user logs. Bodyweight sets never qualify.
+ */
+export function beatsPersonalRecord(
+  set: Pick<SetEntry, 'reps' | 'weight'>,
+  records: PersonalRecords | null,
+): boolean {
+  if (set.weight <= 0 || !records) return false;
+  if (set.weight > records.heaviest.weight) return true;
+
+  const atReps = records.byReps.get(set.reps);
+  return atReps !== undefined && set.weight > atReps.weight;
+}

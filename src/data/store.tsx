@@ -12,6 +12,7 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import * as db from './db';
 import { applyBackup, buildBackup, downloadBackup, parseBackup, type ImportMode } from './backup';
+import { allPersonalRecords, type RecordsByExercise } from './derive';
 import {
   CUSTOM_ID_PREFIX,
   customToExercise,
@@ -82,7 +83,12 @@ type Lookups = {
   getTraining: (id: string) => Training | undefined;
 };
 
-export type Gym = GymState & Mutations & Lookups;
+type Derived = {
+  /** Best-ever sets per exercise. Absent id = never logged with weight. */
+  exerciseRecords: RecordsByExercise;
+};
+
+export type Gym = GymState & Derived & Mutations & Lookups;
 
 const GymContext = createContext<Gym | null>(null);
 
@@ -335,14 +341,25 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     [mutateActive, reload],
   );
 
+  /**
+   * Records live here rather than in the components that read them: the
+   * Exercises carousel renders a card per exercise out of a 1324-record
+   * catalogue, and each card scanning the whole history for its own records
+   * would be O(cards × sessions) on every scroll. One pass, memoised on the
+   * `sessions` identity — every mutation replaces that array wholesale, so
+   * identity is an exact invalidation key.
+   */
+  const exerciseRecords = useMemo(() => allPersonalRecords(state.sessions), [state.sessions]);
+
   const value = useMemo<Gym>(
     () => ({
       ...state,
       ...mutations,
+      exerciseRecords,
       getExercise: (id) => state.exerciseById.get(id),
       getTraining: (id) => state.trainings.find((t) => t.id === id),
     }),
-    [state, mutations],
+    [state, mutations, exerciseRecords],
   );
 
   return <GymContext.Provider value={value}>{children}</GymContext.Provider>;

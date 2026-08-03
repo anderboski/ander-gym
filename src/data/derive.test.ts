@@ -1,5 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import {
+  allPersonalRecords,
+  beatsPersonalRecord,
   completedToday,
   currentWeekCount,
   daysBetween,
@@ -9,6 +11,7 @@ import {
   lastSessionForTraining,
   latestFor,
   nextTraining,
+  personalRecords,
   setCount,
   sortSessions,
   startOfWeek,
@@ -199,6 +202,170 @@ describe('per-exercise history', () => {
   it('returns null for an exercise never logged', () => {
     expect(latestFor('9999', sessions, now)).toBeNull();
     expect(historyFor('9999', sessions, now)).toEqual([]);
+  });
+});
+
+describe('personalRecords', () => {
+  /** One session containing one exercise, with `[reps, weight]` pairs. */
+  function logged(date: string, exerciseId: string, sets: [number, number][]): Session {
+    return session(date, 'a', [
+      { exerciseId, sets: sets.map(([reps, weight]) => ({ reps, weight, at: date })) },
+    ]);
+  }
+
+  it('is null with no sessions at all', () => {
+    expect(personalRecords('0001', [])).toBeNull();
+  });
+
+  it('is null for an exercise that was never logged', () => {
+    expect(personalRecords('9999', [logged(at(2026, 7, 1), '0001', [[10, 25]])])).toBeNull();
+  });
+
+  it('takes a single session as the record', () => {
+    const records = personalRecords('0001', [logged(at(2026, 7, 1), '0001', [[10, 25]])]);
+    expect(records?.heaviest).toMatchObject({ reps: 10, weight: 25 });
+    expect(records?.byReps.get(10)).toMatchObject({ weight: 25 });
+  });
+
+  it('keeps one best per rep count', () => {
+    const records = personalRecords('0001', [
+      logged(at(2026, 7, 1), '0001', [
+        [10, 25],
+        [8, 30],
+        [10, 27.5],
+        [5, 40],
+      ]),
+    ]);
+    expect(records?.heaviest).toMatchObject({ reps: 5, weight: 40 });
+    expect([...(records?.byReps ?? [])].map(([reps, s]) => [reps, s.weight])).toEqual([
+      [10, 27.5],
+      [8, 30],
+      [5, 40],
+    ]);
+  });
+
+  it('spans sessions, regardless of array order', () => {
+    const records = personalRecords('0001', [
+      logged(at(2026, 7, 20), '0001', [[8, 32]]),
+      logged(at(2026, 7, 1), '0001', [[8, 30]]),
+      logged(at(2026, 7, 10), '0001', [[5, 45]]),
+    ]);
+    expect(records?.heaviest).toMatchObject({ reps: 5, weight: 45 });
+    expect(records?.byReps.get(8)).toMatchObject({ weight: 32 });
+  });
+
+  it('lets the earlier set keep the record on a tie', () => {
+    const first = at(2026, 7, 1);
+    const records = personalRecords('0001', [
+      logged(at(2026, 7, 20), '0001', [[10, 25]]),
+      logged(first, '0001', [[10, 25]]),
+    ]);
+    expect(records?.heaviest.at).toBe(first);
+    expect(records?.byReps.get(10)?.at).toBe(first);
+  });
+
+  it('ties within one session go to the earlier set too', () => {
+    const day = at(2026, 7, 1);
+    const s = session(day, 'a', [
+      {
+        exerciseId: '0001',
+        sets: [
+          { reps: 10, weight: 25, at: 'first' },
+          { reps: 10, weight: 25, at: 'second' },
+        ],
+      },
+    ]);
+    expect(personalRecords('0001', [s])?.heaviest.at).toBe('first');
+  });
+
+  it('ignores bodyweight sets entirely', () => {
+    const bodyweightOnly = [
+      logged(at(2026, 7, 1), '0002', [
+        [12, 0],
+        [15, 0],
+      ]),
+    ];
+    expect(personalRecords('0002', bodyweightOnly)).toBeNull();
+
+    const mixed = personalRecords('0001', [
+      logged(at(2026, 7, 1), '0001', [
+        [12, 0],
+        [10, 20],
+      ]),
+    ]);
+    expect(mixed?.heaviest).toMatchObject({ reps: 10, weight: 20 });
+    expect(mixed?.byReps.has(12)).toBe(false);
+  });
+
+  it('reads the active session like a saved one', () => {
+    const active = {
+      startedAt: at(2026, 7, 25),
+      entries: [{ exerciseId: '0001', sets: [{ reps: 10, weight: 60, at: at(2026, 7, 25) }] }],
+    };
+    const records = personalRecords('0001', [logged(at(2026, 7, 1), '0001', [[10, 25]]), active]);
+    expect(records?.heaviest.weight).toBe(60);
+  });
+});
+
+describe('allPersonalRecords', () => {
+  it('matches personalRecords for every exercise in one pass', () => {
+    const sessions = [
+      session(at(2026, 7, 1), 'a', [
+        { exerciseId: '0001', sets: [{ reps: 10, weight: 25, at: at(2026, 7, 1) }] },
+        { exerciseId: '0002', sets: [{ reps: 12, weight: 0, at: at(2026, 7, 1) }] },
+      ]),
+      session(at(2026, 7, 8), 'a', [
+        { exerciseId: '0001', sets: [{ reps: 8, weight: 30, at: at(2026, 7, 8) }] },
+        { exerciseId: '0003', sets: [] },
+      ]),
+    ];
+
+    const all = allPersonalRecords(sessions);
+    expect(all.get('0001')).toEqual(personalRecords('0001', sessions));
+    expect(all.get('0001')?.heaviest.weight).toBe(30);
+    // Bodyweight-only and never-logged exercises are simply absent.
+    expect(all.has('0002')).toBe(false);
+    expect(all.has('0003')).toBe(false);
+  });
+
+  it('is empty with no sessions', () => {
+    expect(allPersonalRecords([]).size).toBe(0);
+  });
+});
+
+describe('beatsPersonalRecord', () => {
+  const records = personalRecords('0001', [
+    session(at(2026, 7, 1), 'a', [
+      {
+        exerciseId: '0001',
+        sets: [
+          { reps: 10, weight: 25, at: at(2026, 7, 1) },
+          { reps: 5, weight: 40, at: at(2026, 7, 1) },
+        ],
+      },
+    ]),
+  ]);
+
+  it('accepts a new heaviest set', () => {
+    expect(beatsPersonalRecord({ reps: 3, weight: 42.5 }, records)).toBe(true);
+  });
+
+  it('accepts a heavier set at a rep count already on record', () => {
+    expect(beatsPersonalRecord({ reps: 10, weight: 26 }, records)).toBe(true);
+  });
+
+  it('rejects a tie', () => {
+    expect(beatsPersonalRecord({ reps: 10, weight: 25 }, records)).toBe(false);
+    expect(beatsPersonalRecord({ reps: 5, weight: 40 }, records)).toBe(false);
+  });
+
+  it('rejects a lighter set at an unseen rep count — it beat nothing', () => {
+    expect(beatsPersonalRecord({ reps: 12, weight: 20 }, records)).toBe(false);
+  });
+
+  it('rejects bodyweight sets and the first set of an exercise', () => {
+    expect(beatsPersonalRecord({ reps: 20, weight: 0 }, records)).toBe(false);
+    expect(beatsPersonalRecord({ reps: 10, weight: 100 }, null)).toBe(false);
   });
 });
 

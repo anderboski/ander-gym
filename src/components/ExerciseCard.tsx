@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useGym } from '../data/store';
 import { formatDate, formatDateTime, formatDaysAgo, historyFor, latestFor } from '../data/derive';
-import { formatWeight, titleCase } from '../data/parse';
+import { formatSet, formatWeight, titleCase } from '../data/parse';
 import type { Exercise, SetEntry } from '../data/types';
 import { Sheet } from './Sheet';
 import { TrashIcon } from './icons';
@@ -91,13 +91,24 @@ export type ExerciseCardProps = {
  * image opens the full history. Shared by Exercises, Trainings and the picker.
  */
 export function ExerciseCard({ exercise, variant = 'carousel', onRemove }: ExerciseCardProps) {
-  const { sessions } = useGym();
+  const { sessions, exerciseRecords } = useGym();
   const [showHistory, setShowHistory] = useState(false);
   const latest = latestFor(exercise.id, sessions);
+  const best = exerciseRecords.get(exercise.id)?.heaviest;
 
   return (
     <>
       <div className={`ex-card ex-card-${variant}`}>
+        {best && (
+          <div
+            className="ex-card-pr num"
+            aria-label={`Personal record: ${best.reps} reps at ${formatWeight(best.weight)} kilograms`}
+          >
+            <span aria-hidden="true">🏆</span>
+            {formatSet(best.reps, best.weight)}
+          </div>
+        )}
+
         <button
           className="ex-card-media"
           onClick={() => setShowHistory(true)}
