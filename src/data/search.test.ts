@@ -112,4 +112,27 @@ describe('searchExercises', () => {
     const withCustom = [...catalogue, { ...ex('c-1', 'my special press', 'chest', 'other', 'pectorals'), isCustom: true }];
     expect(searchExercises(withCustom, 'special', EMPTY_FACETS).map((e) => e.id)).toEqual(['c-1']);
   });
+
+  it('with doneIds, lists done exercises first, alphabetical within each group', () => {
+    const doneIds = new Set(['5', '3']);
+    expect(searchExercises(catalogue, '', EMPTY_FACETS, doneIds).map((e) => e.id)).toEqual([
+      '3', // barbell curl
+      '5', // cable crossover
+      '4', // 3/4 sit-up
+      '1', // barbell bench press
+      '2', // dumbbell bench press
+    ]);
+  });
+
+  it('ignores doneIds once a query is typed', () => {
+    const doneIds = new Set(['5']);
+    const names = searchExercises(catalogue, 'bench', EMPTY_FACETS, doneIds).map((e) => e.name);
+    expect(names).toEqual(['barbell bench press', 'dumbbell bench press']);
+  });
+
+  it('an empty doneIds set behaves like no set at all', () => {
+    expect(searchExercises(catalogue, '', EMPTY_FACETS, new Set()).map((e) => e.id)).toEqual(
+      searchExercises(catalogue, '', EMPTY_FACETS).map((e) => e.id),
+    );
+  });
 });
