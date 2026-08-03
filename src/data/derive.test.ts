@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  adjustRest,
   allLatestFor,
   allPersonalRecords,
   beatsPersonalRecord,
   completedToday,
   currentWeekCount,
   daysBetween,
+  formatCountdown,
   formatDaysAgo,
   formatElapsed,
   historyFor,
@@ -13,9 +15,14 @@ import {
   latestFor,
   nextTraining,
   personalRecords,
+  remainingSeconds,
+  REST_DONE_MS,
+  restPhase,
+  restProgress,
   setCount,
   sortSessions,
   startOfWeek,
+  startRest,
   totalVolume,
   weeklyStreak,
 } from './derive';
@@ -437,5 +444,141 @@ describe('display helpers', () => {
     const start = at(2026, 8, 1, 10, 0);
     expect(formatElapsed(start, new Date(2026, 7, 1, 10, 24))).toBe('24m');
     expect(formatElapsed(start, new Date(2026, 7, 1, 11, 12))).toBe('1h 12m');
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Rest timer                                                                  */
+/* -------------------------------------------------------------------------- */
+
+/** An arbitrary but fixed "now", so nothing here depends on the real clock. */
+const T0 = 1_800_000_000_000;
+
+describe('startRest', () => {
+  it('stores an absolute deadline, not a countdown', () => {
+    expect(startRest(90, T0)).toEqual({ targetMs: T0 + 90_000, totalSeconds: 90 });
+  });
+});
+
+describe('remainingSeconds', () => {
+  it('derives what is left from the clock', () => {
+    const rest = startRest(90, T0);
+    expect(remainingSeconds(rest.targetMs, T0)).toBe(90);
+    expect(remainingSeconds(rest.targetMs, T0 + 30_000)).toBe(60);
+    expect(remainingSeconds(rest.targetMs, T0 + 89_999)).toBe(1);
+  });
+
+  it('clamps at zero however far past the deadline it is', () => {
+    const rest = startRest(90, T0);
+    expect(remainingSeconds(rest.targetMs, T0 + 90_000)).toBe(0);
+    // The backgrounded-tab case: no tick ran for ten minutes, and it does not matter.
+    expect(remainingSeconds(rest.targetMs, T0 + 600_000)).toBe(0);
+  });
+
+  it('rounds up, so 0:01 is on screen for its whole second', () => {
+    expect(remainingSeconds(T0 + 1, T0)).toBe(1);
+    expect(remainingSeconds(T0 + 1000, T0)).toBe(1);
+  });
+});
+
+describe('formatCountdown', () => {
+  it('formats mm:ss', () => {
+    expect(formatCountdown(90)).toBe('1:30');
+    expect(formatCountdown(60)).toBe('1:00');
+    expect(formatCountdown(5)).toBe('0:05');
+    expect(formatCountdown(0)).toBe('0:00');
+  });
+
+  it('does not wrap past an hour', () => {
+    expect(formatCountdown(600)).toBe('10:00');
+    expect(formatCountdown(3661)).toBe('61:01');
+  });
+
+  it('never shows a negative', () => {
+    expect(formatCountdown(-5)).toBe('0:00');
+  });
+});
+
+describe('restPhase', () => {
+  const rest = startRest(90, T0);
+
+  it('runs until the deadline', () => {
+    expect(restPhase(rest, T0)).toBe('running');
+    expect(restPhase(rest, T0 + 89_999)).toBe('running');
+  });
+
+  it('is done for a while after it', () => {
+    expect(restPhase(rest, T0 + 90_000)).toBe('done');
+    expect(restPhase(rest, T0 + 90_000 + REST_DONE_MS)).toBe('done');
+  });
+
+  it('expires once nobody came back for it', () => {
+    expect(restPhase(rest, T0 + 90_000 + REST_DONE_MS + 1)).toBe('expired');
+    expect(restPhase(rest, T0 + 3_600_000)).toBe('expired');
+  });
+});
+
+describe('restProgress', () => {
+  it('runs 0 to 1 across the rest', () => {
+    const rest = startRest(90, T0);
+    expect(restProgress(rest, T0)).toBe(0);
+    expect(restProgress(rest, T0 + 45_000)).toBeCloseTo(0.5);
+    expect(restProgress(rest, T0 + 90_000)).toBe(1);
+  });
+
+  it('clamps at both ends', () => {
+    const rest = startRest(90, T0);
+    expect(restProgress(rest, T0 - 10_000)).toBe(0);
+    expect(restProgress(rest, T0 + 200_000)).toBe(1);
+  });
+});
+
+describe('a rest across a backgrounded tab', () => {
+  it('reads the deadline rather than the ticks it missed', () => {
+    const rest = startRest(90, T0);
+    // Two ticks, then iOS suspends the tab and the app is reopened 3 minutes on.
+    const observed = [T0 + 1_000, T0 + 2_000, T0 + 180_000];
+    expect(observed.map((t) => remainingSeconds(rest.targetMs, t))).toEqual([89, 88, 0]);
+    expect(restPhase(rest, T0 + 180_000)).toBe('expired');
+  });
+
+  it('is still counting down when the gap was short', () => {
+    const rest = startRest(120, T0);
+    expect(remainingSeconds(rest.targetMs, T0 + 45_000)).toBe(75);
+    expect(restPhase(rest, T0 + 45_000)).toBe('running');
+  });
+});
+
+describe('adjustRest', () => {
+  it('extends the deadline and the denominator together', () => {
+    const rest = adjustRest(startRest(90, T0), 30, T0 + 10_000);
+    expect(rest.targetMs).toBe(T0 + 120_000);
+    expect(rest.totalSeconds).toBe(120);
+    expect(remainingSeconds(rest.targetMs, T0 + 10_000)).toBe(110);
+  });
+
+  it('shortens the deadline', () => {
+    const rest = adjustRest(startRest(90, T0), -30, T0 + 10_000);
+    expect(remainingSeconds(rest.targetMs, T0 + 10_000)).toBe(50);
+    expect(rest.totalSeconds).toBe(60);
+  });
+
+  it('cannot push the deadline into the past — it just ends the rest', () => {
+    const now = T0 + 80_000;
+    const rest = adjustRest(startRest(90, T0), -30, now);
+    expect(rest.targetMs).toBe(now);
+    expect(remainingSeconds(rest.targetMs, now)).toBe(0);
+    // Total still measured from the original start, so the bar reads full, not over.
+    expect(rest.totalSeconds).toBe(80);
+    expect(restProgress(rest, now)).toBe(1);
+  });
+
+  it('survives repeated adjustment without drifting off the original start', () => {
+    let rest = startRest(60, T0);
+    rest = adjustRest(rest, 30, T0 + 5_000);
+    rest = adjustRest(rest, 30, T0 + 6_000);
+    rest = adjustRest(rest, -30, T0 + 7_000);
+    expect(rest.targetMs).toBe(T0 + 90_000);
+    expect(rest.totalSeconds).toBe(90);
   });
 });

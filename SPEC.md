@@ -15,14 +15,17 @@ anything written here.
 | D1 | Navigation | 5 bottom tabs: Home · Exercises · Trainings · Session · History |
 | D2 | Stack | Vite + React + TypeScript, `vite-plugin-pwa`, deployed to GitHub Pages via Actions. Hash routing, hand-rolled (~50 lines) — every React Router 7.x release carries an open advisory, and hash routing also avoids the Pages reload-404 |
 | D3 | Training days | Fully user-managed: create as many as you like, rename anytime, reorder by drag. Never deletable — a training's id must always resolve so session history stays intact. Exercise membership is editable in-app |
-| D4 | Home extras | Weekly goal + streak; backup reminder. (No PR tracking, no last-session recap in v1) |
+| D4 | Home extras | Weekly goal + streak; backup reminder. (No last-session recap in v1. PR tracking was deferred in v1 and has since landed — see §4 `personalRecords`) |
 | D5 | Offline | Lazy cache-first for images; app shell + `exercises.json` precached |
 | D6 | Custom exercise image | Optional photo from camera/library, downscaled, stored as a blob; lettered placeholder otherwise |
 | D7 | Session history | Read-only; whole sessions may be deleted with confirmation |
 | D8 | Units | Kilograms only in v1 |
 
-**Non-goals for v1:** cross-device sync, accounts, rest timers, plate calculators, charts/graphs,
+**Non-goals for v1:** cross-device sync, accounts, plate calculators, charts/graphs,
 video/GIF playback, notifications, unit switching, editing past sets.
+
+Rest timers were on that list and have since landed (§5.4). The list records what v1 shipped without,
+not what the app is forbidden to grow — an entry leaves it when the feature arrives.
 
 ---
 
@@ -72,7 +75,7 @@ IndexedDB via `idb`. Database `ander-gym`, version 1.
 
 | Store | Key | Value |
 |---|---|---|
-| `trainings` | `id` (slug) | `{ id, label, order, exerciseIds: string[] }` |
+| `trainings` | `id` (slug) | `{ id, label, order, exerciseIds: string[], restSeconds? }` |
 | `sessions` | `id` (uuid) | `{ id, trainingId, trainingLabel, startedAt, savedAt, entries }` — index on `startedAt` |
 | `activeSession` | literal `'current'` | `{ trainingId, trainingLabel, startedAt, entries }` |
 | `customExercises` | `id` (`c-<uuid>`) | Exercise fields + `isCustom: true`, `imageBlob?: Blob` |
@@ -90,6 +93,9 @@ Rules:
   training to match the dragged sequence. **Trainings are never deleted** — a `Session.trainingId` must
   always resolve.
 - **One active session.** Starting a session while one exists must prompt: resume, or discard and start new.
+- `Training.restSeconds` is the rest-timer default for that training day (§5.4), in seconds. It is
+  **optional**: absent means the app default of 90 s, so trainings written before the field existed
+  stay valid and the store keeps schema version 1. Clamped to 15–600 s on every write.
 - Every write to `activeSession` is immediate — a mid-workout app kill must lose nothing.
 - Call `navigator.storage.persist()` once, on the first successful session save.
 - `entries` in a session snapshot the exercise ids only; names/images are resolved at render time so a
@@ -101,6 +107,9 @@ Reachable from a gear icon on Home (Settings sheet).
 - **Export** — one JSON file, `ander-gym-YYYY-MM-DD.json`, containing every store plus
   `{ schemaVersion, exportedAt }`. Custom-exercise blobs are inlined as base64 data URLs. Delivered via
   `Blob` + `<a download>` (works in iOS Safari and standalone mode). On success, write `lastExportAt`.
+- `restSeconds` travels inside the trainings array, so it needs no format change. On import a value
+  that could not run a countdown (non-numeric, zero, negative, `NaN`) is dropped rather than
+  corrected — the training falls back to the default, which is what an absent field already means.
 - **Import** — file input, validate `schemaVersion`, then ask **Merge** (union by id, incoming wins on
   conflict) or **Replace** (wipe then load). Replace goes through a second, destructive confirmation
   stating what will be lost. (v1 uses a confirm dialog rather than a typed confirmation; revisit if a
@@ -147,6 +156,20 @@ mutation replaces wholesale) and exposes it as `useGym().exerciseRecords`.
 heaviest ever, or the best at its own rep count. Deliberately narrower than "sets a record" — a first-ever
 set, or the first at some rep count, becomes the record but beat nothing, and announcing those would fire
 on nearly every set a new user logs.
+
+**Rest timer** — a `RestTimer` is `{ targetMs, totalSeconds }`, where `targetMs` is an absolute
+wall-clock deadline and never a counter anything decrements: iOS suspends timers in a backgrounded
+tab, so everything is re-derived from `Date.now()` instead.
+- `startRest(seconds, nowMs)` → the timer for one rest.
+- `remainingSeconds(targetMs, nowMs)` — whole seconds left, rounded up, clamped at 0.
+- `formatCountdown(seconds)` — `mm:ss`, minutes uncapped, never negative.
+- `restPhase(rest, nowMs)` — `running` → `done` → `expired`. `expired` is 30 s past zero: a rest
+  nobody came back to clears itself silently instead of announcing one that finished long ago.
+- `restProgress(rest, nowMs)` — 0 → 1, clamped, for the progress bar.
+- `adjustRest(rest, deltaSeconds, nowMs)` — inline ±30 s. The deadline never moves behind `now`
+  (shortening past the remaining time just ends the rest) and `totalSeconds` is re-derived from the
+  original start, so the bar stays truthful.
+- `parseRestSeconds(value)` (in `parse.ts`) — clamps an untrusted duration into 15–600 s, or `null`.
 
 **`search(query, facets, exercises)`** —
 - Facets: multi-select **within** a facet is OR, **across** facets is AND.
@@ -255,6 +278,22 @@ exercise:
 - Exercises may be logged in any order; rows with no sets are kept in the saved record with an empty `sets`
   array.
 
+**Rest timer.** A bar pinned under the session title, sticky over the scrolling table, rendered in
+both states so a rest starting or ending never moves the exercise rows.
+- Saving a set starts (or restarts) a countdown of that training day's `restSeconds`, defaulting to
+  90 s. The deadline is absolute — see §4 — so a backgrounded tab resumes at the right number rather
+  than at wherever it froze; the display also re-derives on `visibilitychange`.
+- Running: `mm:ss`, a progress bar, **−30 s** / **+30 s**, and **Skip**. The ±30 s applies to that
+  rest only; nothing is written.
+- Idle: the training day's default with **60 / 90 / 120 s** presets. Picking one writes
+  `Training.restSeconds` immediately and is where that default is edited.
+- At zero the bar reads "Rest done" until cleared, or for 30 s. `navigator.vibrate()` fires once if
+  the device has it — feature-detected, so its absence on iOS is a no-op, not an error.
+- Timer state is deliberately ephemeral: it lives in the page, not in `activeSession`. A reload
+  clears it; a half-finished rest is not training data.
+- The bar carries a permanent one-line note that the countdown is on-screen only (§6), and the
+  Settings sheet states the same limitation in full.
+
 Bottom of the page, above the nav:
 - **"Save session"** — large, full-width, green. Writes to `sessions` with `savedAt`, clears
   `activeSession`, navigates to History. Blocked with an explanatory message if zero sets were logged.
@@ -287,6 +326,10 @@ Bottom of the page, above the nav:
 - Momentum scrolling in the card carousel; `overscroll-behavior: contain` in sheets to stop rubber-banding
   the page behind them.
 - The app must be fully usable with the network off, for any exercise whose image has been viewed once.
+- **The rest timer cannot alert.** iOS Safari implements no Vibration API, and a standalone PWA gets
+  no notifications, so a rest that ends while the app is backgrounded or the phone is locked ends
+  silently. Stated in the UI (§5.4) rather than failed silently. `navigator.vibrate()` is still
+  called where it exists (Android Chrome), behind a feature check.
 
 ---
 

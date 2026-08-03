@@ -55,9 +55,24 @@ export type Training = {
   label: string;
   order: number;
   exerciseIds: string[];
+  /**
+   * Rest countdown for this training day, in seconds. Optional on purpose:
+   * absent means `DEFAULT_REST_SECONDS`, so every training created — and every
+   * backup written — before the timer existed stays valid with no migration.
+   */
+  restSeconds?: number;
 };
 
 export const TRAINING_ID_PREFIX = 't-';
+
+/** Rest lengths offered inline in the session header, in seconds. */
+export const REST_PRESETS = [60, 90, 120] as const;
+
+export const DEFAULT_REST_SECONDS = 90;
+
+/** Bounds every stored or imported rest duration is clamped into. */
+export const REST_MIN_SECONDS = 15;
+export const REST_MAX_SECONDS = 600;
 
 export type SetEntry = {
   reps: number;
