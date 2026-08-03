@@ -234,6 +234,10 @@ Vertical order, exactly as briefed:
    horizontally, chips toggle, selected chips are filled. A "Clear all" appears when any is active.
 3. **Match count** — "142 exercises".
 4. **Card carousel** — horizontally scrollable, scroll-snapped cards of the matching exercises.
+   **Default order** (no search query): exercises logged at least once — in any past session, bodyweight
+   included — sort before ones that have not, alphabetical within each group. A search query switches to
+   relevance order, unchanged. This is broader than the personal-record badge below, which only counts
+   weighted sets.
 5. **"+ Add exercise"** — opens the custom-exercise form (name, category, equipment, target, optional photo).
    Saved to `customExercises` and immediately searchable, tagged with a "Custom" pill.
 

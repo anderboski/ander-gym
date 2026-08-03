@@ -39,6 +39,7 @@ export function ExercisesPage() {
       {status === 'ready' && (
         <ExerciseBrowser
           layout="carousel"
+          sortDoneFirst
           renderItem={(ex) => <ExerciseCard key={ex.id} exercise={ex} variant="carousel" />}
         />
       )}

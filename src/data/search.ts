@@ -68,19 +68,30 @@ function fuseFor(list: Exercise[]): Fuse<Exercise> {
  * That yields the same set as filtering first (the two constraints are ANDed)
  * while keeping one cached Fuse index instead of rebuilding on every chip tap.
  *
- * Ordering: relevance when there is a query, alphabetical otherwise.
+ * Ordering: relevance when there is a query, alphabetical otherwise. When
+ * `doneIds` is given, exercises in that set sort before the rest of the
+ * alphabetical listing rather than being interleaved with it — the query
+ * case is left alone, since typed relevance matters more there than history.
  */
 export function searchExercises(
   exercises: Exercise[],
   query: string,
   facets: Facets,
+  doneIds?: ReadonlySet<string>,
 ): Exercise[] {
   const q = query.trim();
 
   if (q.length < 2) {
     return exercises
       .filter((ex) => matchesFacets(ex, facets))
-      .sort((a, b) => a.name.localeCompare(b.name));
+      .sort((a, b) => {
+        if (doneIds) {
+          const da = doneIds.has(a.id) ? 0 : 1;
+          const db = doneIds.has(b.id) ? 0 : 1;
+          if (da !== db) return da - db;
+        }
+        return a.name.localeCompare(b.name);
+      });
   }
 
   return fuseFor(exercises)
