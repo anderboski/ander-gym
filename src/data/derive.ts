@@ -218,6 +218,32 @@ export function latestFor(
   return historyFor(exerciseId, sessions, now)[0] ?? null;
 }
 
+export type LatestByExercise = Map<string, ExerciseRecord>;
+
+/**
+ * The most recent logged occurrence of every exercise, in one pass over the
+ * history.
+ *
+ * The Exercises carousel renders a card per exercise out of a 1324-record
+ * catalogue; calling `latestFor` per card would rescan every session per
+ * card. Callers build this map once per change to `sessions` instead (see
+ * `useGym().exerciseLatest`).
+ */
+export function allLatestFor(sessions: Session[], now: Date = new Date()): LatestByExercise {
+  const out: LatestByExercise = new Map();
+  for (const session of sortSessions(sessions)) {
+    for (const entry of session.entries) {
+      if (entry.sets.length === 0 || out.has(entry.exerciseId)) continue;
+      out.set(entry.exerciseId, {
+        session,
+        sets: entry.sets,
+        daysAgo: daysBetween(new Date(session.startedAt), now),
+      });
+    }
+  }
+  return out;
+}
+
 /* -------------------------------------------------------------------------- */
 /* Personal records                                                            */
 /* -------------------------------------------------------------------------- */

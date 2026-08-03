@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useGym } from '../data/store';
-import { formatDate, formatDateTime, formatDaysAgo, historyFor, latestFor } from '../data/derive';
+import { formatDate, formatDateTime, formatDaysAgo, historyFor } from '../data/derive';
 import { formatSet, formatWeight, titleCase } from '../data/parse';
 import type { Exercise, SetEntry } from '../data/types';
 import { Sheet } from './Sheet';
@@ -91,9 +91,9 @@ export type ExerciseCardProps = {
  * image opens the full history. Shared by Exercises, Trainings and the picker.
  */
 export function ExerciseCard({ exercise, variant = 'carousel', onRemove }: ExerciseCardProps) {
-  const { sessions, exerciseRecords } = useGym();
+  const { exerciseRecords, exerciseLatest } = useGym();
   const [showHistory, setShowHistory] = useState(false);
-  const latest = latestFor(exercise.id, sessions);
+  const latest = exerciseLatest.get(exercise.id) ?? null;
   const best = exerciseRecords.get(exercise.id)?.heaviest;
 
   return (
