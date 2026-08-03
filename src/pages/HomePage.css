@@ -99,6 +99,34 @@
   }
 }
 
+/* Push view into the stats (§5.6), directly under the week counter it expands. */
+.home-stats {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  margin-top: var(--s3);
+  text-align: left;
+}
+
+.home-stats-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.home-stats-title {
+  display: block;
+  font-size: 15px;
+  font-weight: 650;
+}
+
+.home-stats-sub {
+  display: block;
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-top: 2px;
+}
+
 /* --------------------------------------------------------------------------
    Today's training
    -------------------------------------------------------------------------- */

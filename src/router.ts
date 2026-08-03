@@ -9,6 +9,7 @@ import { useSyncExternalStore } from 'react';
 
 export type Route =
   | { name: 'home' }
+  | { name: 'stats' }
   | { name: 'exercises' }
   | { name: 'trainings' }
   | { name: 'training'; id: string }
@@ -35,6 +36,8 @@ export function parseRoute(path: string): Route {
     case undefined:
     case 'home':
       return { name: 'home' };
+    case 'stats':
+      return { name: 'stats' };
     case 'exercises':
       return { name: 'exercises' };
     case 'trainings':
@@ -48,12 +51,18 @@ export function parseRoute(path: string): Route {
   }
 }
 
+/**
+ * Detail routes report the tab they were pushed from — D1 locks the bar at
+ * five, so a push view lights its parent tab rather than adding a sixth.
+ */
 export function tabOf(route: Route): TabName {
   switch (route.name) {
     case 'training':
       return 'trainings';
     case 'historyDetail':
       return 'history';
+    case 'stats':
+      return 'home';
     default:
       return route.name;
   }

@@ -170,6 +170,21 @@ export function HomePage() {
                 )}
               </div>
             </div>
+
+            {/* The week counter's push view (§5.6). Hidden until there is
+                history, so a fresh install keeps its empty state. */}
+            {sessions.length > 0 && (
+              <button
+                className="card card-pad card-tappable home-stats"
+                onClick={() => navigate('/stats')}
+              >
+                <span className="home-stats-text">
+                  <span className="home-stats-title">See all stats</span>
+                  <span className="home-stats-sub">Volume, consistency and muscle balance</span>
+                </span>
+                <ChevronRightIcon className="home-card-chevron" />
+              </button>
+            )}
           </section>
 
           {/* --- today's training ----------------------------------------- */}

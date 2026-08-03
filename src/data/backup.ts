@@ -12,6 +12,7 @@ import {
   putTraining,
   readAll,
 } from './db';
+import { parseRestSeconds } from './parse';
 import type { CustomExercise, Session, Settings, Training } from './types';
 
 /** A custom exercise with its photo inlined, so a backup is a single file. */
@@ -102,6 +103,21 @@ export function downloadBackup(backup: BackupFile, filename = backupFilename()):
 
 export class BackupError extends Error {}
 
+/**
+ * Trainings are trusted as written, with one exception: `restSeconds` feeds a
+ * countdown deadline, so a hand-edited file (or one from before the field
+ * existed, where it may be anything) must not be able to put a NaN there. An
+ * unusable value is dropped rather than corrected — the training then falls
+ * back to the app default, which is what a training without the field means.
+ */
+function withValidRest(training: Training): Training {
+  const restSeconds = parseRestSeconds(training.restSeconds);
+  const clean: Training = { ...training };
+  if (restSeconds === null) delete clean.restSeconds;
+  else clean.restSeconds = restSeconds;
+  return clean;
+}
+
 export function parseBackup(text: string): BackupFile {
   let data: unknown;
   try {
@@ -130,7 +146,7 @@ export function parseBackup(text: string): BackupFile {
   return {
     schemaVersion: b.schemaVersion,
     exportedAt: typeof b.exportedAt === 'string' ? b.exportedAt : new Date().toISOString(),
-    trainings: b.trainings,
+    trainings: b.trainings.map(withValidRest),
     sessions: b.sessions,
     customExercises: Array.isArray(b.customExercises) ? b.customExercises : [],
     settings: {

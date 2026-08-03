@@ -1,23 +1,36 @@
 import { describe, expect, it } from 'vitest';
 import {
+  adjustRest,
   allLatestFor,
   allPersonalRecords,
   beatsPersonalRecord,
   completedToday,
   currentWeekCount,
   daysBetween,
+  epley1RM,
+  exerciseProgress,
+  formatCountdown,
   formatDaysAgo,
   formatElapsed,
+  formatShortDate,
   historyFor,
   lastSessionForTraining,
   latestFor,
   nextTraining,
   personalRecords,
+  remainingSeconds,
+  REST_DONE_MS,
+  restPhase,
+  restProgress,
   setCount,
   sortSessions,
   startOfWeek,
+  startRest,
   totalVolume,
+  UNKNOWN_TARGET,
+  volumeByTarget,
   weeklyStreak,
+  weeklySummary,
 } from './derive';
 import type { Session, SessionEntry, Training } from './types';
 
@@ -384,6 +397,225 @@ describe('beatsPersonalRecord', () => {
   });
 });
 
+/* -------------------------------------------------------------------------- */
+/* Progress over time                                                          */
+/* -------------------------------------------------------------------------- */
+
+describe('epley1RM', () => {
+  it('adds a rep-count bonus to the load', () => {
+    expect(epley1RM(1, 100)).toBeCloseTo(103.33);
+    expect(epley1RM(10, 30)).toBe(40);
+    expect(epley1RM(30, 20)).toBe(40);
+  });
+
+  it('is zero for a bodyweight set — there is no load to extrapolate', () => {
+    expect(epley1RM(20, 0)).toBe(0);
+  });
+});
+
+describe('exerciseProgress', () => {
+  const now = new Date(2026, 7, 1);
+
+  /** One session logging `[reps, weight]` pairs against exercise `0001`. */
+  function logged(date: string, sets: [number, number][]): Session {
+    return session(date, 'a', [
+      { exerciseId: '0001', sets: sets.map(([reps, weight]) => ({ reps, weight, at: date })) },
+    ]);
+  }
+
+  const history = (sessions: Session[]) => historyFor('0001', sessions, now);
+
+  it('is empty with no history', () => {
+    expect(exerciseProgress([], 'topWeight')).toEqual([]);
+    expect(exerciseProgress(history([]), 'e1rm')).toEqual([]);
+  });
+
+  it('returns one point per session, oldest first', () => {
+    const sessions = [
+      logged(at(2026, 7, 10), [[10, 25]]),
+      logged(at(2026, 7, 24), [[8, 30]]),
+      logged(at(2026, 7, 17), [[10, 27.5]]),
+    ];
+    expect(exerciseProgress(history(sessions), 'topWeight')).toEqual([
+      { at: at(2026, 7, 10), value: 25, set: { reps: 10, weight: 25, at: at(2026, 7, 10) } },
+      { at: at(2026, 7, 17), value: 27.5, set: { reps: 10, weight: 27.5, at: at(2026, 7, 17) } },
+      { at: at(2026, 7, 24), value: 30, set: { reps: 8, weight: 30, at: at(2026, 7, 24) } },
+    ]);
+  });
+
+  it('picks the session set that is best under the chosen metric', () => {
+    // 5x40 is the heavier set; 15x32 is the better estimated max (48 vs 46.7).
+    const sessions = [
+      logged(at(2026, 7, 10), [
+        [5, 40],
+        [15, 32],
+      ]),
+    ];
+    expect(exerciseProgress(history(sessions), 'topWeight')[0]?.set.reps).toBe(5);
+
+    const best = exerciseProgress(history(sessions), 'e1rm')[0];
+    expect(best?.set.reps).toBe(15);
+    expect(best?.value).toBe(48);
+  });
+
+  it('keeps the earlier set on a tie, like a personal record', () => {
+    const day = at(2026, 7, 10);
+    const s = session(day, 'a', [
+      {
+        exerciseId: '0001',
+        sets: [
+          { reps: 10, weight: 25, at: 'first' },
+          { reps: 10, weight: 25, at: 'second' },
+        ],
+      },
+    ]);
+    expect(exerciseProgress(history([s]), 'topWeight')[0]?.set.at).toBe('first');
+  });
+
+  it('skips bodyweight sets, and sessions made only of them', () => {
+    const sessions = [
+      logged(at(2026, 7, 10), [[20, 0]]),
+      logged(at(2026, 7, 17), [
+        [20, 0],
+        [8, 30],
+      ]),
+    ];
+    const points = exerciseProgress(history(sessions), 'topWeight');
+    expect(points).toHaveLength(1);
+    expect(points[0]).toMatchObject({ at: at(2026, 7, 17), value: 30 });
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Volume and consistency                                                      */
+/* -------------------------------------------------------------------------- */
+
+describe('weeklySummary', () => {
+  const now = new Date(2026, 7, 2, 10); // Sunday of the week starting Mon 2026-07-27
+
+  /** One session with a single 10 x `weight` kg set. */
+  function lifted(date: string, weight: number): Session {
+    return session(date, 'a', [
+      { exerciseId: '0001', sets: [{ reps: 10, weight, at: date }] },
+    ]);
+  }
+
+  it('returns the requested number of weeks, oldest first, ending with this one', () => {
+    const weeks = weeklySummary([], 4, now);
+    expect(weeks.map((w) => w.start)).toEqual([
+      new Date(2026, 6, 6).toISOString(),
+      new Date(2026, 6, 13).toISOString(),
+      new Date(2026, 6, 20).toISOString(),
+      new Date(2026, 6, 27).toISOString(),
+    ]);
+  });
+
+  it('reports empty weeks as zeros rather than dropping them', () => {
+    const weeks = weeklySummary([lifted(at(2026, 7, 28), 25)], 3, now);
+    expect(weeks.map((w) => w.sessions)).toEqual([0, 0, 1]);
+    expect(weeks.map((w) => w.volume)).toEqual([0, 0, 250]);
+  });
+
+  it('sums sessions and volume within a week', () => {
+    const weeks = weeklySummary(
+      [lifted(at(2026, 7, 27), 25), lifted(at(2026, 7, 30), 30), lifted(at(2026, 8, 2, 9), 0)],
+      1,
+      now,
+    );
+    expect(weeks[0]).toMatchObject({ sessions: 3, volume: 550 });
+  });
+
+  it('splits on the Monday boundary in local time', () => {
+    const weeks = weeklySummary(
+      [lifted(at(2026, 7, 26, 23, 59), 10), lifted(at(2026, 7, 27, 0, 0), 10)],
+      2,
+      now,
+    );
+    expect(weeks.map((w) => w.sessions)).toEqual([1, 1]);
+  });
+
+  it('ignores sessions older than the window', () => {
+    expect(weeklySummary([lifted(at(2026, 6, 1), 25)], 4, now).map((w) => w.sessions)).toEqual([
+      0, 0, 0, 0,
+    ]);
+  });
+
+  it('returns nothing for a non-positive window', () => {
+    expect(weeklySummary([lifted(at(2026, 7, 28), 25)], 0, now)).toEqual([]);
+  });
+});
+
+describe('volumeByTarget', () => {
+  const now = new Date(2026, 7, 1, 12);
+
+  const catalogue = new Map([
+    ['0001', { target: 'pectorals' }],
+    ['0002', { target: 'quads' }],
+    ['0003', { target: 'abs' }],
+  ]);
+
+  /** One session, `[exerciseId, reps, weight]` per set. */
+  function mixed(date: string, sets: [string, number, number][]): Session {
+    const entries: SessionEntry[] = [];
+    for (const [exerciseId, reps, weight] of sets) {
+      const entry = entries.find((e) => e.exerciseId === exerciseId);
+      if (entry) entry.sets.push({ reps, weight, at: date });
+      else entries.push({ exerciseId, sets: [{ reps, weight, at: date }] });
+    }
+    return session(date, 'a', entries);
+  }
+
+  it('is empty with no sessions', () => {
+    expect(volumeByTarget([], catalogue, 30, now)).toEqual([]);
+  });
+
+  it('aggregates by target, heaviest first', () => {
+    const sessions = [
+      mixed(at(2026, 7, 30), [
+        ['0001', 10, 40],
+        ['0001', 8, 40],
+        ['0002', 10, 60],
+      ]),
+      mixed(at(2026, 7, 20), [['0002', 10, 50]]),
+    ];
+    expect(volumeByTarget(sessions, catalogue, 30, now)).toEqual([
+      { target: 'quads', volume: 1100, sets: 2 },
+      { target: 'pectorals', volume: 720, sets: 2 },
+    ]);
+  });
+
+  it('buckets an exercise the catalogue no longer knows', () => {
+    const sessions = [mixed(at(2026, 7, 30), [['c-deleted', 10, 20]])];
+    expect(volumeByTarget(sessions, catalogue, 30, now)).toEqual([
+      { target: UNKNOWN_TARGET, volume: 200, sets: 1 },
+    ]);
+  });
+
+  it('keeps a bodyweight-only target at zero volume rather than hiding it', () => {
+    const sessions = [mixed(at(2026, 7, 30), [['0003', 20, 0]])];
+    expect(volumeByTarget(sessions, catalogue, 30, now)).toEqual([
+      { target: 'abs', volume: 0, sets: 1 },
+    ]);
+  });
+
+  it('counts calendar days, inclusive of today and exclusive of the far edge', () => {
+    const sessions = [
+      mixed(at(2026, 8, 1, 20), [['0001', 1, 1]]), // today, later than `now`
+      mixed(at(2026, 7, 3), [['0002', 1, 10]]), // 29 days back
+      mixed(at(2026, 7, 2), [['0003', 1, 100]]), // 30 days back
+    ];
+    expect(volumeByTarget(sessions, catalogue, 30, now).map((t) => t.target)).toEqual([
+      'quads',
+      'pectorals',
+    ]);
+  });
+
+  it('ignores exercises that were listed but never logged', () => {
+    const sessions = [session(at(2026, 7, 30), 'a', [{ exerciseId: '0001', sets: [] }])];
+    expect(volumeByTarget(sessions, catalogue, 30, now)).toEqual([]);
+  });
+});
+
 describe('session summaries', () => {
   const s = session(at(2026, 8, 1), 'a', [
     { exerciseId: '0001', sets: [{ reps: 10, weight: 25, at: '' }, { reps: 8, weight: 30, at: '' }] },
@@ -433,9 +665,150 @@ describe('display helpers', () => {
     expect(formatDaysAgo(9)).toBe('-9 days');
   });
 
+  it('formats a short axis date without depending on the locale', () => {
+    expect(formatShortDate(at(2026, 7, 23))).toBe('23 Jul');
+    expect(formatShortDate(at(2026, 1, 5))).toBe('5 Jan');
+  });
+
   it('formats elapsed time', () => {
     const start = at(2026, 8, 1, 10, 0);
     expect(formatElapsed(start, new Date(2026, 7, 1, 10, 24))).toBe('24m');
     expect(formatElapsed(start, new Date(2026, 7, 1, 11, 12))).toBe('1h 12m');
+  });
+});
+
+/* -------------------------------------------------------------------------- */
+/* Rest timer                                                                  */
+/* -------------------------------------------------------------------------- */
+
+/** An arbitrary but fixed "now", so nothing here depends on the real clock. */
+const T0 = 1_800_000_000_000;
+
+describe('startRest', () => {
+  it('stores an absolute deadline, not a countdown', () => {
+    expect(startRest(90, T0)).toEqual({ targetMs: T0 + 90_000, totalSeconds: 90 });
+  });
+});
+
+describe('remainingSeconds', () => {
+  it('derives what is left from the clock', () => {
+    const rest = startRest(90, T0);
+    expect(remainingSeconds(rest.targetMs, T0)).toBe(90);
+    expect(remainingSeconds(rest.targetMs, T0 + 30_000)).toBe(60);
+    expect(remainingSeconds(rest.targetMs, T0 + 89_999)).toBe(1);
+  });
+
+  it('clamps at zero however far past the deadline it is', () => {
+    const rest = startRest(90, T0);
+    expect(remainingSeconds(rest.targetMs, T0 + 90_000)).toBe(0);
+    // The backgrounded-tab case: no tick ran for ten minutes, and it does not matter.
+    expect(remainingSeconds(rest.targetMs, T0 + 600_000)).toBe(0);
+  });
+
+  it('rounds up, so 0:01 is on screen for its whole second', () => {
+    expect(remainingSeconds(T0 + 1, T0)).toBe(1);
+    expect(remainingSeconds(T0 + 1000, T0)).toBe(1);
+  });
+});
+
+describe('formatCountdown', () => {
+  it('formats mm:ss', () => {
+    expect(formatCountdown(90)).toBe('1:30');
+    expect(formatCountdown(60)).toBe('1:00');
+    expect(formatCountdown(5)).toBe('0:05');
+    expect(formatCountdown(0)).toBe('0:00');
+  });
+
+  it('does not wrap past an hour', () => {
+    expect(formatCountdown(600)).toBe('10:00');
+    expect(formatCountdown(3661)).toBe('61:01');
+  });
+
+  it('never shows a negative', () => {
+    expect(formatCountdown(-5)).toBe('0:00');
+  });
+});
+
+describe('restPhase', () => {
+  const rest = startRest(90, T0);
+
+  it('runs until the deadline', () => {
+    expect(restPhase(rest, T0)).toBe('running');
+    expect(restPhase(rest, T0 + 89_999)).toBe('running');
+  });
+
+  it('is done for a while after it', () => {
+    expect(restPhase(rest, T0 + 90_000)).toBe('done');
+    expect(restPhase(rest, T0 + 90_000 + REST_DONE_MS)).toBe('done');
+  });
+
+  it('expires once nobody came back for it', () => {
+    expect(restPhase(rest, T0 + 90_000 + REST_DONE_MS + 1)).toBe('expired');
+    expect(restPhase(rest, T0 + 3_600_000)).toBe('expired');
+  });
+});
+
+describe('restProgress', () => {
+  it('runs 0 to 1 across the rest', () => {
+    const rest = startRest(90, T0);
+    expect(restProgress(rest, T0)).toBe(0);
+    expect(restProgress(rest, T0 + 45_000)).toBeCloseTo(0.5);
+    expect(restProgress(rest, T0 + 90_000)).toBe(1);
+  });
+
+  it('clamps at both ends', () => {
+    const rest = startRest(90, T0);
+    expect(restProgress(rest, T0 - 10_000)).toBe(0);
+    expect(restProgress(rest, T0 + 200_000)).toBe(1);
+  });
+});
+
+describe('a rest across a backgrounded tab', () => {
+  it('reads the deadline rather than the ticks it missed', () => {
+    const rest = startRest(90, T0);
+    // Two ticks, then iOS suspends the tab and the app is reopened 3 minutes on.
+    const observed = [T0 + 1_000, T0 + 2_000, T0 + 180_000];
+    expect(observed.map((t) => remainingSeconds(rest.targetMs, t))).toEqual([89, 88, 0]);
+    expect(restPhase(rest, T0 + 180_000)).toBe('expired');
+  });
+
+  it('is still counting down when the gap was short', () => {
+    const rest = startRest(120, T0);
+    expect(remainingSeconds(rest.targetMs, T0 + 45_000)).toBe(75);
+    expect(restPhase(rest, T0 + 45_000)).toBe('running');
+  });
+});
+
+describe('adjustRest', () => {
+  it('extends the deadline and the denominator together', () => {
+    const rest = adjustRest(startRest(90, T0), 30, T0 + 10_000);
+    expect(rest.targetMs).toBe(T0 + 120_000);
+    expect(rest.totalSeconds).toBe(120);
+    expect(remainingSeconds(rest.targetMs, T0 + 10_000)).toBe(110);
+  });
+
+  it('shortens the deadline', () => {
+    const rest = adjustRest(startRest(90, T0), -30, T0 + 10_000);
+    expect(remainingSeconds(rest.targetMs, T0 + 10_000)).toBe(50);
+    expect(rest.totalSeconds).toBe(60);
+  });
+
+  it('cannot push the deadline into the past — it just ends the rest', () => {
+    const now = T0 + 80_000;
+    const rest = adjustRest(startRest(90, T0), -30, now);
+    expect(rest.targetMs).toBe(now);
+    expect(remainingSeconds(rest.targetMs, now)).toBe(0);
+    // Total still measured from the original start, so the bar reads full, not over.
+    expect(rest.totalSeconds).toBe(80);
+    expect(restProgress(rest, now)).toBe(1);
+  });
+
+  it('survives repeated adjustment without drifting off the original start', () => {
+    let rest = startRest(60, T0);
+    rest = adjustRest(rest, 30, T0 + 5_000);
+    rest = adjustRest(rest, 30, T0 + 6_000);
+    rest = adjustRest(rest, -30, T0 + 7_000);
+    expect(rest.targetMs).toBe(T0 + 90_000);
+    expect(rest.totalSeconds).toBe(90);
   });
 });

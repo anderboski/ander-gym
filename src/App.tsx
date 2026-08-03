@@ -1,6 +1,7 @@
 import { TabBar } from './components/TabBar';
 import { useRoute } from './router';
 import { HomePage } from './pages/HomePage';
+import { StatsPage } from './pages/StatsPage';
 import { ExercisesPage } from './pages/ExercisesPage';
 import { TrainingsPage } from './pages/TrainingsPage';
 import { TrainingDetailPage } from './pages/TrainingDetailPage';
@@ -14,6 +15,7 @@ export function App() {
   return (
     <div className="app">
       {route.name === 'home' && <HomePage />}
+      {route.name === 'stats' && <StatsPage />}
       {route.name === 'exercises' && <ExercisesPage />}
       {route.name === 'trainings' && <TrainingsPage />}
       {route.name === 'training' && <TrainingDetailPage trainingId={route.id} />}

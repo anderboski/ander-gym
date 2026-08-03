@@ -1,0 +1,159 @@
+/* Chart primitives. Tokens only — no literal colours, no literal spacing.
+   Every chart is placed on a --bg-raised surface (a .card, or the sheet body),
+   which is what the 2px surface ring on the dots is drawn in. */
+
+.chart-figure {
+  margin: 0;
+}
+
+.chart-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s3);
+  margin-bottom: var(--s2);
+}
+
+.chart-title {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+}
+
+/* The current reading, stat-tile style. Proportional figures on purpose:
+   tabular-nums makes a large standalone number look loose. */
+.chart-value {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.15;
+  margin-top: 2px;
+}
+
+.chart-caption {
+  font-size: 13px;
+  line-height: 1.35;
+  color: var(--text-dim);
+  margin-top: var(--s2);
+}
+
+/* A chart never widens the page; if one ever needs more room than the phone
+   has, it scrolls inside here instead. */
+.chart-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+}
+
+.chart-svg {
+  display: block;
+  width: 100%;
+  height: auto;
+  /* Fonts and stroke widths below are in user units, scaled with the viewBox. */
+}
+
+.chart-grid {
+  stroke: var(--border);
+  stroke-width: 1;
+}
+
+.chart-tick {
+  fill: var(--text-faint);
+  font-family: var(--font-num);
+  font-size: 11px;
+}
+
+.chart-line {
+  fill: none;
+  stroke: var(--accent);
+  stroke-width: 2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* A wash, never a saturated block. */
+.chart-wash {
+  fill: var(--accent);
+  opacity: 0.12;
+  stroke: none;
+}
+
+/* The ring is the surface colour, so a dot stays legible where it sits on the
+   line or against the gridline. */
+.chart-dot {
+  fill: var(--accent);
+  stroke: var(--bg-raised);
+  stroke-width: 2;
+}
+
+.chart-bar {
+  fill: var(--accent);
+}
+
+/* Below the weekly goal: present, but not the thing to look at. */
+.chart-bar-dim {
+  fill: var(--text-faint);
+}
+
+.chart-bar-empty {
+  fill: var(--border);
+}
+
+.chart-reference {
+  stroke: var(--text-faint);
+  stroke-width: 1;
+}
+
+/* --- ranked bar list ------------------------------------------------------ */
+
+.chart-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--s3);
+}
+
+.chart-list-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s2);
+  margin-bottom: var(--s1);
+}
+
+.chart-list-label {
+  font-size: 14px;
+  font-weight: 600;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.chart-list-value {
+  flex: none;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.chart-list-track {
+  height: 8px;
+  border-radius: var(--r-full);
+  background: var(--bg-raised-2);
+  overflow: hidden;
+}
+
+.chart-list-fill {
+  height: 100%;
+  border-radius: var(--r-full);
+  background: var(--accent);
+  min-width: 2px;
+}
+
+.chart-list-note {
+  font-size: 12px;
+  color: var(--text-faint);
+  margin-top: var(--s1);
+}

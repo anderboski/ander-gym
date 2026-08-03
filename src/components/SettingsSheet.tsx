@@ -144,6 +144,19 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
         </div>
       </section>
 
+      {/* --- rest timer ----------------------------------------------------- */}
+      <section className="settings-block">
+        <div className="section-title">Rest timer</div>
+        <p className="settings-hint">
+          Rest length is set per training day, from the bar under the session title.
+        </p>
+        <p className="settings-hint">
+          The countdown is visual. iOS Safari has no vibration, and a Home Screen app cannot send
+          notifications, so a rest that ends while this app is in the background or the phone is
+          locked passes silently. Android devices get a short vibration at zero.
+        </p>
+      </section>
+
       {/* --- export -------------------------------------------------------- */}
       <section className="settings-block">
         <div className="section-title">Backup</div>

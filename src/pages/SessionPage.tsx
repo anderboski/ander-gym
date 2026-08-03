@@ -8,12 +8,36 @@
  *
  * Every set write goes straight through the store to IndexedDB, so a force-quit
  * mid-workout loses nothing and this page keeps no draft state of its own.
+ *
+ * The one exception is the rest timer, which is deliberately ephemeral: a
+ * half-finished rest is not training data, and reloading the app mid-rest is
+ * rare enough that persisting it would cost more than it is worth.
  */
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { useGym } from '../data/store';
-import { beatsPersonalRecord, formatElapsed, latestFor, personalRecords } from '../data/derive';
+import {
+  adjustRest,
+  beatsPersonalRecord,
+  formatCountdown,
+  formatElapsed,
+  latestFor,
+  personalRecords,
+  remainingSeconds,
+  restPhase,
+  restProgress,
+  startRest,
+  type RestTimer,
+} from '../data/derive';
 import { formatSet, formatWeight } from '../data/parse';
-import type { ActiveSession, Exercise, SessionEntry, Session, Training } from '../data/types';
+import {
+  DEFAULT_REST_SECONDS,
+  REST_PRESETS,
+  type ActiveSession,
+  type Exercise,
+  type SessionEntry,
+  type Session,
+  type Training,
+} from '../data/types';
 import { ConfirmSheet, Sheet, Toast } from '../components/Sheet';
 import { ChevronRightIcon, ClockIcon, PlusIcon } from '../components/icons';
 import { navigate } from '../router';
@@ -107,13 +131,167 @@ function useNow(intervalMs: number): Date {
   return now;
 }
 
+/* -------------------------------------------------------------------------- */
+/* Rest timer                                                                  */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Stated permanently rather than as a dismissible warning: iOS Safari ships no
+ * Vibration API and a standalone PWA cannot post notifications, so a rest that
+ * ends while the app is hidden or the phone is locked ends silently. Better on
+ * screen than discovered by missing a set.
+ */
+const REST_CAVEAT = 'On screen only — iOS gives no alert or vibration.';
+
+/** Present on Android Chrome, absent on iOS. Feature-detected, never depended on. */
+function buzz(): void {
+  if (typeof navigator.vibrate === 'function') navigator.vibrate(180);
+}
+
+/** Wall-clock milliseconds, re-read once a second while `running`. */
+function useNowMs(running: boolean): number {
+  const [nowMs, setNowMs] = useState(() => Date.now());
+
+  useEffect(() => {
+    if (!running) return;
+    const tick = () => setNowMs(Date.now());
+    tick();
+    const id = window.setInterval(tick, 1000);
+    // iOS suspends the interval in a backgrounded tab. Nothing is being counted
+    // down — the deadline is absolute — so one read on the way back catches up.
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') tick();
+    };
+    document.addEventListener('visibilitychange', onVisible);
+    return () => {
+      window.clearInterval(id);
+      document.removeEventListener('visibilitychange', onVisible);
+    };
+  }, [running]);
+
+  return nowMs;
+}
+
+/**
+ * The bar under the session title. It renders the same shape in both states —
+ * countdown or presets — so starting and clearing a rest never moves the
+ * exercise table.
+ */
+function RestBar({
+  rest,
+  defaultSeconds,
+  onAdjust,
+  onDismiss,
+  onPickDefault,
+}: {
+  rest: RestTimer | null;
+  /** This training day's stored default, resolved by the caller. */
+  defaultSeconds: number;
+  onAdjust: (deltaSeconds: number) => void;
+  onDismiss: () => void;
+  onPickDefault: (seconds: number) => void;
+}) {
+  const nowMs = useNowMs(rest !== null);
+  const phase = rest ? restPhase(rest, nowMs) : null;
+  const done = phase === 'done';
+
+  // Keyed on the deadline, so it fires once per rest and again after a ±30 s
+  // adjustment moves the deadline — but never twice for the same zero.
+  const buzzedFor = useRef<number | null>(null);
+  useEffect(() => {
+    if (!rest || !done || buzzedFor.current === rest.targetMs) return;
+    buzzedFor.current = rest.targetMs;
+    buzz();
+  }, [rest, done]);
+
+  // A rest the user never came back to: clear it silently instead of announcing
+  // one that finished while the app was in the background.
+  useEffect(() => {
+    if (phase === 'expired') onDismiss();
+  }, [phase, onDismiss]);
+
+  return (
+    <div className="sess-rest">
+      <div className="sess-rest-main">
+        {rest ? (
+          <>
+            <div className={done ? 'sess-rest-time sess-rest-done num' : 'sess-rest-time num'}>
+              {done ? 'Rest done' : formatCountdown(remainingSeconds(rest.targetMs, nowMs))}
+            </div>
+            <div className="sess-rest-controls">
+              <button
+                className="btn btn-sm sess-rest-btn num"
+                disabled={done}
+                aria-label="Take 30 seconds off this rest"
+                onClick={() => onAdjust(-30)}
+              >
+                −30
+              </button>
+              <button
+                className="btn btn-sm sess-rest-btn num"
+                aria-label="Add 30 seconds to this rest"
+                onClick={() => onAdjust(30)}
+              >
+                +30
+              </button>
+              <button className="btn btn-sm sess-rest-btn" onClick={onDismiss}>
+                {done ? 'Clear' : 'Skip'}
+              </button>
+            </div>
+          </>
+        ) : (
+          <>
+            <div className="sess-rest-time sess-rest-idle">
+              Rest <span className="num">{defaultSeconds}s</span>
+            </div>
+            <div
+              className="sess-rest-controls"
+              role="group"
+              aria-label="Rest length for this training day"
+            >
+              {REST_PRESETS.map((seconds) => (
+                <button
+                  key={seconds}
+                  className="chip sess-rest-preset num"
+                  aria-pressed={seconds === defaultSeconds}
+                  onClick={() => onPickDefault(seconds)}
+                >
+                  {seconds}s
+                </button>
+              ))}
+            </div>
+          </>
+        )}
+      </div>
+
+      <div className="sess-rest-track" aria-hidden="true">
+        <div
+          className="sess-rest-fill"
+          style={{ width: `${(rest ? restProgress(rest, nowMs) : 0) * 100}%` }}
+        />
+      </div>
+
+      <p className="sess-rest-note">{REST_CAVEAT}</p>
+    </div>
+  );
+}
+
 type PendingDelete = { exerciseId: string; index: number; name: string; label: string };
 
 /** The set that just took a record, announced once and then forgotten. */
 type NewRecord = { reps: number; weight: number };
 
 function ActiveView({ active }: { active: ActiveSession }) {
-  const { sessions, getExercise, addSet, removeSet, saveSession, discardSession } = useGym();
+  const {
+    sessions,
+    getExercise,
+    getTraining,
+    addSet,
+    removeSet,
+    saveSession,
+    discardSession,
+    setTrainingRest,
+  } = useGym();
   const now = useNow(30_000);
 
   const [addingTo, setAddingTo] = useState<string | null>(null);
@@ -121,6 +299,17 @@ function ActiveView({ active }: { active: ActiveSession }) {
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [newRecord, setNewRecord] = useState<NewRecord | null>(null);
+  const [rest, setRest] = useState<RestTimer | null>(null);
+
+  // The training can be renamed or re-timed mid-session; read the default at
+  // render time rather than snapshotting it into the active session.
+  const restSeconds = getTraining(active.trainingId)?.restSeconds ?? DEFAULT_REST_SECONDS;
+
+  const dismissRest = useCallback(() => setRest(null), []);
+  const adjustRestBy = useCallback(
+    (delta: number) => setRest((r) => (r ? adjustRest(r, delta, Date.now()) : r)),
+    [],
+  );
 
   const totalSets = active.entries.reduce((n, e) => n + e.sets.length, 0);
 
@@ -160,6 +349,14 @@ function ActiveView({ active }: { active: ActiveSession }) {
           {formatElapsed(active.startedAt, now)}
         </div>
       </div>
+
+      <RestBar
+        rest={rest}
+        defaultSeconds={restSeconds}
+        onAdjust={adjustRestBy}
+        onDismiss={dismissRest}
+        onPickDefault={(seconds) => void setTrainingRest(active.trainingId, seconds)}
+      />
 
       <div className="section">
         {active.entries.length === 0 ? (
@@ -220,6 +417,8 @@ function ActiveView({ active }: { active: ActiveSession }) {
             if (beatsPersonalRecord({ reps, weight }, personalRecords(id, [...sessions, active]))) {
               setNewRecord({ reps, weight });
             }
+            // Restarts on every saved set, including one saved mid-rest.
+            setRest(startRest(restSeconds, Date.now()));
             void addSet(id, reps, weight);
           }}
         />

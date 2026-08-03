@@ -112,6 +112,99 @@
 }
 
 /* --------------------------------------------------------------------------
+   State B — rest timer
+
+   Always rendered, in both the idle and running states, so a rest starting or
+   ending never moves the exercise table. Sticky against .page: the bar is the
+   thing you look at between sets, and the table is longer than the screen.
+   -------------------------------------------------------------------------- */
+
+.sess-rest {
+  position: sticky;
+  /* .page's own padding-top scrolls away with the content — offset by the inset
+     directly, or the bar would slide under the status bar in standalone mode. */
+  top: var(--safe-top);
+  z-index: 5;
+  padding: var(--s2) var(--s4) var(--s3);
+  margin-bottom: var(--s4);
+  background: var(--bg);
+  border-bottom: 1px solid var(--border);
+}
+
+.sess-rest-main {
+  min-height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+
+.sess-rest-time {
+  min-width: 0;
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.01em;
+  color: var(--accent);
+  white-space: nowrap;
+}
+
+.sess-rest-done {
+  color: var(--warn);
+}
+
+.sess-rest-idle {
+  font-size: 15px;
+  font-weight: 600;
+  color: var(--text-dim);
+}
+
+.sess-rest-controls {
+  flex: none;
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+}
+
+/* 44px tall: .btn-sm and .chip are both shorter than the iOS tap minimum. */
+.sess-rest-btn,
+.sess-rest-preset {
+  min-height: 44px;
+  min-width: 56px;
+  justify-content: center;
+}
+
+.sess-rest-track {
+  height: 4px;
+  margin-top: var(--s2);
+  border-radius: var(--r-full);
+  background: var(--bg-raised-2);
+  overflow: hidden;
+}
+
+.sess-rest-fill {
+  height: 100%;
+  border-radius: var(--r-full);
+  background: var(--accent);
+  transition: width 0.3s linear;
+}
+
+/* One line, always: the text changes between states but the height must not. */
+.sess-rest-note {
+  margin-top: var(--s1);
+  font-size: 12px;
+  color: var(--text-faint);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .sess-rest-fill {
+    transition: none;
+  }
+}
+
+/* --------------------------------------------------------------------------
    State B — exercise rows
    -------------------------------------------------------------------------- */
 
