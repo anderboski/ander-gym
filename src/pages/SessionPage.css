@@ -366,6 +366,104 @@
   width: 100%;
 }
 
+.sess-add-exercise {
+  min-height: 44px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s1);
+  border: 1px dashed var(--border-strong);
+  background: transparent;
+  color: var(--text-dim);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.sess-add-exercise:active {
+  background: var(--bg-raised);
+}
+
+.sess-add-exercise svg {
+  width: 20px;
+  height: 20px;
+}
+
+/* --------------------------------------------------------------------------
+   Mid-session "add exercise" picker rows — same shape as the Trainings
+   picker (.tr-pick), kept as a page-local copy per the page-prefix convention.
+   -------------------------------------------------------------------------- */
+
+.sess-pick {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  width: 100%;
+  padding: var(--s2);
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+  text-align: left;
+}
+
+.sess-pick:active {
+  background: var(--bg-raised-2);
+}
+
+.sess-pick-thumb {
+  flex: none;
+  width: 52px;
+  height: 52px;
+  border-radius: var(--r-sm);
+  background: var(--bg-sunken);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+  font-weight: 700;
+  color: var(--text-faint);
+}
+
+.sess-pick-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.sess-pick-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.sess-pick-name {
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.25;
+}
+
+.sess-pick-meta {
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.sess-pick-add {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  border-radius: var(--r-full);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.sess-pick-add svg {
+  width: 22px;
+  height: 22px;
+}
+
 .sess-summary {
   font-size: 13px;
   color: var(--text-faint);

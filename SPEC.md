@@ -321,6 +321,12 @@ exercise:
 - Exercises may be logged in any order; rows with no sets are kept in the saved record with an empty `sets`
   array.
 
+Bottom of the page, above **Save session**:
+- **"+ Add exercise"** opens the same search + facet picker as Trainings (§5.3), excluding exercises
+  already in this session. Picking one appends a row with an empty `sets` array to `activeSession.entries`
+  only — the training's own `exerciseIds` are untouched, so a one-off substitute doesn't pollute future
+  sessions of that day.
+
 **Rest timer.** A bar pinned under the session title, both fixed in place above the scrolling table
 so neither ever overlaps the other, rendered in both states so a rest starting or ending never moves
 the exercise rows.
@@ -341,6 +347,9 @@ the exercise rows.
 Bottom of the page, above the nav:
 - **"Save session"** — large, full-width, green. Writes to `sessions` with `savedAt`, clears
   `activeSession`, navigates to History. Blocked with an explanatory message if zero sets were logged.
+  If any saved entries came from mid-session **"+ Add exercise"** rather than the training itself, a
+  confirmation sheet asks whether to add them to the training permanently before navigating to History;
+  declining still saves the session as-is and navigates on.
 - **"Discard session"** — small, red, text-style. Confirmation dialog, then clears `activeSession`.
 
 ### 5.5 History
