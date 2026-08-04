@@ -224,7 +224,7 @@ the fixed bottom nav.
 - **Backup banner** — shown when `lastExportAt` is unset (and ≥1 session exists) or older than 30 days.
   Tapping it runs an export immediately.
 - **Gear icon** (top right) — Settings sheet: weekly goal, export, import, storage usage
-  (`navigator.storage.estimate()`), app version.
+  (`navigator.storage.estimate()`), app version, and a link to the GitHub repo.
 - **Theme toggle** (top right, beside the gear icon) — sun/moon icon button that flips between light
   and dark, overriding the OS `prefers-color-scheme`. Persisted in `localStorage` (not the `settings`
   IndexedDB store, so it can be read and applied synchronously before first paint — see the inline
