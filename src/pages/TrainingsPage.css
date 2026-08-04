@@ -45,16 +45,11 @@
   flex: none;
   width: 44px;
   height: 44px;
+  margin-right: var(--s2);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   font-size: 22px;
-  border-radius: var(--r-md);
-  background: var(--bg-sunken);
-}
-
-.tr-card-emoji:active {
-  background: var(--bg-raised-2);
 }
 
 .tr-card-main {
