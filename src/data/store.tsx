@@ -64,6 +64,18 @@ type Mutations = {
 
   addExerciseToTraining: (trainingId: string, exerciseId: string) => Promise<void>;
   removeExerciseFromTraining: (trainingId: string, exerciseId: string) => Promise<void>;
+  /**
+   * Applies both an add-list and a remove-list to a training's `exerciseIds` in one
+   * read-modify-write. Callers with both lists at once (post-session sync) must use
+   * this rather than two `addExerciseToTraining`/`removeExerciseFromTraining` calls in
+   * parallel — those each read-modify-write the same record independently, so run
+   * concurrently the second write clobbers the first.
+   */
+  syncTrainingExercises: (
+    trainingId: string,
+    addedIds: string[],
+    removedIds: string[],
+  ) => Promise<void>;
 
   addTraining: (label: string) => Promise<Training>;
   renameTraining: (trainingId: string, label: string) => Promise<void>;
@@ -76,6 +88,8 @@ type Mutations = {
   startSession: (trainingId: string) => Promise<void>;
   /** Appends a row to the in-progress session only — the training is untouched. */
   addExerciseToSession: (exerciseId: string) => Promise<void>;
+  /** Drops a row (and any sets already logged on it) from the in-progress session only. */
+  removeExerciseFromSession: (exerciseId: string) => Promise<void>;
   addSet: (exerciseId: string, reps: number, weight: number) => Promise<void>;
   removeSet: (exerciseId: string, index: number) => Promise<void>;
   /** Returns the saved session, or null when nothing was logged. */
@@ -239,6 +253,21 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
         }));
       },
 
+      async syncTrainingExercises(trainingId, addedIds, removedIds) {
+        const training = (await db.getTrainings()).find((t) => t.id === trainingId);
+        if (!training) return;
+
+        const removed = new Set(removedIds);
+        const kept = training.exerciseIds.filter((id) => !removed.has(id));
+        const additions = addedIds.filter((id) => !kept.includes(id));
+        const updated = { ...training, exerciseIds: [...kept, ...additions] };
+        await db.putTraining(updated);
+        setState((s) => ({
+          ...s,
+          trainings: s.trainings.map((t) => (t.id === trainingId ? updated : t)),
+        }));
+      },
+
       async addTraining(label) {
         const trimmed = label.trim();
         if (!trimmed) throw new Error('Name is required.');
@@ -296,6 +325,13 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
           if (active.entries.some((e) => e.exerciseId === exerciseId)) return active;
           return { ...active, entries: [...active.entries, { exerciseId, sets: [] }] };
         });
+      },
+
+      async removeExerciseFromSession(exerciseId) {
+        await mutateActive((active) => ({
+          ...active,
+          entries: active.entries.filter((e) => e.exerciseId !== exerciseId),
+        }));
       },
 
       async addSet(exerciseId, reps, weight) {

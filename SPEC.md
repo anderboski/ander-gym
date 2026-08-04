@@ -320,6 +320,10 @@ exercise:
   announce three distinct records rather than the same one three times.
 - Exercises may be logged in any order; rows with no sets are kept in the saved record with an empty `sets`
   array.
+- A small trash icon on each row removes that exercise (and any sets already logged on it) from the
+  session, confirmed first — the message names the exercise and, if it has logged sets, the count that
+  would be discarded. This edits `activeSession.entries` only; the training's own `exerciseIds` are
+  untouched, so skipping a machine for one session doesn't drop it from the training's plan.
 
 Bottom of the page, above **Save session**:
 - **"+ Add exercise"** opens the same search + facet picker as Trainings (§5.3), excluding exercises
@@ -347,9 +351,10 @@ the exercise rows.
 Bottom of the page, above the nav:
 - **"Save session"** — large, full-width, green. Writes to `sessions` with `savedAt`, clears
   `activeSession`, navigates to History. Blocked with an explanatory message if zero sets were logged.
-  If any saved entries came from mid-session **"+ Add exercise"** rather than the training itself, a
-  confirmation sheet asks whether to add them to the training permanently before navigating to History;
-  declining still saves the session as-is and navigates on.
+  If the final set of exercises differs from the training's `exerciseIds` when the session started —
+  because of mid-session **"+ Add exercise"**, the row trash icon, or both — a confirmation sheet names
+  what changed and asks whether to update the training to match before navigating to History; declining
+  still saves the session as-is and navigates on.
 - **"Discard session"** — small, red, text-style. Confirmation dialog, then clears `activeSession`.
 
 ### 5.5 History

@@ -41,34 +41,52 @@ import {
 import { ExerciseBrowser } from '../components/ExerciseBrowser';
 import { ExerciseHistorySheet } from '../components/ExerciseCard';
 import { ConfirmSheet, Sheet, Toast } from '../components/Sheet';
-import { ChevronRightIcon, ClockIcon, PlusIcon } from '../components/icons';
+import { ChevronRightIcon, ClockIcon, PlusIcon, TrashIcon } from '../components/icons';
 import { navigate } from '../router';
 import './SessionPage.css';
 
-/** Training ids of exercises added mid-session, offered back to the training after save. */
-type PendingTrainingAdd = { trainingId: string; trainingLabel: string; exerciseIds: string[] };
+/**
+ * How the final, saved set of exercises differs from what the training had
+ * when the session started — exercises added via "+ Add exercise" and/or
+ * exercises removed mid-session. Offered back to the training after save.
+ */
+type PendingTrainingSync = {
+  trainingId: string;
+  trainingLabel: string;
+  addedIds: string[];
+  removedIds: string[];
+};
 
 export function SessionPage() {
-  const { status, active, trainings, getExercise, addExerciseToTraining } = useGym();
-  const [pendingTrainingAdd, setPendingTrainingAdd] = useState<PendingTrainingAdd | null>(null);
+  const { status, active, trainings, getExercise, syncTrainingExercises } = useGym();
+  const [pendingSync, setPendingSync] = useState<PendingTrainingSync | null>(null);
 
   if (status === 'loading') return <div className="page"><div className="spinner" /></div>;
 
   // Lifted above the active/no-active switch: `active` clears the instant the
   // session saves, which would unmount this confirmation if it lived in ActiveView.
   const onSaved = (session: Session, originalExerciseIds: string[]) => {
-    const addedIds = [...new Set(session.entries.map((e) => e.exerciseId))].filter(
-      (id) => !originalExerciseIds.includes(id),
-    );
-    if (addedIds.length === 0) {
+    const finalIds = [...new Set(session.entries.map((e) => e.exerciseId))];
+    const addedIds = finalIds.filter((id) => !originalExerciseIds.includes(id));
+    const removedIds = originalExerciseIds.filter((id) => !finalIds.includes(id));
+    if (addedIds.length === 0 && removedIds.length === 0) {
       navigate('/history');
       return;
     }
-    setPendingTrainingAdd({
+    setPendingSync({
       trainingId: session.trainingId,
       trainingLabel: session.trainingLabel,
-      exerciseIds: addedIds,
+      addedIds,
+      removedIds,
     });
+  };
+
+  const syncMessage = (sync: PendingTrainingSync): string => {
+    const nameOf = (id: string) => getExercise(id)?.name ?? id;
+    const parts: string[] = [];
+    if (sync.addedIds.length > 0) parts.push(`add ${sync.addedIds.map(nameOf).join(', ')}`);
+    if (sync.removedIds.length > 0) parts.push(`remove ${sync.removedIds.map(nameOf).join(', ')}`);
+    return `This session didn't match ${sync.trainingLabel} — ${parts.join(' and ')}. Update the training to match for next time?`;
   };
 
   return (
@@ -79,23 +97,19 @@ export function SessionPage() {
         <NewSessionView trainings={trainings} />
       )}
 
-      {pendingTrainingAdd && (
+      {pendingSync && (
         <ConfirmSheet
-          title="Add to training?"
-          message={`${pendingTrainingAdd.exerciseIds
-            .map((id) => getExercise(id)?.name ?? id)
-            .join(', ')} — added mid-session. Add ${
-            pendingTrainingAdd.exerciseIds.length === 1 ? 'it' : 'them'
-          } to ${pendingTrainingAdd.trainingLabel} for next time?`}
-          confirmLabel="Add"
+          title="Update training?"
+          message={syncMessage(pendingSync)}
+          confirmLabel="Update"
           onCancel={() => {
-            setPendingTrainingAdd(null);
+            setPendingSync(null);
             navigate('/history');
           }}
           onConfirm={() => {
-            const { trainingId, exerciseIds } = pendingTrainingAdd;
-            setPendingTrainingAdd(null);
-            Promise.all(exerciseIds.map((id) => addExerciseToTraining(trainingId, id)))
+            const { trainingId, addedIds, removedIds } = pendingSync;
+            setPendingSync(null);
+            syncTrainingExercises(trainingId, addedIds, removedIds)
               .catch(() => {})
               .finally(() => navigate('/history'));
           }}
@@ -321,6 +335,7 @@ function RestBar({
 }
 
 type PendingDelete = { exerciseId: string; index: number; name: string; label: string };
+type PendingRemoveExercise = { exerciseId: string; name: string; setCount: number };
 
 /** The set that just took a record, announced once and then forgotten. */
 type NewRecord = { reps: number; weight: number };
@@ -337,6 +352,7 @@ function ActiveView({
     getExercise,
     getTraining,
     addExerciseToSession,
+    removeExerciseFromSession,
     addSet,
     removeSet,
     saveSession,
@@ -348,6 +364,9 @@ function ActiveView({
   const [addingTo, setAddingTo] = useState<string | null>(null);
   const [pickingExercise, setPickingExercise] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
+  const [pendingRemoveExercise, setPendingRemoveExercise] = useState<PendingRemoveExercise | null>(
+    null,
+  );
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [newRecord, setNewRecord] = useState<NewRecord | null>(null);
@@ -437,6 +456,13 @@ function ActiveView({
                   onPickSet={(index, name, label) =>
                     setPendingDelete({ exerciseId: entry.exerciseId, index, name, label })
                   }
+                  onRemove={(name) =>
+                    setPendingRemoveExercise({
+                      exerciseId: entry.exerciseId,
+                      name,
+                      setCount: entry.sets.length,
+                    })
+                  }
                 />
               ))}
             </div>
@@ -525,6 +551,27 @@ function ActiveView({
         />
       )}
 
+      {pendingRemoveExercise && (
+        <ConfirmSheet
+          title="Remove exercise?"
+          message={
+            pendingRemoveExercise.setCount === 0
+              ? `${pendingRemoveExercise.name} will be removed from this session.`
+              : `${pendingRemoveExercise.name} and its ${pendingRemoveExercise.setCount} logged ${
+                  pendingRemoveExercise.setCount === 1 ? 'set' : 'sets'
+                } will be removed from this session. This cannot be undone.`
+          }
+          confirmLabel="Remove"
+          danger
+          onCancel={() => setPendingRemoveExercise(null)}
+          onConfirm={() => {
+            const target = pendingRemoveExercise;
+            setPendingRemoveExercise(null);
+            void removeExerciseFromSession(target.exerciseId);
+          }}
+        />
+      )}
+
       {confirmDiscard && (
         <ConfirmSheet
           title="Discard session?"
@@ -599,12 +646,15 @@ function SessionRow({
   exercise,
   onAdd,
   onPickSet,
+  onRemove,
 }: {
   entry: SessionEntry;
   exercise: Exercise | undefined;
   onAdd: () => void;
   /** index, exercise name and the formatted set, for the delete confirmation. */
   onPickSet: (index: number, name: string, label: string) => void;
+  /** Exercise name, for the removal confirmation. */
+  onRemove: (name: string) => void;
 }) {
   // An id with no catalogue entry can survive an import; show it rather than crash.
   const name = exercise?.name ?? entry.exerciseId;
@@ -647,6 +697,14 @@ function SessionRow({
           })
         )}
       </div>
+
+      <button
+        className="icon-btn icon-btn-danger sess-remove"
+        onClick={() => onRemove(name)}
+        aria-label={`Remove ${name} from this session`}
+      >
+        <TrashIcon />
+      </button>
 
       <button className="icon-btn sess-add" onClick={onAdd} aria-label={`Add set to ${name}`}>
         <PlusIcon />
