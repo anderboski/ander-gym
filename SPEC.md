@@ -304,6 +304,9 @@ exercise:
 - **"+"** opens a bottom sheet asking reps and weight. Numeric keypads (`inputmode="numeric"` /
   `"decimal"`), prefilled from that exercise's previous set in this session, or from its last recorded set
   historically. **Save** appends the set; a small **"×"** top-right dismisses without saving.
+- **Tapping the row's image** opens the same full-history sheet as Trainings/Exercises (§5.2's
+  `ExerciseHistorySheet`, shared) — progress chart plus every past saved session's set matrix. Unresolved
+  exercise ids (no catalogue entry) render the plain fallback tile with no tap target, same as elsewhere.
 - Tapping an existing set line offers Delete (confirm).
 - Saving a set that satisfies `beatsPersonalRecord()` raises a self-dismissing **"🏆 New PR"** toast. The
   baseline is saved sessions **plus the sets already logged in this session**, so three ascending sets
