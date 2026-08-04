@@ -11,11 +11,10 @@
 
 /* --- search --------------------------------------------------------------- */
 
-/* Sticky against whichever container scrolls (.page or .sheet-body). */
+/* Deliberately in normal flow, not sticky: on-device this used to stick at the
+   wrong offset once scrolled, leaving a facet chip row rendered on top of it.
+   Letting it scroll away with the rest of the page removes the whole class of bug. */
 .browser-search {
-  position: sticky;
-  top: 0;
-  z-index: 3;
   padding: var(--s2) var(--s4) var(--s3);
   background: var(--bg);
 }

@@ -1,5 +1,5 @@
 /**
- * Exercises (SPEC §5.2): sticky search, three facet chip rows, match count and
+ * Exercises (SPEC §5.2): search, three facet chip rows, match count and
  * a snap-scrolling card carousel, plus the custom-exercise form.
  *
  * Search/facet/window logic lives in <ExerciseBrowser> because the Trainings
