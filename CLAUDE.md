@@ -193,18 +193,26 @@ State plainly in the PR that on-device verification hasn't been done — don't i
    ```
    Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
    ```
-5. **Push and open a PR against `main`:**
+5. **Push and open a PR against `main`. Every task ends here — push the branch and raise the PR
+   without waiting to be asked, so it's sitting ready for Ander to review the moment the task is
+   done:**
 
    ```bash
    git push -u origin <branch>
-   gh pr create --base main --title "<imperative summary>" --body "..."
+   gh pr create --base main --title "<branch-name> - <short description>" --body "..."
    ```
 
-   Follow the shape of [PR #1](https://github.com/anderboski/ander-gym/pull/1): what ships (a table
-   when there are several surfaces), how it fits together, **decisions worth reviewing** — including
-   anything you'd flag as debatable or as a deviation from the spec — a **verification** section
-   listing exactly what was run and what was *not* verified, and anything needed before merge.
-   End the body with:
+   The title always starts with the branch name, then ` - `, then a short imperative description:
+   `feature/rest-timer - Add an inline rest countdown to the session view`.
+
+   The body follows [`.github/pull_request_template.md`](.github/pull_request_template.md) —
+   modelled on [PR #1](https://github.com/anderboski/ander-gym/pull/1) and
+   [PR #13](https://github.com/anderboski/ander-gym/pull/13): what ships (a table when there are
+   several surfaces), how it fits together, **decisions worth reviewing** — including anything you'd
+   flag as debatable or as a deviation from the spec — a **verification** section listing exactly
+   what was run and what was *not* verified, and anything needed before merge. `gh pr create` picks
+   the template up automatically; fill in every section rather than leaving its placeholders. End the
+   body with:
 
    ```
    🤖 Generated with [Claude Code](https://claude.com/claude-code)
