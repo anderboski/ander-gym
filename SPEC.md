@@ -240,15 +240,20 @@ Vertical order, exactly as briefed:
    iOS zoom-on-focus. In normal document flow — not sticky — so it scrolls away with the rest of the page;
    an earlier sticky version could stick at the wrong offset and leave a facet chip row rendered on top of
    it.
-2. **Facet chips**, three rows in this order: Category → Equipment → Target muscle. Each row scrolls
+2. **"PR only" toggle**, its own row above the facet chips: a single chip that filters the list down to
+   exercises with at least one personal record (`exerciseRecords.has(id)` — same weighted-set-only
+   definition as the personal-record badge below, so a bodyweight-only exercise never matches). Combines
+   with the search query and every facet (AND). Counts toward, and is reset by, "Clear all" alongside the
+   facet chips.
+3. **Facet chips**, three rows in this order: Category → Equipment → Target muscle. Each row scrolls
    horizontally, chips toggle, selected chips are filled. A "Clear all" appears when any is active.
-3. **Match count** — "142 exercises".
-4. **Card carousel** — horizontally scrollable, scroll-snapped cards of the matching exercises.
+4. **Match count** — "142 exercises".
+5. **Card carousel** — horizontally scrollable, scroll-snapped cards of the matching exercises.
    **Default order** (no search query): exercises logged at least once — in any past session, bodyweight
    included — sort before ones that have not, alphabetical within each group. A search query switches to
    relevance order, unchanged. This is broader than the personal-record badge below, which only counts
    weighted sets.
-5. **"+ Add exercise"** — opens the custom-exercise form (name, category, equipment, target, optional photo).
+6. **"+ Add exercise"** — opens the custom-exercise form (name, category, equipment, target, optional photo).
    Saved to `customExercises` and immediately searchable, tagged with a "Custom" pill.
 
 > **Review point for the user:** a single horizontal strip is being built as specified, but with an
