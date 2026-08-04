@@ -235,8 +235,10 @@ an empty state prompting the user to add a training day from the Trainings tab.
 
 ### 5.2 Exercises
 Vertical order, exactly as briefed:
-1. **Search box**, sticky at the top, fuzzy, with a clear button. `type="search"`, `font-size: 16px` to stop
-   iOS zoom-on-focus.
+1. **Search box**, top of the page, fuzzy, with a clear button. `type="search"`, `font-size: 16px` to stop
+   iOS zoom-on-focus. In normal document flow — not sticky — so it scrolls away with the rest of the page;
+   an earlier sticky version could stick at the wrong offset and leave a facet chip row rendered on top of
+   it.
 2. **Facet chips**, three rows in this order: Category → Equipment → Target muscle. Each row scrolls
    horizontally, chips toggle, selected chips are filled. A "Clear all" appears when any is active.
 3. **Match count** — "142 exercises".
