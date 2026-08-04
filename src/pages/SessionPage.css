@@ -230,6 +230,28 @@
   border-top: 1px solid var(--border);
 }
 
+/* Tapping the thumbnail opens the same history sheet as Trainings/Exercises.
+   Darken-on-tap mirrors .ex-card-media, so the affordance reads the same. */
+.sess-thumb-btn {
+  align-self: center;
+  position: relative;
+  display: block;
+  border-radius: var(--r-sm);
+  overflow: hidden;
+}
+
+.sess-thumb-btn::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0);
+  transition: background 0.12s;
+}
+
+.sess-thumb-btn:active::after {
+  background: rgba(0, 0, 0, 0.14);
+}
+
 .sess-thumb {
   align-self: center;
   width: 48px;

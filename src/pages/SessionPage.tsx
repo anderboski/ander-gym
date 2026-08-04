@@ -38,6 +38,7 @@ import {
   type Session,
   type Training,
 } from '../data/types';
+import { ExerciseHistorySheet } from '../components/ExerciseCard';
 import { ConfirmSheet, Sheet, Toast } from '../components/Sheet';
 import { ChevronRightIcon, ClockIcon, PlusIcon } from '../components/icons';
 import { navigate } from '../router';
@@ -494,10 +495,21 @@ function SessionRow({
 }) {
   // An id with no catalogue entry can survive an import; show it rather than crash.
   const name = exercise?.name ?? entry.exerciseId;
+  const [showHistory, setShowHistory] = useState(false);
 
   return (
     <div className="sess-row">
-      <RowThumb exercise={exercise} name={name} />
+      {exercise ? (
+        <button
+          className="sess-thumb-btn"
+          onClick={() => setShowHistory(true)}
+          aria-label={`History for ${name}`}
+        >
+          <RowThumb exercise={exercise} name={name} />
+        </button>
+      ) : (
+        <RowThumb exercise={exercise} name={name} />
+      )}
 
       <div className="sess-name">{name}</div>
 
@@ -526,6 +538,10 @@ function SessionRow({
       <button className="icon-btn sess-add" onClick={onAdd} aria-label={`Add set to ${name}`}>
         <PlusIcon />
       </button>
+
+      {showHistory && exercise && (
+        <ExerciseHistorySheet exercise={exercise} onClose={() => setShowHistory(false)} />
+      )}
     </div>
   );
 }
