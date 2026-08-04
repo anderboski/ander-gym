@@ -9,11 +9,13 @@ import { useGym } from '../data/store';
 import { BackupError, type ImportMode } from '../data/backup';
 import { formatDate } from '../data/derive';
 import { ConfirmSheet, Sheet } from './Sheet';
-import { CheckIcon, DownloadIcon, UploadIcon } from './icons';
+import { CheckIcon, DownloadIcon, GitHubIcon, UploadIcon } from './icons';
 import '../pages/HomePage.css';
 
 const GOAL_MIN = 1;
 const GOAL_MAX = 14;
+
+const GITHUB_URL = 'https://github.com/anderboski/ander-gym';
 
 type StorageInfo = {
   usage: number | null;
@@ -261,7 +263,18 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
         )}
       </section>
 
-      <p className="settings-version">ander-gym v1</p>
+      <div className="settings-footer">
+        <p className="settings-version">ander-gym v1</p>
+        <a
+          className="icon-btn"
+          href={GITHUB_URL}
+          target="_blank"
+          rel="noopener noreferrer"
+          aria-label="View source on GitHub"
+        >
+          <GitHubIcon />
+        </a>
+      </div>
 
       {confirmReplace && (
         <ConfirmSheet
