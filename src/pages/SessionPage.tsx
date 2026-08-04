@@ -28,7 +28,7 @@ import {
   startRest,
   type RestTimer,
 } from '../data/derive';
-import { formatSet, formatWeight } from '../data/parse';
+import { formatSet, formatWeight, titleCase } from '../data/parse';
 import {
   DEFAULT_REST_SECONDS,
   REST_PRESETS,
@@ -38,18 +38,71 @@ import {
   type Session,
   type Training,
 } from '../data/types';
+import { ExerciseBrowser } from '../components/ExerciseBrowser';
 import { ExerciseHistorySheet } from '../components/ExerciseCard';
 import { ConfirmSheet, Sheet, Toast } from '../components/Sheet';
 import { ChevronRightIcon, ClockIcon, PlusIcon } from '../components/icons';
 import { navigate } from '../router';
 import './SessionPage.css';
 
+/** Training ids of exercises added mid-session, offered back to the training after save. */
+type PendingTrainingAdd = { trainingId: string; trainingLabel: string; exerciseIds: string[] };
+
 export function SessionPage() {
-  const { status, active, trainings } = useGym();
+  const { status, active, trainings, getExercise, addExerciseToTraining } = useGym();
+  const [pendingTrainingAdd, setPendingTrainingAdd] = useState<PendingTrainingAdd | null>(null);
 
   if (status === 'loading') return <div className="page"><div className="spinner" /></div>;
 
-  return active ? <ActiveView active={active} /> : <NewSessionView trainings={trainings} />;
+  // Lifted above the active/no-active switch: `active` clears the instant the
+  // session saves, which would unmount this confirmation if it lived in ActiveView.
+  const onSaved = (session: Session, originalExerciseIds: string[]) => {
+    const addedIds = [...new Set(session.entries.map((e) => e.exerciseId))].filter(
+      (id) => !originalExerciseIds.includes(id),
+    );
+    if (addedIds.length === 0) {
+      navigate('/history');
+      return;
+    }
+    setPendingTrainingAdd({
+      trainingId: session.trainingId,
+      trainingLabel: session.trainingLabel,
+      exerciseIds: addedIds,
+    });
+  };
+
+  return (
+    <>
+      {active ? (
+        <ActiveView active={active} onSaved={onSaved} />
+      ) : (
+        <NewSessionView trainings={trainings} />
+      )}
+
+      {pendingTrainingAdd && (
+        <ConfirmSheet
+          title="Add to training?"
+          message={`${pendingTrainingAdd.exerciseIds
+            .map((id) => getExercise(id)?.name ?? id)
+            .join(', ')} — added mid-session. Add ${
+            pendingTrainingAdd.exerciseIds.length === 1 ? 'it' : 'them'
+          } to ${pendingTrainingAdd.trainingLabel} for next time?`}
+          confirmLabel="Add"
+          onCancel={() => {
+            setPendingTrainingAdd(null);
+            navigate('/history');
+          }}
+          onConfirm={() => {
+            const { trainingId, exerciseIds } = pendingTrainingAdd;
+            setPendingTrainingAdd(null);
+            Promise.all(exerciseIds.map((id) => addExerciseToTraining(trainingId, id)))
+              .catch(() => {})
+              .finally(() => navigate('/history'));
+          }}
+        />
+      )}
+    </>
+  );
 }
 
 /* -------------------------------------------------------------------------- */
@@ -272,11 +325,18 @@ type PendingDelete = { exerciseId: string; index: number; name: string; label: s
 /** The set that just took a record, announced once and then forgotten. */
 type NewRecord = { reps: number; weight: number };
 
-function ActiveView({ active }: { active: ActiveSession }) {
+function ActiveView({
+  active,
+  onSaved,
+}: {
+  active: ActiveSession;
+  onSaved: (session: Session, originalExerciseIds: string[]) => void;
+}) {
   const {
     sessions,
     getExercise,
     getTraining,
+    addExerciseToSession,
     addSet,
     removeSet,
     saveSession,
@@ -286,6 +346,7 @@ function ActiveView({ active }: { active: ActiveSession }) {
   const now = useNow(30_000);
 
   const [addingTo, setAddingTo] = useState<string | null>(null);
+  const [pickingExercise, setPickingExercise] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
@@ -294,7 +355,8 @@ function ActiveView({ active }: { active: ActiveSession }) {
 
   // The training can be renamed or re-timed mid-session; read the default at
   // render time rather than snapshotting it into the active session.
-  const restSeconds = getTraining(active.trainingId)?.restSeconds ?? DEFAULT_REST_SECONDS;
+  const training = getTraining(active.trainingId);
+  const restSeconds = training?.restSeconds ?? DEFAULT_REST_SECONDS;
 
   const dismissRest = useCallback(() => setRest(null), []);
   const adjustRestBy = useCallback(
@@ -313,9 +375,10 @@ function ActiveView({ active }: { active: ActiveSession }) {
   }, [newRecord]);
 
   const onSave = () => {
+    const originalExerciseIds = training?.exerciseIds ?? [];
     saveSession()
       .then((saved) => {
-        if (saved) navigate('/history');
+        if (saved) onSaved(saved, originalExerciseIds);
         else setNotice('Log at least one set before saving — or discard the session below.');
       })
       .catch(() => setNotice('Could not save the session. Try again.'));
@@ -386,6 +449,13 @@ function ActiveView({ active }: { active: ActiveSession }) {
               {notice}
             </p>
           )}
+          <button
+            className="btn sess-add-exercise btn-block"
+            onClick={() => setPickingExercise(true)}
+          >
+            <PlusIcon />
+            Add exercise
+          </button>
           <button className="btn btn-primary btn-lg btn-block" onClick={onSave}>
             Save session
           </button>
@@ -417,6 +487,25 @@ function ActiveView({ active }: { active: ActiveSession }) {
             void addSet(id, reps, weight);
           }}
         />
+      )}
+
+      {pickingExercise && (
+        <Sheet title="Add exercise" onClose={() => setPickingExercise(false)} full>
+          <ExerciseBrowser
+            layout="list"
+            excludeIds={active.entries.map((e) => e.exerciseId)}
+            renderItem={(exercise) => (
+              <SessPickRow
+                key={exercise.id}
+                exercise={exercise}
+                onAdd={() => {
+                  void addExerciseToSession(exercise.id);
+                  setPickingExercise(false);
+                }}
+              />
+            )}
+          />
+        </Sheet>
       )}
 
       {newRecord && <Toast message={`🏆 New PR — ${formatSet(newRecord.reps, newRecord.weight)}`} />}
@@ -478,6 +567,30 @@ function RowThumb({ exercise, name }: { exercise: Exercise | undefined; name: st
       decoding="async"
       onError={() => setBroken(true)}
     />
+  );
+}
+
+/** One row in the mid-session "add exercise" picker — appends to the session, not the training. */
+function SessPickRow({ exercise, onAdd }: { exercise: Exercise; onAdd: () => void }) {
+  return (
+    <button className="sess-pick" onClick={onAdd} aria-label={`Add ${exercise.name}`}>
+      <span className="sess-pick-thumb">
+        {exercise.imageUrl ? (
+          <img src={exercise.imageUrl} alt="" loading="lazy" decoding="async" />
+        ) : (
+          exercise.name.charAt(0).toUpperCase()
+        )}
+      </span>
+      <span className="sess-pick-main">
+        <span className="sess-pick-name">{exercise.name}</span>
+        <span className="sess-pick-meta">
+          {titleCase(exercise.equipment)} · {titleCase(exercise.target)}
+        </span>
+      </span>
+      <span className="sess-pick-add" aria-hidden="true">
+        <PlusIcon />
+      </span>
+    </button>
   );
 }
 

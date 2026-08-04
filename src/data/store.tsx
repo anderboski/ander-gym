@@ -74,6 +74,8 @@ type Mutations = {
 
   /** Replaces any session already in progress — confirm with the user first. */
   startSession: (trainingId: string) => Promise<void>;
+  /** Appends a row to the in-progress session only — the training is untouched. */
+  addExerciseToSession: (exerciseId: string) => Promise<void>;
   addSet: (exerciseId: string, reps: number, weight: number) => Promise<void>;
   removeSet: (exerciseId: string, index: number) => Promise<void>;
   /** Returns the saved session, or null when nothing was logged. */
@@ -287,6 +289,13 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
         };
         await db.putActiveSession(active);
         setState((s) => ({ ...s, active }));
+      },
+
+      async addExerciseToSession(exerciseId) {
+        await mutateActive((active) => {
+          if (active.entries.some((e) => e.exerciseId === exerciseId)) return active;
+          return { ...active, entries: [...active.entries, { exerciseId, sets: [] }] };
+        });
       },
 
       async addSet(exerciseId, reps, weight) {
