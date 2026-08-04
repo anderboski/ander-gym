@@ -107,6 +107,21 @@ export async function setTrainingRest(id: string, restSeconds: number): Promise<
 }
 
 /**
+ * Sets this training day's icon. `null` clears it back to the first-letter
+ * fallback; callers reduce the value to a single grapheme first, so nothing
+ * else about the training is touched, an old record simply gains the field.
+ */
+export async function setTrainingEmoji(id: string, emoji: string | null): Promise<Training | null> {
+  const training = (await getTrainings()).find((t) => t.id === id);
+  if (!training) return null;
+  const updated: Training = { ...training };
+  if (emoji) updated.emoji = emoji;
+  else delete updated.emoji;
+  await putTraining(updated);
+  return updated;
+}
+
+/**
  * Applies a new rotation order from a full list of training ids (as dragged
  * into place). Any id missing from `orderedIds` — should not normally happen
  * — is kept, appended after the given ones in its previous relative order.

@@ -77,6 +77,27 @@ describe('setTrainingRest', () => {
   });
 });
 
+describe('setTrainingEmoji', () => {
+  it('adds the icon to a training that never had one', async () => {
+    const training = await db.createTraining('Push day');
+    const updated = await db.setTrainingEmoji(training.id, '💪');
+    expect(updated).toMatchObject({ id: training.id, emoji: '💪' });
+    expect((await db.getTrainings())[0]?.emoji).toBe('💪');
+  });
+
+  it('clears the icon back to undefined when passed null', async () => {
+    const training = await db.createTraining('Push day');
+    await db.setTrainingEmoji(training.id, '💪');
+    const cleared = await db.setTrainingEmoji(training.id, null);
+    expect(cleared?.emoji).toBeUndefined();
+    expect((await db.getTrainings())[0]?.emoji).toBeUndefined();
+  });
+
+  it('returns null for an unknown id', async () => {
+    expect(await db.setTrainingEmoji('nope', '💪')).toBeNull();
+  });
+});
+
 describe('reorderTrainings', () => {
   it('applies a new order from a list of ids', async () => {
     const a = await db.createTraining('A');
@@ -213,6 +234,40 @@ describe('backup round trip', () => {
 
     const trainings = await db.getTrainings();
     expect(trainings.map((t) => t.restSeconds)).toEqual([undefined, undefined, 600]);
+  });
+
+  it("round-trips a training day's icon", async () => {
+    await db.putTraining({ id: 'leg-abs', label: 'Leg-abs', order: 0, exerciseIds: ['0001'], emoji: '💪' });
+    await db.putTraining({ id: 'push', label: 'Push', order: 1, exerciseIds: [] });
+
+    const restored = parseBackup(JSON.stringify(await buildBackup()));
+    await db.clearAll();
+    await applyBackup(restored, 'replace');
+
+    const trainings = await db.getTrainings();
+    expect(trainings.find((t) => t.id === 'leg-abs')?.emoji).toBe('💪');
+    // A training that never set one stays without the field, i.e. on the initial-letter fallback.
+    expect(trainings.find((t) => t.id === 'push')?.emoji).toBeUndefined();
+  });
+
+  it('drops an icon that is more than a single grapheme cluster', async () => {
+    const backup = parseBackup(
+      JSON.stringify({
+        schemaVersion: 1,
+        exportedAt: '2026-08-01T00:00:00.000Z',
+        trainings: [
+          { id: 'a', label: 'A', order: 0, exerciseIds: [], emoji: '💪' },
+          { id: 'b', label: 'B', order: 1, exerciseIds: [], emoji: 'push day' },
+        ],
+        sessions: [],
+        customExercises: [],
+        settings: { weeklyGoal: 3, lastExportAt: null },
+      }),
+    );
+    await applyBackup(backup, 'replace');
+
+    const trainings = await db.getTrainings();
+    expect(trainings.map((t) => t.emoji)).toEqual(['💪', undefined]);
   });
 
   it('merge keeps existing records and lets the incoming file win on conflict', async () => {

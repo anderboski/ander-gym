@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { formatCompact, formatSet, formatWeight, parseRestSeconds } from './parse';
+import { firstGrapheme, formatCompact, formatSet, formatWeight, parseRestSeconds } from './parse';
 import { REST_MAX_SECONDS, REST_MIN_SECONDS } from './types';
 
 describe('formatting', () => {
@@ -52,5 +52,27 @@ describe('parseRestSeconds', () => {
     expect(parseRestSeconds('90')).toBeNull();
     expect(parseRestSeconds(undefined)).toBeNull();
     expect(parseRestSeconds(null)).toBeNull();
+  });
+});
+
+describe('firstGrapheme', () => {
+  it('keeps a plain letter or symbol as-is', () => {
+    expect(firstGrapheme('A')).toBe('A');
+    expect(firstGrapheme('*')).toBe('*');
+  });
+
+  it('keeps only the first character of a longer string', () => {
+    expect(firstGrapheme('push day')).toBe('p');
+  });
+
+  it('keeps a multi-codepoint emoji intact, not split mid-sequence', () => {
+    // Family: man, woman, girl, boy — several codepoints joined by ZWJ.
+    expect(firstGrapheme('👨‍👩‍👧‍👦')).toBe('👨‍👩‍👧‍👦');
+    // Skin-tone modifier.
+    expect(firstGrapheme('💪🏽')).toBe('💪🏽');
+  });
+
+  it('returns an empty string for empty input', () => {
+    expect(firstGrapheme('')).toBe('');
   });
 });

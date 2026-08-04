@@ -12,7 +12,7 @@ import {
   putTraining,
   readAll,
 } from './db';
-import { parseRestSeconds } from './parse';
+import { firstGrapheme, parseRestSeconds } from './parse';
 import type { CustomExercise, Session, Settings, Training } from './types';
 
 /** A custom exercise with its photo inlined, so a backup is a single file. */
@@ -118,6 +118,19 @@ function withValidRest(training: Training): Training {
   return clean;
 }
 
+/**
+ * `emoji` is rendered directly as a UI glyph, so a hand-edited or corrupted
+ * file must not be able to put arbitrary text there. Anything that isn't
+ * already exactly one grapheme cluster is dropped rather than truncated — the
+ * training then falls back to its first-letter badge, same as a training that
+ * never had an icon.
+ */
+function withValidEmoji(training: Training): Training {
+  const clean: Training = { ...training };
+  if (training.emoji && firstGrapheme(training.emoji) !== training.emoji) delete clean.emoji;
+  return clean;
+}
+
 export function parseBackup(text: string): BackupFile {
   let data: unknown;
   try {
@@ -146,7 +159,7 @@ export function parseBackup(text: string): BackupFile {
   return {
     schemaVersion: b.schemaVersion,
     exportedAt: typeof b.exportedAt === 'string' ? b.exportedAt : new Date().toISOString(),
-    trainings: b.trainings.map(withValidRest),
+    trainings: b.trainings.map(withValidRest).map(withValidEmoji),
     sessions: b.sessions,
     customExercises: Array.isArray(b.customExercises) ? b.customExercises : [],
     settings: {
