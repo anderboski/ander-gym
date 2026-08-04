@@ -39,7 +39,7 @@ import {
 import { SettingsSheet } from '../components/SettingsSheet';
 import { Toast } from '../components/Sheet';
 import { getTheme, otherTheme, setTheme, type Theme } from '../data/theme';
-import type { Session } from '../data/types';
+import type { Session, Training } from '../data/types';
 import './HomePage.css';
 
 /** A backup older than this is stale enough to nag about. */
@@ -264,7 +264,7 @@ export function HomePage() {
           {sessions.length > 0 && (
             <section className="section">
               <div className="section-title">Calendar</div>
-              <HomeCalendar sessions={sessions} now={now} />
+              <HomeCalendar sessions={sessions} trainings={trainings} now={now} />
             </section>
           )}
 
@@ -342,9 +342,18 @@ function GoalRing({ count, goal }: { count: number; goal: number }) {
  * multi-session day, per `sessionsByDay`). Tapping a trained day opens that
  * session in History; the month in view is local state, independent of `now`.
  */
-function HomeCalendar({ sessions, now }: { sessions: Session[]; now: Date }) {
+function HomeCalendar({
+  sessions,
+  trainings,
+  now,
+}: {
+  sessions: Session[];
+  trainings: Training[];
+  now: Date;
+}) {
   const [month, setMonth] = useState<Date>(() => startOfMonth(now));
   const byDay = useMemo(() => sessionsByDay(sessions), [sessions]);
+  const trainingsById = useMemo(() => new Map(trainings.map((t) => [t.id, t])), [trainings]);
   const grid = useMemo(() => monthGrid(month), [month]);
 
   const monthLabel = month.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
@@ -407,7 +416,8 @@ function HomeCalendar({ sessions, now }: { sessions: Session[]; now: Date }) {
             >
               <span className="home-cal-daynum">{date.getDate()}</span>
               <span className="home-cal-dot" aria-hidden="true">
-                {session.trainingLabel.charAt(0).toUpperCase()}
+                {trainingsById.get(session.trainingId)?.emoji ??
+                  session.trainingLabel.charAt(0).toUpperCase()}
               </span>
             </button>
           );

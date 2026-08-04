@@ -42,3 +42,19 @@ export function formatCompact(value: number): string {
 export function titleCase(value: string): string {
   return value.charAt(0).toUpperCase() + value.slice(1);
 }
+
+/**
+ * First grapheme cluster of a string — one visual unit even for multi-codepoint
+ * emoji (skin-tone modifiers, ZWJ family sequences), so a training icon never
+ * gets truncated mid-sequence.
+ */
+export function firstGrapheme(input: string): string {
+  if (typeof Intl !== 'undefined' && 'Segmenter' in Intl) {
+    const it = new Intl.Segmenter(undefined, { granularity: 'grapheme' }).segment(input)[
+      Symbol.iterator
+    ]();
+    const first = it.next();
+    return first.done ? '' : first.value.segment;
+  }
+  return Array.from(input)[0] ?? '';
+}

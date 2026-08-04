@@ -61,6 +61,13 @@ export type Training = {
    * backup written — before the timer existed stays valid with no migration.
    */
   restSeconds?: number;
+  /**
+   * A single letter, symbol, or emoji shown on the Trainings row and the Home
+   * calendar dot. Optional so every training created — and every backup
+   * written — before this existed stays valid with no migration; absent means
+   * fall back to the label's first letter, the pre-existing badge.
+   */
+  emoji?: string;
 };
 
 export const TRAINING_ID_PREFIX = 't-';

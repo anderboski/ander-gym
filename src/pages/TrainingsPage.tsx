@@ -206,9 +206,93 @@ function TrainingNameSheet({
 }
 
 /* -------------------------------------------------------------------------- */
+/* Icon sheet                                                                  */
+/* -------------------------------------------------------------------------- */
+
+const EMOJI_FORM_ID = 'training-emoji-form';
+
+function TrainingEmojiSheet({
+  initialEmoji = '',
+  onClose,
+  onSubmit,
+}: {
+  initialEmoji?: string;
+  onClose: () => void;
+  onSubmit: (emoji: string) => Promise<unknown>;
+}) {
+  const [emoji, setEmoji] = useState(initialEmoji);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    setSaving(true);
+    setError(null);
+    try {
+      await onSubmit(emoji);
+      onClose();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Could not save.');
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Sheet
+      title="Choose an icon"
+      onClose={onClose}
+      footer={
+        <button
+          type="submit"
+          form={EMOJI_FORM_ID}
+          className="btn btn-primary btn-block"
+          disabled={saving}
+        >
+          {saving ? 'Saving…' : 'Save'}
+        </button>
+      }
+    >
+      <form id={EMOJI_FORM_ID} className="tr-name-form" onSubmit={handleSubmit}>
+        {error && (
+          <div className="tr-name-error" role="alert">
+            {error}
+          </div>
+        )}
+        <div className="tr-name-field">
+          <label className="label" htmlFor="training-emoji">
+            Icon
+          </label>
+          {/* No emoji placeholder: browsers don't dim color-emoji glyphs the way
+              they dim placeholder text, so one would look identical to a real value. */}
+          <input
+            id="training-emoji"
+            className="input tr-emoji-input"
+            type="text"
+            autoFocus
+            value={emoji}
+            onChange={(e) => setEmoji(e.target.value)}
+          />
+          <p className="tr-emoji-hint">
+            A single letter, symbol, or emoji. Leave blank to use the default.
+          </p>
+        </div>
+      </form>
+    </Sheet>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
 
 export function TrainingsPage() {
-  const { trainings, sessions, status, addTraining, renameTraining, reorderTrainings } = useGym();
+  const {
+    trainings,
+    sessions,
+    status,
+    addTraining,
+    renameTraining,
+    setTrainingEmoji,
+    reorderTrainings,
+  } = useGym();
   const now = new Date();
 
   const [order, setOrder] = useState<string[]>(() => trainings.map((t) => t.id));
@@ -223,6 +307,7 @@ export function TrainingsPage() {
 
   const [adding, setAdding] = useState(false);
   const [renaming, setRenaming] = useState<Training | null>(null);
+  const [pickingEmojiFor, setPickingEmojiFor] = useState<Training | null>(null);
 
   const byId = useMemo(() => new Map(trainings.map((t) => [t.id, t])), [trainings]);
   const ordered = order.map((id) => byId.get(id)).filter((t): t is Training => t !== undefined);
@@ -262,6 +347,15 @@ export function TrainingsPage() {
               <GripIcon />
             </button>
 
+            <button
+              type="button"
+              className="tr-card-emoji"
+              aria-label={`Change icon for ${training.label}`}
+              onClick={() => setPickingEmojiFor(training)}
+            >
+              {training.emoji ?? training.label.charAt(0).toUpperCase()}
+            </button>
+
             <button className="tr-card-main" onClick={() => navigate(`/trainings/${training.id}`)}>
               <CardBody training={training} sessions={sessions} now={now} />
               <ChevronRightIcon className="tr-card-chevron" />
@@ -299,6 +393,9 @@ export function TrainingsPage() {
             <span className="tr-card-grip" aria-hidden="true">
               <GripIcon />
             </span>
+            <span className="tr-card-emoji" aria-hidden="true">
+              {draggingTraining.emoji ?? draggingTraining.label.charAt(0).toUpperCase()}
+            </span>
             <span className="tr-card-main">
               <CardBody training={draggingTraining} sessions={sessions} now={now} />
               <ChevronRightIcon className="tr-card-chevron" />
@@ -324,6 +421,14 @@ export function TrainingsPage() {
           initialName={renaming.label}
           onClose={() => setRenaming(null)}
           onSubmit={(name) => renameTraining(renaming.id, name)}
+        />
+      )}
+
+      {pickingEmojiFor && (
+        <TrainingEmojiSheet
+          initialEmoji={pickingEmojiFor.emoji ?? ''}
+          onClose={() => setPickingEmojiFor(null)}
+          onSubmit={(emoji) => setTrainingEmoji(pickingEmojiFor.id, emoji)}
         />
       )}
     </div>

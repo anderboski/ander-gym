@@ -41,6 +41,17 @@
   height: 20px;
 }
 
+.tr-card-emoji {
+  flex: none;
+  width: 44px;
+  height: 44px;
+  margin-right: var(--s2);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+}
+
 .tr-card-main {
   flex: 1;
   min-width: 0;
@@ -135,6 +146,16 @@
   background: var(--danger-soft);
   color: var(--danger);
   font-size: 14px;
+}
+
+.tr-emoji-input {
+  font-size: 22px;
+}
+
+.tr-emoji-hint {
+  margin-top: var(--s2);
+  font-size: 13px;
+  color: var(--text-dim);
 }
 
 /* --- detail -------------------------------------------------------------- */

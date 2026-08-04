@@ -216,7 +216,8 @@ the fixed bottom nav.
   least one session exists, so a fresh install keeps its empty state.
 - **Calendar** — below Today, a month grid (Monday-start, six fixed rows so paging never changes the card's
   height). Prev/next chevrons above the grid step one month at a time, unbounded in either direction. A day
-  with a saved session shows a small circular badge with the training's initial; today's cell is outlined.
+  with a saved session shows a small circular badge with that training's icon, or its initial if no icon
+  has been set; today's cell is outlined.
   At most one training is shown per day — if two sessions were saved on the same date, the later one wins
   (same rule as the "Completed today" badge). Tapping a trained day opens that session in History
   (`#/history/<id>`); untrained days are inert. Hidden until at least one session exists, matching "See all
@@ -277,8 +278,12 @@ Vertical order, exactly as briefed:
 ### 5.3 Trainings
 Training days are fully user-managed — there is no fixed list and nothing is seeded.
 
-- One card per training day, in rotation order: the label as typed, last session datetime + days-back for
-  that training, and the exercise count.
+- One card per training day, in rotation order: an icon, the label as typed, last session datetime +
+  days-back for that training, and the exercise count.
+- **Icon.** A tappable icon button sits before each card's body, showing the training's chosen icon or its
+  first letter by default. Tapping it opens a dialog with a single text field accepting one letter, symbol,
+  or emoji; saving updates the badge immediately (on this page and on Home's calendar), and leaving the
+  field blank clears it back to the initial-letter default.
 - **Add.** A trailing "+ Add training day" card opens a sheet with a single name field. Saving appends a
   new, empty training to the end of the rotation. Names may repeat; ids are always unique and hidden from
   the user.
