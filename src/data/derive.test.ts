@@ -1,11 +1,13 @@
 import { describe, expect, it } from 'vitest';
 import {
+  addMonths,
   adjustRest,
   allLatestFor,
   allPersonalRecords,
   beatsPersonalRecord,
   completedToday,
   currentWeekCount,
+  dayKey,
   daysBetween,
   epley1RM,
   exerciseProgress,
@@ -16,14 +18,17 @@ import {
   historyFor,
   lastSessionForTraining,
   latestFor,
+  monthGrid,
   nextTraining,
   personalRecords,
   remainingSeconds,
   REST_DONE_MS,
   restPhase,
   restProgress,
+  sessionsByDay,
   setCount,
   sortSessions,
+  startOfMonth,
   startOfWeek,
   startRest,
   totalVolume,
@@ -655,6 +660,56 @@ describe('ordering and today', () => {
     ];
     expect(lastSessionForTraining('pecs-back', sessions)?.startedAt).toBe(at(2026, 7, 28));
     expect(lastSessionForTraining('nope', sessions)).toBeNull();
+  });
+});
+
+describe('calendar', () => {
+  it('startOfMonth anchors to the 1st', () => {
+    expect(startOfMonth(new Date(2026, 7, 23))).toEqual(new Date(2026, 7, 1));
+  });
+
+  it('addMonths steps forward and backward, including across a year boundary', () => {
+    expect(addMonths(new Date(2026, 7, 15), 1)).toEqual(new Date(2026, 8, 1));
+    expect(addMonths(new Date(2026, 0, 15), -1)).toEqual(new Date(2025, 11, 1));
+  });
+
+  it('dayKey formats local-time YYYY-MM-DD, matching formatDate', () => {
+    expect(dayKey(new Date(2026, 7, 4))).toBe('2026-08-04');
+  });
+
+  it('monthGrid returns a fixed 42-day Monday-start grid flagging the current month', () => {
+    // August 2026 starts on a Saturday, so the grid leads with July's last Monday.
+    const grid = monthGrid(new Date(2026, 7, 15));
+    expect(grid).toHaveLength(42);
+    expect(grid[0]?.date).toEqual(new Date(2026, 6, 27));
+    expect(grid[0]?.inMonth).toBe(false);
+
+    const aug1 = grid.find((d) => d.date.getTime() === new Date(2026, 7, 1).getTime());
+    expect(aug1?.inMonth).toBe(true);
+
+    const aug31 = grid.find((d) => d.date.getTime() === new Date(2026, 7, 31).getTime());
+    expect(aug31?.inMonth).toBe(true);
+  });
+
+  it('monthGrid is stable across a 6-week month', () => {
+    // Only the row count matters here; always 42 days regardless of month length.
+    expect(monthGrid(new Date(2026, 4, 1))).toHaveLength(42);
+  });
+
+  describe('sessionsByDay', () => {
+    it('keys sessions by local calendar day', () => {
+      const s = session(at(2026, 8, 1));
+      const map = sessionsByDay([s]);
+      expect(map.get('2026-08-01')).toBe(s);
+      expect(map.size).toBe(1);
+    });
+
+    it('picks the most recent session when two land on the same day', () => {
+      const earlier = session(at(2026, 8, 1, 9), 'a');
+      const later = session(at(2026, 8, 1, 18), 'b');
+      const map = sessionsByDay([earlier, later]);
+      expect(map.get('2026-08-01')).toBe(later);
+    });
   });
 });
 

@@ -7,21 +7,28 @@
  * All maths comes from data/derive.ts. `now` is captured once per render so the
  * week counter, streak and "days ago" lines can never disagree with each other.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useGym } from '../data/store';
 import {
+  addMonths,
   completedToday,
   currentWeekCount,
+  dayKey,
   daysBetween,
   formatDate,
   formatDaysAgo,
+  isSameDay,
   lastSessionForTraining,
+  monthGrid,
   nextTraining,
+  sessionsByDay,
+  startOfMonth,
   weeklyStreak,
 } from '../data/derive';
 import { navigate } from '../router';
 import {
   AlertIcon,
+  ChevronLeftIcon,
   ChevronRightIcon,
   CloseIcon,
   GearIcon,
@@ -32,6 +39,7 @@ import {
 import { SettingsSheet } from '../components/SettingsSheet';
 import { Toast } from '../components/Sheet';
 import { getTheme, otherTheme, setTheme, type Theme } from '../data/theme';
+import type { Session } from '../data/types';
 import './HomePage.css';
 
 /** A backup older than this is stale enough to nag about. */
@@ -252,6 +260,14 @@ export function HomePage() {
             )}
           </section>
 
+          {/* --- calendar --------------------------------------------------- */}
+          {sessions.length > 0 && (
+            <section className="section">
+              <div className="section-title">Calendar</div>
+              <HomeCalendar sessions={sessions} now={now} />
+            </section>
+          )}
+
           {/* --- backup reminder ------------------------------------------ */}
           {backupDue && !bannerDismissed && (
             <section className="section">
@@ -318,5 +334,85 @@ function GoalRing({ count, goal }: { count: number; goal: number }) {
         {count}
       </text>
     </svg>
+  );
+}
+
+/**
+ * Month calendar: one training per day at most (the later one wins on a
+ * multi-session day, per `sessionsByDay`). Tapping a trained day opens that
+ * session in History; the month in view is local state, independent of `now`.
+ */
+function HomeCalendar({ sessions, now }: { sessions: Session[]; now: Date }) {
+  const [month, setMonth] = useState<Date>(() => startOfMonth(now));
+  const byDay = useMemo(() => sessionsByDay(sessions), [sessions]);
+  const grid = useMemo(() => monthGrid(month), [month]);
+
+  const monthLabel = month.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+  const weekdays = grid.slice(0, 7).map(({ date }) => ({
+    narrow: date.toLocaleDateString(undefined, { weekday: 'narrow' }),
+    full: date.toLocaleDateString(undefined, { weekday: 'long' }),
+  }));
+
+  return (
+    <div className="card card-pad home-cal">
+      <div className="home-cal-head">
+        <button
+          className="icon-btn"
+          aria-label="Previous month"
+          onClick={() => setMonth((m) => addMonths(m, -1))}
+        >
+          <ChevronLeftIcon />
+        </button>
+        <div className="home-cal-title">{monthLabel}</div>
+        <button
+          className="icon-btn"
+          aria-label="Next month"
+          onClick={() => setMonth((m) => addMonths(m, 1))}
+        >
+          <ChevronRightIcon />
+        </button>
+      </div>
+
+      <div className="home-cal-weekdays">
+        {weekdays.map((w, i) => (
+          <div className="home-cal-weekday" key={i} aria-label={w.full}>
+            {w.narrow}
+          </div>
+        ))}
+      </div>
+
+      <div className="home-cal-grid">
+        {grid.map(({ date, inMonth }) => {
+          const session = byDay.get(dayKey(date));
+          const classes = ['home-cal-day'];
+          if (!inMonth) classes.push('home-cal-day-out');
+          if (isSameDay(date, now)) classes.push('home-cal-day-today');
+
+          if (!session) {
+            return (
+              <div className={classes.join(' ')} key={date.toISOString()}>
+                <span className="home-cal-daynum">{date.getDate()}</span>
+              </div>
+            );
+          }
+
+          classes.push('home-cal-day-trained');
+          return (
+            <button
+              type="button"
+              className={classes.join(' ')}
+              key={date.toISOString()}
+              onClick={() => navigate(`/history/${session.id}`)}
+              aria-label={`${date.toLocaleDateString(undefined, { day: 'numeric', month: 'long' })}, ${session.trainingLabel}`}
+            >
+              <span className="home-cal-daynum">{date.getDate()}</span>
+              <span className="home-cal-dot" aria-hidden="true">
+                {session.trainingLabel.charAt(0).toUpperCase()}
+              </span>
+            </button>
+          );
+        })}
+      </div>
+    </div>
   );
 }

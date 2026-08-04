@@ -15,7 +15,7 @@ anything written here.
 | D1 | Navigation | 5 bottom tabs: Home · Exercises · Trainings · Session · History |
 | D2 | Stack | Vite + React + TypeScript, `vite-plugin-pwa`, deployed to GitHub Pages via Actions. Hash routing, hand-rolled (~50 lines) — every React Router 7.x release carries an open advisory, and hash routing also avoids the Pages reload-404 |
 | D3 | Training days | Fully user-managed: create as many as you like, rename anytime, reorder by drag. Never deletable — a training's id must always resolve so session history stays intact. Exercise membership is editable in-app |
-| D4 | Home extras | Weekly goal + streak; backup reminder. (No last-session recap in v1. PR tracking was deferred in v1 and has since landed — see §4 `personalRecords`) |
+| D4 | Home extras | Weekly goal + streak; backup reminder; a month calendar of past sessions. (No last-session recap in v1. PR tracking was deferred in v1 and has since landed — see §4 `personalRecords`) |
 | D5 | Offline | Lazy cache-first for images; app shell + `exercises.json` precached |
 | D6 | Custom exercise image | Optional photo from camera/library, downscaled, stored as a blob; lettered placeholder otherwise |
 | D7 | Session history | Read-only; whole sessions may be deleted with confirmation |
@@ -214,6 +214,13 @@ the fixed bottom nav.
   - If a session is currently active, the card is replaced by "Resume session →".
 - **"See all stats"** — a row under the week counter, pushing to the Stats view (§5.6). Hidden until at
   least one session exists, so a fresh install keeps its empty state.
+- **Calendar** — below Today, a month grid (Monday-start, six fixed rows so paging never changes the card's
+  height). Prev/next chevrons above the grid step one month at a time, unbounded in either direction. A day
+  with a saved session shows a small circular badge with the training's initial; today's cell is outlined.
+  At most one training is shown per day — if two sessions were saved on the same date, the later one wins
+  (same rule as the "Completed today" badge). Tapping a trained day opens that session in History
+  (`#/history/<id>`); untrained days are inert. Hidden until at least one session exists, matching "See all
+  stats".
 - **Backup banner** — shown when `lastExportAt` is unset (and ≥1 session exists) or older than 30 days.
   Tapping it runs an export immediately.
 - **Gear icon** (top right) — Settings sheet: weekly goal, export, import, storage usage

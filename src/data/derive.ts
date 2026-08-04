@@ -28,6 +28,14 @@ function addWeeks(d: Date, n: number): Date {
   return x;
 }
 
+export function startOfMonth(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), 1);
+}
+
+export function addMonths(d: Date, n: number): Date {
+  return new Date(d.getFullYear(), d.getMonth() + n, 1);
+}
+
 /**
  * Whole calendar days from `from` to `to`. Rounding absorbs the ±1h that DST
  * transitions introduce, so a 9-day gap stays 9 across a clock change.
@@ -47,10 +55,14 @@ export function isSameDay(a: Date, b: Date): boolean {
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
+/** `2026-07-23`, local-time. Shared by `formatDate` and the calendar's day lookup. */
+export function dayKey(d: Date): string {
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+}
+
 /** `2026-07-23` */
 export function formatDate(iso: string): string {
-  const d = new Date(iso);
-  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
+  return dayKey(new Date(iso));
 }
 
 /** `2026-07-23 18:40` */
@@ -246,6 +258,40 @@ export function nextTraining(trainings: Training[], sessions: Session[]): Traini
 
 export function lastSessionForTraining(trainingId: string, sessions: Session[]): Session | null {
   return mostRecentSession(sessions.filter((s) => s.trainingId === trainingId));
+}
+
+/**
+ * The Home calendar shows at most one training per day, so where two sessions
+ * land on the same date the later one wins — same rule as `completedToday`.
+ * Keyed by `formatDate`, which is already local-time `YYYY-MM-DD`.
+ */
+export function sessionsByDay(sessions: Session[]): Map<string, Session> {
+  const out = new Map<string, Session>();
+  for (const s of sortSessions(sessions)) {
+    const key = dayKey(new Date(s.startedAt));
+    if (!out.has(key)) out.set(key, s);
+  }
+  return out;
+}
+
+export type CalendarDay = { date: Date; inMonth: boolean };
+
+/**
+ * Monday-start weeks covering the month containing `monthAnchor`, padded with
+ * the leading/trailing days of the neighbouring months so every week is full.
+ * Always 6 rows (42 days): a fixed grid height means the page doesn't jump as
+ * the user pages between four-week and six-week months.
+ */
+export function monthGrid(monthAnchor: Date): CalendarDay[] {
+  const first = startOfMonth(monthAnchor);
+  const gridStart = startOfWeek(first);
+  const days: CalendarDay[] = [];
+  for (let i = 0; i < 42; i += 1) {
+    const date = new Date(gridStart);
+    date.setDate(date.getDate() + i);
+    days.push({ date, inMonth: date.getMonth() === first.getMonth() });
+  }
+  return days;
 }
 
 /** True when a session was already completed today. */
