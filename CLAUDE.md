@@ -187,13 +187,28 @@ State plainly in the PR that on-device verification hasn't been done — don't i
 3. **Verify before committing:** `npm run typecheck && npm test`. Add tests for anything in
    `src/data/`. If it touches the service worker, manifest, or caching, also
    `npm run build && npm run preview`.
-4. **Commit.** Imperative subject line, blank line, then a body explaining *why* and calling out the
+4. **Bump the version in `package.json`** — every PR does this, keyed off the branch prefix from
+   step 2:
+
+   | Prefix | Bump | Example |
+   |---|---|---|
+   | `bug/` | patch | `1.0.0` → `1.0.1` |
+   | `feature/` | minor (patch resets to 0) | `1.0.0` → `1.1.0` |
+   | `docs/` | none | — |
+   | `refactor/`, `chore/`, `test/`, `perf/` | none | — |
+
+   Only `bug/` and `feature/` touch the version — nothing else changes runtime behaviour, so nothing
+   else earns a bump. Use `npm version patch --no-git-tag-version` or
+   `npm version minor --no-git-tag-version` (the `--no-git-tag-version` flag stops `npm` from
+   creating its own commit and tag; the version change rides along in the commit from step 5
+   instead). **Major bumps (`1.x.x` → `2.0.0`) are never automatic** — Ander does those by hand.
+5. **Commit.** Imperative subject line, blank line, then a body explaining *why* and calling out the
    decisions a reviewer should push back on. End with:
 
    ```
    Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
    ```
-5. **Push and open a PR against `main`. Every task ends here — push the branch and raise the PR
+6. **Push and open a PR against `main`. Every task ends here — push the branch and raise the PR
    without waiting to be asked, so it's sitting ready for Ander to review the moment the task is
    done:**
 

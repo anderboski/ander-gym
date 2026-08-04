@@ -46,5 +46,7 @@ device testing happened if it didn't.
 - [ ] `npm run build` (add `npm run preview` if the change touches the service worker, manifest, or caching)
 - [ ] Manual check in a browser (state which flows/themes were exercised)
 - [ ] On-device (iPhone) verification — call out explicitly if this was skipped, and update `docs/manual-qa.md` if the change affects install, offline, keyboard, or crash-safety behaviour
+- [ ] Version bumped in `package.json` per the branch prefix (CLAUDE.md "Working on a new feature"
+      step 4) — patch for `bug/`, minor for `feature/`, unchanged for everything else
 
 🤖 Generated with [Claude Code](https://claude.com/claude-code)
