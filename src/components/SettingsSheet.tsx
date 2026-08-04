@@ -10,6 +10,7 @@ import { BackupError, type ImportMode } from '../data/backup';
 import { formatDate } from '../data/derive';
 import { ConfirmSheet, Sheet } from './Sheet';
 import { CheckIcon, DownloadIcon, UploadIcon } from './icons';
+import packageJson from '../../package.json';
 import '../pages/HomePage.css';
 
 const GOAL_MIN = 1;
@@ -261,7 +262,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
         )}
       </section>
 
-      <p className="settings-version">ander-gym v1</p>
+      <p className="settings-version">ander-gym v{packageJson.version}</p>
 
       {confirmReplace && (
         <ConfirmSheet
