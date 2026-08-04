@@ -45,10 +45,11 @@ export function ExerciseBrowser({
   excludeIds,
   sortDoneFirst,
 }: ExerciseBrowserProps): ReactElement {
-  const { exercises, exerciseLatest } = useGym();
+  const { exercises, exerciseLatest, exerciseRecords } = useGym();
 
   const [query, setQuery] = useState('');
   const [facets, setFacets] = useState<Facets>(EMPTY_FACETS);
+  const [onlyPR, setOnlyPR] = useState(false);
   const [limit, setLimit] = useState(PAGE_SIZE);
 
   const options = useMemo(() => facetOptions(exercises), [exercises]);
@@ -63,14 +64,16 @@ export function ExerciseBrowser({
 
   const matches = useMemo(() => {
     const doneIds = sortDoneFirst ? new Set(exerciseLatest.keys()) : undefined;
-    const found = searchExercises(exercises, query, facets, doneIds);
-    return excluded.size === 0 ? found : found.filter((ex) => !excluded.has(ex.id));
-  }, [exercises, query, facets, excluded, sortDoneFirst, exerciseLatest]);
+    let found = searchExercises(exercises, query, facets, doneIds);
+    if (excluded.size > 0) found = found.filter((ex) => !excluded.has(ex.id));
+    if (onlyPR) found = found.filter((ex) => exerciseRecords.has(ex.id));
+    return found;
+  }, [exercises, query, facets, excluded, sortDoneFirst, exerciseLatest, onlyPR, exerciseRecords]);
 
   // Any change to the result set starts the window over.
   useEffect(() => {
     setLimit(PAGE_SIZE);
-  }, [query, facets, excluded]);
+  }, [query, facets, excluded, onlyPR]);
 
   const visible = matches.slice(0, limit);
   const hasMore = limit < matches.length;
@@ -96,7 +99,7 @@ export function ExerciseBrowser({
     return () => observer.disconnect();
   }, [hasMore, limit, matches]);
 
-  const activeFacets = countActiveFacets(facets);
+  const activeFacets = countActiveFacets(facets) + (onlyPR ? 1 : 0);
 
   return (
     <div className="browser">
@@ -131,6 +134,19 @@ export function ExerciseBrowser({
       </div>
 
       <div className="browser-facets">
+        <div className="browser-facet">
+          <div className="chip-row">
+            <button
+              type="button"
+              className="chip"
+              aria-pressed={onlyPR}
+              onClick={() => setOnlyPR((v) => !v)}
+            >
+              🏆 PR only
+            </button>
+          </div>
+        </div>
+
         {FACET_KEYS.map((key) => (
           <div className="browser-facet" key={key}>
             <div className="section-title">{FACET_LABELS[key]}</div>
@@ -155,7 +171,10 @@ export function ExerciseBrowser({
             <button
               type="button"
               className="btn btn-sm btn-ghost"
-              onClick={() => setFacets(EMPTY_FACETS)}
+              onClick={() => {
+                setFacets(EMPTY_FACETS);
+                setOnlyPR(false);
+              }}
             >
               Clear all ({activeFacets})
             </button>
