@@ -68,6 +68,13 @@ export type Training = {
    * fall back to the label's first letter, the pre-existing badge.
    */
   emoji?: string;
+  /**
+   * Archived trainings drop out of the Home rotation and the default
+   * Trainings list but stay resolvable — history keeps working unchanged.
+   * Optional so every training created before this existed stays valid with
+   * no migration; absent means active, same as `false`.
+   */
+  archived?: boolean;
 };
 
 export const TRAINING_ID_PREFIX = 't-';

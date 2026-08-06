@@ -240,20 +240,30 @@ export function weeklyStreak(sessions: Session[], goal: number, now: Date): numb
 /**
  * The training to do next: strictly the one after the last completed session's
  * training, wrapping. Falls back to the first training when there is no
- * history, or when the last session's training no longer exists.
+ * history, or when the last session's training no longer exists. Archived
+ * trainings are never returned — they've dropped out of rotation — but the
+ * last *session's* training is looked up against the full list so an archived
+ * training doesn't also break the "what comes after it" pivot.
  */
 export function nextTraining(trainings: Training[], sessions: Session[]): Training | null {
-  const ordered = [...trainings].sort((a, b) => a.order - b.order);
-  const first = ordered[0];
+  const active = [...trainings].filter((t) => !t.archived).sort((a, b) => a.order - b.order);
+  const first = active[0];
   if (!first) return null;
 
   const last = mostRecentSession(sessions);
   if (!last) return first;
 
-  const i = ordered.findIndex((t) => t.id === last.trainingId);
-  if (i < 0) return first;
+  const allOrdered = [...trainings].sort((a, b) => a.order - b.order);
+  const lastIdx = allOrdered.findIndex((t) => t.id === last.trainingId);
+  if (lastIdx < 0) return first;
 
-  return ordered[(i + 1) % ordered.length] ?? first;
+  // Walk forward from the last session's slot in the full (unfiltered) order
+  // until landing on an active training, wrapping at most once around.
+  for (let step = 1; step <= allOrdered.length; step += 1) {
+    const candidate = allOrdered[(lastIdx + step) % allOrdered.length];
+    if (candidate && !candidate.archived) return candidate;
+  }
+  return first;
 }
 
 export function lastSessionForTraining(trainingId: string, sessions: Session[]): Session | null {

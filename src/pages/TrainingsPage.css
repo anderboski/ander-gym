@@ -1,5 +1,18 @@
 /* Trainings list + training detail. */
 
+.tr-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+
+/* Pull the trailing 44px hit area back so its ink lines up with the page padding. */
+.tr-header .icon-btn {
+  flex: none;
+  margin-right: calc(-1 * var(--s3));
+}
+
 .tr-list {
   display: flex;
   flex-direction: column;
@@ -156,6 +169,19 @@
   margin-top: var(--s2);
   font-size: 13px;
   color: var(--text-dim);
+}
+
+.tr-archive-btn {
+  margin-top: var(--s5);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s2);
+}
+
+.tr-archive-btn svg {
+  width: 18px;
+  height: 18px;
 }
 
 /* --- detail -------------------------------------------------------------- */

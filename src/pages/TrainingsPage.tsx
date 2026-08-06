@@ -4,16 +4,27 @@
  * Training days are entirely user-managed: create as many as you like, rename
  * anytime (the id never changes, so session history stays attributed
  * correctly), and reorder by dragging the grip on the left of a card — the
- * rotation Home uses is exactly this order. Trainings are never deletable,
- * which keeps `Session.trainingId` always resolvable.
+ * rotation Home uses is exactly this order.
+ *
+ * Trainings with history are never deletable, only archivable — archiving
+ * drops a training out of Home's rotation and this page's default list
+ * without touching `Session.trainingId` resolvability. A training with zero
+ * sessions and no session currently in progress has nothing to protect, so
+ * it's the one case that can be deleted outright (with undo).
  */
 import { useEffect, useMemo, useRef, useState, type FormEvent, type PointerEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { daysBetween, formatDate, formatDaysAgo, lastSessionForTraining } from '../data/derive';
 import { useGym } from '../data/store';
 import type { Session, Training } from '../data/types';
-import { Sheet } from '../components/Sheet';
-import { ChevronRightIcon, GripIcon, PencilIcon, PlusIcon } from '../components/icons';
+import { Sheet, Toast } from '../components/Sheet';
+import {
+  ArchiveIcon,
+  ChevronRightIcon,
+  GripIcon,
+  PencilIcon,
+  PlusIcon,
+} from '../components/icons';
 import { navigate } from '../router';
 import './TrainingsPage.css';
 
@@ -131,7 +142,7 @@ function CardBody({ training, sessions, now }: { training: Training; sessions: S
 }
 
 /* -------------------------------------------------------------------------- */
-/* Add / rename sheet                                                          */
+/* Add sheet                                                                   */
 /* -------------------------------------------------------------------------- */
 
 const NAME_FORM_ID = 'training-name-form';
@@ -282,32 +293,220 @@ function TrainingEmojiSheet({
 }
 
 /* -------------------------------------------------------------------------- */
+/* Edit sheet — rename plus archive/unarchive                                 */
+/* -------------------------------------------------------------------------- */
+
+const EDIT_FORM_ID = 'training-edit-form';
+
+function TrainingEditSheet({
+  training,
+  onClose,
+  onSave,
+  onArchiveButtonClick,
+}: {
+  training: Training;
+  onClose: () => void;
+  onSave: (name: string) => Promise<unknown>;
+  onArchiveButtonClick: () => void;
+}) {
+  const [name, setName] = useState(training.label);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const canSave = name.trim().length > 0 && !saving;
+
+  async function handleSubmit(e: FormEvent) {
+    e.preventDefault();
+    if (!canSave) return;
+    setSaving(true);
+    setError(null);
+    try {
+      await onSave(name.trim());
+      onClose();
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Could not save.');
+      setSaving(false);
+    }
+  }
+
+  return (
+    <Sheet
+      title="Edit training"
+      onClose={onClose}
+      footer={
+        <button type="submit" form={EDIT_FORM_ID} className="btn btn-primary btn-block" disabled={!canSave}>
+          {saving ? 'Saving…' : 'Save'}
+        </button>
+      }
+    >
+      <form id={EDIT_FORM_ID} className="tr-name-form" onSubmit={handleSubmit}>
+        {error && (
+          <div className="tr-name-error" role="alert">
+            {error}
+          </div>
+        )}
+        <div className="tr-name-field">
+          <label className="label" htmlFor="training-edit-name">
+            Name
+          </label>
+          <input
+            id="training-edit-name"
+            className="input"
+            type="text"
+            required
+            autoFocus
+            value={name}
+            autoCapitalize="words"
+            autoCorrect="off"
+            placeholder="e.g. Push day"
+            onChange={(e) => setName(e.target.value)}
+          />
+        </div>
+      </form>
+
+      <button type="button" className="btn btn-ghost btn-block tr-archive-btn" onClick={onArchiveButtonClick}>
+        <ArchiveIcon />
+        {training.archived ? 'Unarchive training' : 'Archive training'}
+      </button>
+    </Sheet>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Archive-or-delete branch — only offered for a training with no history      */
+/* -------------------------------------------------------------------------- */
+
+function ArchiveOrDeleteSheet({
+  training,
+  onClose,
+  onArchive,
+  onDelete,
+}: {
+  training: Training;
+  onClose: () => void;
+  onArchive: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <Sheet
+      title="No sessions yet"
+      onClose={onClose}
+      footer={
+        <>
+          <button type="button" className="btn btn-danger btn-block" onClick={onDelete}>
+            Delete training
+          </button>
+          <button type="button" className="btn btn-primary btn-block" onClick={onArchive}>
+            Archive training
+          </button>
+        </>
+      }
+    >
+      <p style={{ color: 'var(--text-dim)', fontSize: 15 }}>
+        “{training.label}” has no logged sessions, so it can be deleted for good instead of just
+        archived. Archiving keeps it around and out of the way; deleting removes it entirely.
+      </p>
+    </Sheet>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Archived trainings list                                                    */
+/* -------------------------------------------------------------------------- */
+
+function ArchivedTrainingsSheet({
+  trainings,
+  sessions,
+  now,
+  onClose,
+  onEdit,
+}: {
+  trainings: Training[];
+  sessions: Session[];
+  now: Date;
+  onClose: () => void;
+  onEdit: (training: Training) => void;
+}) {
+  const ordered = [...trainings].sort((a, b) => a.order - b.order);
+
+  return (
+    <Sheet title="Archived trainings" onClose={onClose} full>
+      <div className="tr-list">
+        {ordered.length === 0 && <div className="empty">No archived trainings.</div>}
+
+        {ordered.map((training) => (
+          <div key={training.id} className="tr-card">
+            <span className="tr-card-emoji" aria-hidden="true">
+              {training.emoji ?? training.label.charAt(0).toUpperCase()}
+            </span>
+
+            <button className="tr-card-main" onClick={() => navigate(`/trainings/${training.id}`)}>
+              <CardBody training={training} sessions={sessions} now={now} />
+              <ChevronRightIcon className="tr-card-chevron" />
+            </button>
+
+            <button
+              type="button"
+              className="tr-card-edit"
+              aria-label={`Edit ${training.label}`}
+              onClick={() => onEdit(training)}
+            >
+              <PencilIcon />
+            </button>
+          </div>
+        ))}
+      </div>
+    </Sheet>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
 
 export function TrainingsPage() {
   const {
     trainings,
     sessions,
+    active,
     status,
     addTraining,
     renameTraining,
     setTrainingEmoji,
+    archiveTraining,
+    deleteTraining,
+    restoreTraining,
     reorderTrainings,
   } = useGym();
   const now = new Date();
 
-  const [order, setOrder] = useState<string[]>(() => trainings.map((t) => t.id));
+  const activeTrainings = useMemo(() => trainings.filter((t) => !t.archived), [trainings]);
+  const archivedTrainings = useMemo(() => trainings.filter((t) => t.archived), [trainings]);
 
-  // Re-sync only when the set of ids actually changes (add/reorder-commit) —
-  // a rename touches `trainings` too, but must not disturb an in-progress
-  // drag's local order.
-  const ids = trainings.map((t) => t.id).join(',');
+  const [order, setOrder] = useState<string[]>(() => activeTrainings.map((t) => t.id));
+
+  // Re-sync only when the set of active ids actually changes (add/archive/
+  // reorder-commit) — a rename touches `trainings` too, but must not disturb
+  // an in-progress drag's local order.
+  const activeIds = activeTrainings.map((t) => t.id).join(',');
   useEffect(() => {
-    setOrder(ids.split(',').filter(Boolean));
-  }, [ids]);
+    setOrder(activeIds.split(',').filter(Boolean));
+  }, [activeIds]);
 
   const [adding, setAdding] = useState(false);
-  const [renaming, setRenaming] = useState<Training | null>(null);
+  const [editing, setEditing] = useState<Training | null>(null);
   const [pickingEmojiFor, setPickingEmojiFor] = useState<Training | null>(null);
+  const [archivedOpen, setArchivedOpen] = useState(false);
+  const [deleteChoiceFor, setDeleteChoiceFor] = useState<Training | null>(null);
+  const [toast, setToast] = useState<{
+    message: string;
+    actionLabel?: string;
+    onAction?: () => void;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 5000);
+    return () => clearTimeout(t);
+  }, [toast]);
 
   const byId = useMemo(() => new Map(trainings.map((t) => [t.id, t])), [trainings]);
   const ordered = order.map((id) => byId.get(id)).filter((t): t is Training => t !== undefined);
@@ -315,18 +514,77 @@ export function TrainingsPage() {
   const drag = useTrainingDrag(order, setOrder, (next) => void reorderTrainings(next));
   const draggingTraining = drag.draggingId ? byId.get(drag.draggingId) : undefined;
 
+  async function handleArchiveButtonClick(training: Training) {
+    setEditing(null);
+
+    if (training.archived) {
+      await archiveTraining(training.id, false);
+      setToast({ message: 'Training unarchived.' });
+      return;
+    }
+
+    const hasHistory = sessions.some((s) => s.trainingId === training.id);
+    const hasActiveSession = active?.trainingId === training.id;
+    if (!hasHistory && !hasActiveSession) {
+      setDeleteChoiceFor(training);
+      return;
+    }
+
+    await archiveTraining(training.id, true);
+    setToast({
+      message: 'Training archived.',
+      actionLabel: 'Undo',
+      onAction: () => void archiveTraining(training.id, false),
+    });
+  }
+
+  async function handleConfirmArchive(training: Training) {
+    setDeleteChoiceFor(null);
+    await archiveTraining(training.id, true);
+    setToast({
+      message: 'Training archived.',
+      actionLabel: 'Undo',
+      onAction: () => void archiveTraining(training.id, false),
+    });
+  }
+
+  async function handleConfirmDelete(training: Training) {
+    setDeleteChoiceFor(null);
+    const deleted = await deleteTraining(training.id);
+    if (!deleted) return;
+    setToast({
+      message: 'Training deleted.',
+      actionLabel: 'Undo',
+      onAction: () => void restoreTraining(deleted),
+    });
+  }
+
   if (status === 'loading') return <div className="page"><div className="spinner" /></div>;
 
   return (
     <div className="page">
-      <div className="page-header">
-        <h1 className="page-title">Trainings</h1>
-        <div className="page-sub">Your training days, in rotation order</div>
-      </div>
+      <header className="page-header tr-header">
+        <div>
+          <h1 className="page-title">Trainings</h1>
+          <div className="page-sub">Your training days, in rotation order</div>
+        </div>
+        <button
+          type="button"
+          className="icon-btn"
+          aria-label="Archived trainings"
+          onClick={() => setArchivedOpen(true)}
+        >
+          <ArchiveIcon />
+        </button>
+      </header>
 
       <div className="tr-list">
         {ordered.length === 0 && (
-          <div className="empty">No training days yet — add one below to get started.</div>
+          <div className="empty">
+            No training days yet — add one below to get started.
+            {archivedTrainings.length > 0 &&
+              ` You have ${archivedTrainings.length} archived — tap the archive icon above to view them.`}
+          </div>
         )}
 
         {ordered.map((training) => (
@@ -364,8 +622,8 @@ export function TrainingsPage() {
             <button
               type="button"
               className="tr-card-edit"
-              aria-label={`Rename ${training.label}`}
-              onClick={() => setRenaming(training)}
+              aria-label={`Edit ${training.label}`}
+              onClick={() => setEditing(training)}
             >
               <PencilIcon />
             </button>
@@ -415,12 +673,12 @@ export function TrainingsPage() {
         />
       )}
 
-      {renaming && (
-        <TrainingNameSheet
-          title="Rename training day"
-          initialName={renaming.label}
-          onClose={() => setRenaming(null)}
-          onSubmit={(name) => renameTraining(renaming.id, name)}
+      {editing && (
+        <TrainingEditSheet
+          training={editing}
+          onClose={() => setEditing(null)}
+          onSave={(name) => renameTraining(editing.id, name)}
+          onArchiveButtonClick={() => void handleArchiveButtonClick(editing)}
         />
       )}
 
@@ -430,6 +688,32 @@ export function TrainingsPage() {
           onClose={() => setPickingEmojiFor(null)}
           onSubmit={(emoji) => setTrainingEmoji(pickingEmojiFor.id, emoji)}
         />
+      )}
+
+      {deleteChoiceFor && (
+        <ArchiveOrDeleteSheet
+          training={deleteChoiceFor}
+          onClose={() => setDeleteChoiceFor(null)}
+          onArchive={() => void handleConfirmArchive(deleteChoiceFor)}
+          onDelete={() => void handleConfirmDelete(deleteChoiceFor)}
+        />
+      )}
+
+      {archivedOpen && (
+        <ArchivedTrainingsSheet
+          trainings={archivedTrainings}
+          sessions={sessions}
+          now={now}
+          onClose={() => setArchivedOpen(false)}
+          onEdit={(training) => {
+            setArchivedOpen(false);
+            setEditing(training);
+          }}
+        />
+      )}
+
+      {toast && (
+        <Toast message={toast.message} actionLabel={toast.actionLabel} onAction={toast.onAction} />
       )}
     </div>
   );
