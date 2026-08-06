@@ -122,6 +122,30 @@ export async function setTrainingEmoji(id: string, emoji: string | null): Promis
 }
 
 /**
+ * Archives or unarchives a training day. Archiving never touches history —
+ * every session already has its `trainingId` and a snapshotted
+ * `trainingLabel`, so nothing downstream needs the training to be active.
+ */
+export async function archiveTraining(id: string, archived: boolean): Promise<Training | null> {
+  const training = (await getTrainings()).find((t) => t.id === id);
+  if (!training) return null;
+  const updated: Training = { ...training };
+  if (archived) updated.archived = true;
+  else delete updated.archived;
+  await putTraining(updated);
+  return updated;
+}
+
+/**
+ * True deletion, only ever safe to offer when the caller has confirmed no
+ * session references this training — otherwise a `Session.trainingId` would
+ * stop resolving.
+ */
+export async function deleteTraining(id: string): Promise<void> {
+  await (await getDB()).delete('trainings', id);
+}
+
+/**
  * Applies a new rotation order from a full list of training ids (as dragged
  * into place). Any id missing from `orderedIds` — should not normally happen
  * — is kept, appended after the given ones in its previous relative order.

@@ -83,6 +83,16 @@ type Mutations = {
   setTrainingRest: (trainingId: string, seconds: number) => Promise<void>;
   /** Reduced to a single grapheme; blank clears it back to the initial-letter fallback. */
   setTrainingEmoji: (trainingId: string, emoji: string) => Promise<void>;
+  /** Drops out of / rejoins the Home rotation and the default Trainings list. History is untouched. */
+  archiveTraining: (trainingId: string, archived: boolean) => Promise<void>;
+  /**
+   * True deletion — only ever safe to call when the training has zero
+   * sessions, which the caller must have already checked. Returns the deleted
+   * record (or null if it was already gone) so the caller can offer undo.
+   */
+  deleteTraining: (trainingId: string) => Promise<Training | null>;
+  /** Undoes `deleteTraining` by writing the exact record back, same id and all. */
+  restoreTraining: (training: Training) => Promise<void>;
   /** Full new rotation order, as dragged into place. */
   reorderTrainings: (orderedIds: string[]) => Promise<void>;
 
@@ -312,6 +322,31 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
         setState((s) => ({
           ...s,
           trainings: s.trainings.map((t) => (t.id === trainingId ? updated : t)),
+        }));
+      },
+
+      async archiveTraining(trainingId, archived) {
+        const updated = await db.archiveTraining(trainingId, archived);
+        if (!updated) return;
+        setState((s) => ({
+          ...s,
+          trainings: s.trainings.map((t) => (t.id === trainingId ? updated : t)),
+        }));
+      },
+
+      async deleteTraining(trainingId) {
+        const training = (await db.getTrainings()).find((t) => t.id === trainingId);
+        if (!training) return null;
+        await db.deleteTraining(trainingId);
+        setState((s) => ({ ...s, trainings: s.trainings.filter((t) => t.id !== trainingId) }));
+        return training;
+      },
+
+      async restoreTraining(training) {
+        await db.putTraining(training);
+        setState((s) => ({
+          ...s,
+          trainings: [...s.trainings, training].sort((a, b) => a.order - b.order),
         }));
       },
 

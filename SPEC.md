@@ -14,7 +14,7 @@ anything written here.
 |---|---|---|
 | D1 | Navigation | 5 bottom tabs: Home · Exercises · Trainings · Session · History |
 | D2 | Stack | Vite + React + TypeScript, `vite-plugin-pwa`, deployed to GitHub Pages via Actions. Hash routing, hand-rolled (~50 lines) — every React Router 7.x release carries an open advisory, and hash routing also avoids the Pages reload-404 |
-| D3 | Training days | Fully user-managed: create as many as you like, rename anytime, reorder by drag. Never deletable — a training's id must always resolve so session history stays intact. Exercise membership is editable in-app |
+| D3 | Training days | Fully user-managed: create as many as you like, rename anytime, reorder by drag. A training with any session history is never deletable — a training's id must always resolve so session history stays intact — but it can be archived, which drops it out of Home's rotation and the default Trainings list without touching history. A training with zero sessions and no session currently in progress has nothing to protect and can be deleted outright instead (undoable). Exercise membership is editable in-app |
 | D4 | Home extras | Weekly goal + streak; backup reminder; a month calendar of past sessions. (No last-session recap in v1. PR tracking was deferred in v1 and has since landed — see §4 `personalRecords`) |
 | D5 | Offline | Lazy cache-first for images; app shell + `exercises.json` precached |
 | D6 | Custom exercise image | Optional photo from camera/library, downscaled, stored as a blob; lettered placeholder otherwise |
@@ -75,7 +75,7 @@ IndexedDB via `idb`. Database `ander-gym`, version 1.
 
 | Store | Key | Value |
 |---|---|---|
-| `trainings` | `id` (slug) | `{ id, label, order, exerciseIds: string[], restSeconds? }` |
+| `trainings` | `id` (slug) | `{ id, label, order, exerciseIds: string[], restSeconds?, archived? }` |
 | `sessions` | `id` (uuid) | `{ id, trainingId, trainingLabel, startedAt, savedAt, entries }` — index on `startedAt` |
 | `activeSession` | literal `'current'` | `{ trainingId, trainingLabel, startedAt, entries }` |
 | `customExercises` | `id` (`c-<uuid>`) | Exercise fields + `isCustom: true`, `imageBlob?: Blob` |
@@ -90,8 +90,11 @@ Rules:
 - **Trainings are user-created**, not seeded. A new one gets a fresh id (`t-<uuid>`) and joins the end of
   the rotation with no exercises. Renaming updates only `label` — the id (and therefore every session's
   `trainingId`) never changes, so history stays attributed correctly. Reordering rewrites `order` on every
-  training to match the dragged sequence. **Trainings are never deleted** — a `Session.trainingId` must
-  always resolve.
+  training to match the dragged sequence. **A training with any session history — or the one session
+  currently active — is never deleted**, only archived (`archived: true`, dropping it out of `order`-based
+  rotation and the default list without touching `id` or history); a `Session.trainingId` must always
+  resolve. A training with zero sessions and no active session has nothing to protect, so it's the one
+  exception that can be deleted outright.
 - **One active session.** Starting a session while one exists must prompt: resume, or discard and start new.
 - `Training.restSeconds` is the rest-timer default for that training day (§5.4), in seconds. It is
   **optional**: absent means the app default of 90 s, so trainings written before the field existed
@@ -298,19 +301,31 @@ Training days are fully user-managed — there is no fixed list and nothing is s
 - **Add.** A trailing "+ Add training day" card opens a sheet with a single name field. Saving appends a
   new, empty training to the end of the rotation. Names may repeat; ids are always unique and hidden from
   the user.
-- **Rename.** A pencil icon on each card opens the same sheet, prefilled with the current name. Only
-  `label` changes — the id is stable, so every session already logged under that training keeps pointing
-  at it correctly (a session's `trainingLabel` is a snapshot taken at start time, so past records keep
-  showing whatever the name was then).
+- **Edit.** A pencil icon on each card opens an "Edit training" sheet: the name field (as before, prefilled
+  with the current name — only `label` changes on save; the id is stable, so every session already logged
+  under that training keeps pointing at it correctly, since a session's `trainingLabel` is a snapshot taken
+  at start time and past records keep showing whatever the name was then), and below it an "Archive
+  training" / "Unarchive training" button.
 - **Reorder.** A grip handle on the left edge of each card is a drag handle: press and drag vertically to
   move a card past its neighbours, in either direction. The drop position becomes each training's new
-  `order`, and that is exactly the sequence `nextTraining()` rotates through on Home.
-- **No delete.** Trainings cannot be removed, ever — only renamed — so a `Session.trainingId` always
-  resolves to something. A training day that stops being useful can simply be renamed and left with zero
-  exercises, or drag-reordered to the end.
+  `order`, and that is exactly the sequence `nextTraining()` rotates through on Home. Archived trainings
+  take no part in this list or in rotation, so they have no grip handle.
+- **Archive.** Tapping "Archive training" removes it from this page's default list and from Home's
+  rotation — `nextTraining()` skips it entirely, and there is no way to start a session against an
+  archived training. Nothing about its id, exercises, or history changes, so it stays fully resolvable;
+  archiving is immediate and undoable via a 5 s toast. An archive icon at the top right of this page opens
+  the list of archived trainings, each still tappable through to its normal detail view and still editable
+  (to rename it or to unarchive it, which is immediate and drops it back into the rotation at its old
+  `order`).
+- **Delete — the one case that isn't archive-only.** If a training has zero sessions in History *and* no
+  session currently in progress against it, there is nothing for a `Session.trainingId` to lose — so
+  tapping "Archive training" on one instead offers a choice: archive it, or delete it outright. Deletion is
+  immediate and undoable via a 5 s toast (same as archiving). Every other training — anything with at least
+  one logged session, or with the one active session running against it — can only be archived, never
+  deleted.
 - Tapping a card's body (not the grip or pencil) opens its detail view: the training's exercises rendered
   as `ExerciseCard`s **with** the trash icon (removal is immediate, undoable via a toast for 5 s), and a
-  trailing **"+"** card.
+  trailing **"+"** card. This works the same whether the training is active or archived.
 - The "+" card opens an exercise picker — the same search + facet UI as the Exercises page in selection
   mode. Picking one appends it to `exerciseIds`. Already-included exercises are shown as disabled.
 - Duplicate exercises within one training are rejected.

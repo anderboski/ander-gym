@@ -98,6 +98,43 @@ describe('setTrainingEmoji', () => {
   });
 });
 
+describe('archiveTraining', () => {
+  it('sets archived to true without touching the rest of the record', async () => {
+    const training = await db.createTraining('Push day');
+    await db.putTraining({ ...training, exerciseIds: ['0001'] });
+
+    const archived = await db.archiveTraining(training.id, true);
+    expect(archived).toMatchObject({ id: training.id, archived: true, exerciseIds: ['0001'] });
+    expect((await db.getTrainings())[0]?.archived).toBe(true);
+  });
+
+  it('clears archived back to undefined, not false', async () => {
+    const training = await db.createTraining('Push day');
+    await db.archiveTraining(training.id, true);
+    const restored = await db.archiveTraining(training.id, false);
+    expect(restored?.archived).toBeUndefined();
+    expect((await db.getTrainings())[0]?.archived).toBeUndefined();
+  });
+
+  it('returns null for an unknown id', async () => {
+    expect(await db.archiveTraining('nope', true)).toBeNull();
+  });
+});
+
+describe('deleteTraining', () => {
+  it('removes the training entirely', async () => {
+    const a = await db.createTraining('A');
+    const b = await db.createTraining('B');
+
+    await db.deleteTraining(a.id);
+    expect((await db.getTrainings()).map((t) => t.id)).toEqual([b.id]);
+  });
+
+  it('is a no-op for an unknown id', async () => {
+    await expect(db.deleteTraining('nope')).resolves.toBeUndefined();
+  });
+});
+
 describe('reorderTrainings', () => {
   it('applies a new order from a list of ids', async () => {
     const a = await db.createTraining('A');
@@ -199,6 +236,16 @@ describe('backup round trip', () => {
     expect(new Uint8Array((await custom!.imageBlob!.arrayBuffer()))).toEqual(
       new Uint8Array([1, 2, 3, 250, 251, 252]),
     );
+  });
+
+  it('round-trips an archived training', async () => {
+    await db.putTraining({ id: 'leg-abs', label: 'Leg-abs', order: 1, exerciseIds: [], archived: true });
+
+    const restored = parseBackup(JSON.stringify(await buildBackup()));
+    await db.clearAll();
+    await applyBackup(restored, 'replace');
+
+    expect((await db.getTrainings()).find((t) => t.id === 'leg-abs')?.archived).toBe(true);
   });
 
   it('round-trips favorited exercises', async () => {

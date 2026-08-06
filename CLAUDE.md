@@ -90,10 +90,15 @@ The third filter facet is `target` (19 clean values). Don't "fix" this by surfac
 
 **`id` in `exercises.json` is an opaque zero-padded string.** Never parse it as a number.
 
-**Trainings are never deleted.** They're fully user-managed (create / rename / drag-reorder,
-ids `t-<uuid>`), but a `Session.trainingId` must always resolve or history breaks. Renaming changes
-only `label`; the id is stable. Sessions snapshot `trainingLabel` at start time, so past records keep
-the old name — that's intended.
+**A training with any history is never deleted, only archived.** Trainings are fully user-managed
+(create / rename / drag-reorder / archive, ids `t-<uuid>`), but a `Session.trainingId` must always
+resolve or history breaks. `Training.archived` drops a training out of `nextTraining()`'s rotation and
+the default Trainings list without touching its id, exercises, or history — it stays fully resolvable
+and can be unarchived. Renaming changes only `label`; the id is stable. Sessions snapshot
+`trainingLabel` at start time, so past records keep the old name — that's intended. The one exception:
+a training with zero sessions and no session currently active against it has nothing for a
+`trainingId` to lose, so it can be deleted outright (`db.deleteTraining`) instead of archived — gated
+in the UI, not enforced by the data layer, so any new deletion path must re-check both conditions.
 
 **Saved sessions are immutable.** No editing. The only correction is delete and re-enter. Everything
 downstream (week counter, streak, "latest sets" on every card) derives from History, so it has to

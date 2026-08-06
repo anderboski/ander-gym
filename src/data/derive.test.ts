@@ -191,6 +191,28 @@ describe('nextTraining', () => {
   it('returns null with no trainings', () => {
     expect(nextTraining([], [])).toBeNull();
   });
+
+  it('skips an archived training in the rotation', () => {
+    const withArchived = [trainings[0]!, { ...trainings[1]!, archived: true }, trainings[2]!];
+    const sessions = [session(at(2026, 8, 1), 'shoulder-bicep-tricep')];
+    expect(nextTraining(withArchived, sessions)?.id).toBe('pecs-back');
+  });
+
+  it('never returns an archived training as the fallback first', () => {
+    const withArchived = [{ ...trainings[0]!, archived: true }, trainings[1]!, trainings[2]!];
+    expect(nextTraining(withArchived, [])?.id).toBe('leg-abs');
+  });
+
+  it('wraps past a trailing archived training back to the first active one', () => {
+    const withArchived = [trainings[0]!, trainings[1]!, { ...trainings[2]!, archived: true }];
+    const sessions = [session(at(2026, 8, 1), 'leg-abs')];
+    expect(nextTraining(withArchived, sessions)?.id).toBe('shoulder-bicep-tricep');
+  });
+
+  it('returns null when every training is archived', () => {
+    const allArchived = trainings.map((t) => ({ ...t, archived: true }));
+    expect(nextTraining(allArchived, [])).toBeNull();
+  });
 });
 
 describe('per-exercise history', () => {
