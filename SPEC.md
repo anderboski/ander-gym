@@ -79,7 +79,7 @@ IndexedDB via `idb`. Database `ander-gym`, version 1.
 | `sessions` | `id` (uuid) | `{ id, trainingId, trainingLabel, startedAt, savedAt, entries }` — index on `startedAt` |
 | `activeSession` | literal `'current'` | `{ trainingId, trainingLabel, startedAt, entries }` |
 | `customExercises` | `id` (`c-<uuid>`) | Exercise fields + `isCustom: true`, `imageBlob?: Blob` |
-| `settings` | key string | `weeklyGoal` (default `3`), `lastExportAt`, `schemaVersion` |
+| `settings` | key string | `weeklyGoal` (default `3`), `lastExportAt`, `favoriteExerciseIds` (default `[]`), `schemaVersion` |
 
 ```ts
 type SetEntry   = { reps: number; weight: number; at: string };      // weight in kg, 0 allowed
@@ -240,11 +240,13 @@ Vertical order, exactly as briefed:
    iOS zoom-on-focus. In normal document flow — not sticky — so it scrolls away with the rest of the page;
    an earlier sticky version could stick at the wrong offset and leave a facet chip row rendered on top of
    it.
-2. **"PR only" toggle**, its own row above the facet chips: a single chip that filters the list down to
-   exercises with at least one personal record (`exerciseRecords.has(id)` — same weighted-set-only
-   definition as the personal-record badge below, so a bodyweight-only exercise never matches). Combines
-   with the search query and every facet (AND). Counts toward, and is reset by, "Clear all" alongside the
-   facet chips.
+2. **"PR only" and "Favorites" toggles**, side by side in their own row above the facet chips.
+   - "PR only" filters the list down to exercises with at least one personal record
+     (`exerciseRecords.has(id)` — same weighted-set-only definition as the personal-record badge below, so
+     a bodyweight-only exercise never matches).
+   - "Favorites" filters down to exercises starred from their card (`settings.favoriteExerciseIds`).
+   Both combine with the search query, every facet, and each other (AND). Both count toward, and are reset
+   by, "Clear all" alongside the facet chips.
 3. **Facet chips**, three rows in this order: Category → Equipment → Target muscle. Each row scrolls
    horizontally, chips toggle, selected chips are filled. A "Clear all" appears when any is active.
 4. **Match count** — "142 exercises".
@@ -269,6 +271,10 @@ Vertical order, exactly as briefed:
 - **Personal-record badge** — `🏆 8x30kg` from `personalRecords().heaviest`, top-left. Overlaid on the card
   rather than placed in the body flow, so a card with a record is exactly as tall as one without and the
   media aspect ratio is untouched. Hidden entirely when there is no weighted history.
+- **Favorite star** — top-right, always present, filled when the exercise's id is in
+  `settings.favoriteExerciseIds`. Tapping toggles it immediately (`toggleFavorite`, no confirmation — same
+  spirit as everywhere else favoriting is one tap, one undo tap). Feeds the "Favorites" toggle in §5.2's
+  finder; has no relationship to the personal-record badge on the opposite corner.
 - **Tap the image** → full-screen sheet with the complete history: a progress chart, then each session as a
   datetime heading plus its set matrix, newest first.
 - **Progress chart** (top of that sheet) — a line over `exerciseProgress()`, toggling between top-set weight
@@ -278,7 +284,7 @@ Vertical order, exactly as briefed:
   - two or more → the line, with the latest value as the headline and `n sessions · first → last · ±Δ`.
   The y axis is padded around the data rather than anchored at zero (a 30 → 32.5 kg climb is a flat line on
   a 0-based axis) and both bounds are labelled so the cropped baseline is never a surprise.
-- Optional `onRemove` prop renders a trash icon in the top-right (Trainings context only).
+- Optional `onRemove` prop renders a trash icon beside the favorite star, top-right (Trainings context only).
 
 ### 5.3 Trainings
 Training days are fully user-managed — there is no fixed list and nothing is seeded.

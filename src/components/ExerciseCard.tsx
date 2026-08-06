@@ -14,7 +14,7 @@ import { formatSet, formatWeight, titleCase } from '../data/parse';
 import type { Exercise, SetEntry } from '../data/types';
 import { ChartFigure, LineChart } from './Chart';
 import { Sheet } from './Sheet';
-import { TrashIcon } from './icons';
+import { StarIcon, TrashIcon } from './icons';
 import './ExerciseCard.css';
 
 /** Two-column reps/weight table — the "training matrix" from the spec. */
@@ -202,10 +202,11 @@ export type ExerciseCardProps = {
  * image opens the full history. Shared by Exercises, Trainings and the picker.
  */
 export function ExerciseCard({ exercise, variant = 'carousel', onRemove }: ExerciseCardProps) {
-  const { exerciseRecords, exerciseLatest } = useGym();
+  const { exerciseRecords, exerciseLatest, settings, toggleFavorite } = useGym();
   const [showHistory, setShowHistory] = useState(false);
   const latest = exerciseLatest.get(exercise.id) ?? null;
   const best = exerciseRecords.get(exercise.id)?.heaviest;
+  const isFavorite = settings.favoriteExerciseIds.includes(exercise.id);
 
   return (
     <>
@@ -228,11 +229,23 @@ export function ExerciseCard({ exercise, variant = 'carousel', onRemove }: Exerc
           <Thumb exercise={exercise} />
         </button>
 
-        {onRemove && (
-          <button className="ex-card-remove" onClick={onRemove} aria-label={`Remove ${exercise.name}`}>
-            <TrashIcon />
+        <div className="ex-card-actions">
+          <button
+            type="button"
+            className="ex-card-favorite"
+            aria-pressed={isFavorite}
+            aria-label={isFavorite ? `Remove ${exercise.name} from favorites` : `Add ${exercise.name} to favorites`}
+            onClick={() => void toggleFavorite(exercise.id)}
+          >
+            <StarIcon filled={isFavorite} />
           </button>
-        )}
+
+          {onRemove && (
+            <button className="ex-card-remove" onClick={onRemove} aria-label={`Remove ${exercise.name}`}>
+              <TrashIcon />
+            </button>
+          )}
+        </div>
 
         <div className="ex-card-body">
           <div className="ex-card-name">{exercise.name}</div>

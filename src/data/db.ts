@@ -199,9 +199,11 @@ export async function getSettings(): Promise<Settings> {
   const db = await getDB();
   const weeklyGoal = await db.get('settings', 'weeklyGoal');
   const lastExportAt = await db.get('settings', 'lastExportAt');
+  const favoriteExerciseIds = await db.get('settings', 'favoriteExerciseIds');
   return {
     weeklyGoal: typeof weeklyGoal === 'number' ? weeklyGoal : DEFAULT_SETTINGS.weeklyGoal,
     lastExportAt: typeof lastExportAt === 'string' ? lastExportAt : null,
+    favoriteExerciseIds: Array.isArray(favoriteExerciseIds) ? favoriteExerciseIds : [],
   };
 }
 

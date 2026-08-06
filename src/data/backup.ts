@@ -168,6 +168,9 @@ export function parseBackup(text: string): BackupFile {
           ? b.settings.weeklyGoal
           : 3,
       lastExportAt: typeof b.settings?.lastExportAt === 'string' ? b.settings.lastExportAt : null,
+      favoriteExerciseIds: Array.isArray(b.settings?.favoriteExerciseIds)
+        ? b.settings.favoriteExerciseIds.filter((id): id is string => typeof id === 'string')
+        : [],
     },
   };
 }
@@ -192,4 +195,5 @@ export async function applyBackup(backup: BackupFile, mode: ImportMode): Promise
 
   await putSetting('weeklyGoal', backup.settings.weeklyGoal);
   await putSetting('lastExportAt', backup.settings.lastExportAt);
+  await putSetting('favoriteExerciseIds', backup.settings.favoriteExerciseIds);
 }
