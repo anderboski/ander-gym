@@ -131,6 +131,15 @@ export const MoonIcon = (p: P) => (
   </svg>
 );
 
+export const StarIcon = (p: P & { filled?: boolean }) => {
+  const { filled, ...rest } = p;
+  return (
+    <svg {...base} {...rest} fill={filled ? 'currentColor' : 'none'}>
+      <path d="M12 3.5l2.53 5.4 5.97.68-4.4 4.13 1.17 5.89L12 16.7l-5.27 2.9 1.17-5.89-4.4-4.13 5.97-.68z" />
+    </svg>
+  );
+};
+
 export const GitHubIcon = (p: P) => (
   <svg {...base} {...p}>
     <path d="M9 19c-5 1.5-5-2.5-7-3m14 6v-3.87a3.37 3.37 0 0 0-.94-2.61c3.14-.35 6.44-1.54 6.44-7A5.44 5.44 0 0 0 20 4.77 5.07 5.07 0 0 0 19.91 1S18.73.65 16 2.48a13.38 13.38 0 0 0-7 0C6.27.65 5.09 1 5.09 1A5.07 5.07 0 0 0 5 4.77a5.44 5.44 0 0 0-1.5 3.78c0 5.42 3.3 6.61 6.44 7A3.37 3.37 0 0 0 9 18.13V22" />

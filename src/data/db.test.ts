@@ -143,15 +143,21 @@ describe('active session', () => {
 
 describe('settings', () => {
   it('defaults when unset', async () => {
-    expect(await db.getSettings()).toEqual({ weeklyGoal: 3, lastExportAt: null });
+    expect(await db.getSettings()).toEqual({
+      weeklyGoal: 3,
+      lastExportAt: null,
+      favoriteExerciseIds: [],
+    });
   });
 
   it('persists overrides', async () => {
     await db.putSetting('weeklyGoal', 5);
     await db.putSetting('lastExportAt', '2026-08-01T00:00:00.000Z');
+    await db.putSetting('favoriteExerciseIds', ['0001', '0002']);
     expect(await db.getSettings()).toEqual({
       weeklyGoal: 5,
       lastExportAt: '2026-08-01T00:00:00.000Z',
+      favoriteExerciseIds: ['0001', '0002'],
     });
   });
 });
@@ -193,6 +199,32 @@ describe('backup round trip', () => {
     expect(new Uint8Array((await custom!.imageBlob!.arrayBuffer()))).toEqual(
       new Uint8Array([1, 2, 3, 250, 251, 252]),
     );
+  });
+
+  it('round-trips favorited exercises', async () => {
+    await db.putSetting('favoriteExerciseIds', ['0001', '0002']);
+
+    const restored = parseBackup(JSON.stringify(await buildBackup()));
+    await db.clearAll();
+    await applyBackup(restored, 'replace');
+
+    expect((await db.getSettings()).favoriteExerciseIds).toEqual(['0001', '0002']);
+  });
+
+  it('tolerates a backup written before favorites existed', async () => {
+    const backup = parseBackup(
+      JSON.stringify({
+        schemaVersion: 1,
+        exportedAt: '2026-08-01T00:00:00.000Z',
+        trainings: [],
+        sessions: [],
+        customExercises: [],
+        settings: { weeklyGoal: 3, lastExportAt: null },
+      }),
+    );
+    await applyBackup(backup, 'replace');
+
+    expect((await db.getSettings()).favoriteExerciseIds).toEqual([]);
   });
 
   it("round-trips a training day's rest length", async () => {

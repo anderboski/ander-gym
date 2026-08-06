@@ -100,6 +100,8 @@ type Mutations = {
   deleteSession: (id: string) => Promise<void>;
 
   setWeeklyGoal: (goal: number) => Promise<void>;
+  /** Stars or unstars an exercise in the finder. */
+  toggleFavorite: (exerciseId: string) => Promise<void>;
   exportNow: () => Promise<void>;
   importFrom: (file: File, mode: ImportMode) => Promise<void>;
 };
@@ -402,6 +404,15 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
         const weeklyGoal = Math.max(1, Math.min(14, Math.round(goal)));
         await db.putSetting('weeklyGoal', weeklyGoal);
         setState((s) => ({ ...s, settings: { ...s.settings, weeklyGoal } }));
+      },
+
+      async toggleFavorite(exerciseId) {
+        const current = (await db.getSettings()).favoriteExerciseIds;
+        const favoriteExerciseIds = current.includes(exerciseId)
+          ? current.filter((id) => id !== exerciseId)
+          : [...current, exerciseId];
+        await db.putSetting('favoriteExerciseIds', favoriteExerciseIds);
+        setState((s) => ({ ...s, settings: { ...s.settings, favoriteExerciseIds } }));
       },
 
       async exportNow() {

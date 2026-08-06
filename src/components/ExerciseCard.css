@@ -136,22 +136,43 @@
   pointer-events: none;
 }
 
-.ex-card-remove {
+/* Favorite star + (Trainings-only) remove button, stacked top-right so
+   neither ever collides with the PR badge on the opposite corner. */
+.ex-card-actions {
   position: absolute;
   top: var(--s1);
   right: var(--s1);
+  z-index: 1;
+  display: flex;
+  gap: var(--s1);
+}
+
+.ex-card-favorite,
+.ex-card-remove {
   width: 36px;
   height: 36px;
   border-radius: var(--r-full);
   background: color-mix(in srgb, var(--bg) 70%, transparent);
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
-  color: var(--danger);
   display: inline-flex;
   align-items: center;
   justify-content: center;
 }
 
+.ex-card-favorite {
+  color: var(--text-dim);
+}
+
+.ex-card-favorite[aria-pressed='true'] {
+  color: var(--warn);
+}
+
+.ex-card-remove {
+  color: var(--danger);
+}
+
+.ex-card-favorite svg,
 .ex-card-remove svg {
   width: 18px;
   height: 18px;

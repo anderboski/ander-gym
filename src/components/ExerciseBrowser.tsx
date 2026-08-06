@@ -45,12 +45,18 @@ export function ExerciseBrowser({
   excludeIds,
   sortDoneFirst,
 }: ExerciseBrowserProps): ReactElement {
-  const { exercises, exerciseLatest, exerciseRecords } = useGym();
+  const { exercises, exerciseLatest, exerciseRecords, settings } = useGym();
 
   const [query, setQuery] = useState('');
   const [facets, setFacets] = useState<Facets>(EMPTY_FACETS);
   const [onlyPR, setOnlyPR] = useState(false);
+  const [onlyFavorites, setOnlyFavorites] = useState(false);
   const [limit, setLimit] = useState(PAGE_SIZE);
+
+  const favoriteIds = useMemo(
+    () => new Set(settings.favoriteExerciseIds),
+    [settings.favoriteExerciseIds],
+  );
 
   const options = useMemo(() => facetOptions(exercises), [exercises]);
 
@@ -67,13 +73,25 @@ export function ExerciseBrowser({
     let found = searchExercises(exercises, query, facets, doneIds);
     if (excluded.size > 0) found = found.filter((ex) => !excluded.has(ex.id));
     if (onlyPR) found = found.filter((ex) => exerciseRecords.has(ex.id));
+    if (onlyFavorites) found = found.filter((ex) => favoriteIds.has(ex.id));
     return found;
-  }, [exercises, query, facets, excluded, sortDoneFirst, exerciseLatest, onlyPR, exerciseRecords]);
+  }, [
+    exercises,
+    query,
+    facets,
+    excluded,
+    sortDoneFirst,
+    exerciseLatest,
+    onlyPR,
+    exerciseRecords,
+    onlyFavorites,
+    favoriteIds,
+  ]);
 
   // Any change to the result set starts the window over.
   useEffect(() => {
     setLimit(PAGE_SIZE);
-  }, [query, facets, excluded, onlyPR]);
+  }, [query, facets, excluded, onlyPR, onlyFavorites]);
 
   const visible = matches.slice(0, limit);
   const hasMore = limit < matches.length;
@@ -99,7 +117,7 @@ export function ExerciseBrowser({
     return () => observer.disconnect();
   }, [hasMore, limit, matches]);
 
-  const activeFacets = countActiveFacets(facets) + (onlyPR ? 1 : 0);
+  const activeFacets = countActiveFacets(facets) + (onlyPR ? 1 : 0) + (onlyFavorites ? 1 : 0);
 
   return (
     <div className="browser">
@@ -144,6 +162,14 @@ export function ExerciseBrowser({
             >
               🏆 PR only
             </button>
+            <button
+              type="button"
+              className="chip"
+              aria-pressed={onlyFavorites}
+              onClick={() => setOnlyFavorites((v) => !v)}
+            >
+              ⭐ Favorites
+            </button>
           </div>
         </div>
 
@@ -174,6 +200,7 @@ export function ExerciseBrowser({
               onClick={() => {
                 setFacets(EMPTY_FACETS);
                 setOnlyPR(false);
+                setOnlyFavorites(false);
               }}
             >
               Clear all ({activeFacets})

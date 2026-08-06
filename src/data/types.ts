@@ -110,11 +110,14 @@ export type Session = ActiveSession & {
 export type Settings = {
   weeklyGoal: number;
   lastExportAt: string | null;
+  /** Exercise ids starred from the Exercises finder, built-in or custom. */
+  favoriteExerciseIds: string[];
 };
 
 export const DEFAULT_SETTINGS: Settings = {
   weeklyGoal: 3,
   lastExportAt: null,
+  favoriteExerciseIds: [],
 };
 
 /** Facet keys the Exercises filter exposes, in on-screen order. */
