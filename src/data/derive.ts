@@ -233,6 +233,25 @@ export function weeklyStreak(sessions: Session[], goal: number, now: Date): numb
   return streak;
 }
 
+export type LifetimeStats = {
+  totalSessions: number;
+  /** Σ `totalVolume` across every saved session, kg. */
+  totalVolumeKg: number;
+  /** `startedAt` of the earliest saved session, or null with no history yet. */
+  since: string | null;
+};
+
+/** All-time totals for the Home footer. Walks every session once. */
+export function lifetimeStats(sessions: Session[]): LifetimeStats {
+  let totalVolumeKg = 0;
+  let since: string | null = null;
+  for (const s of sessions) {
+    totalVolumeKg += totalVolume(s);
+    if (!since || new Date(s.startedAt).getTime() < new Date(since).getTime()) since = s.startedAt;
+  }
+  return { totalSessions: sessions.length, totalVolumeKg, since };
+}
+
 /* -------------------------------------------------------------------------- */
 /* Rotation                                                                    */
 /* -------------------------------------------------------------------------- */

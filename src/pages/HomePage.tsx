@@ -19,12 +19,14 @@ import {
   formatDaysAgo,
   isSameDay,
   lastSessionForTraining,
+  lifetimeStats,
   monthGrid,
   nextTraining,
   sessionsByDay,
   startOfMonth,
   weeklyStreak,
 } from '../data/derive';
+import { formatCompact } from '../data/parse';
 import { navigate } from '../router';
 import {
   AlertIcon,
@@ -82,6 +84,7 @@ export function HomePage() {
   const today = nextTraining(trainings, sessions);
   const doneToday = completedToday(sessions, now);
   const lastForToday = today ? lastSessionForTraining(today.id, sessions) : null;
+  const lifetime = lifetimeStats(sessions);
 
   const lastExportAt = settings.lastExportAt;
   const exportAge = lastExportAt ? now.getTime() - new Date(lastExportAt).getTime() : null;
@@ -297,6 +300,16 @@ export function HomePage() {
                 </button>
               </div>
             </section>
+          )}
+
+          {/* --- lifetime stats footer -------------------------------------- */}
+          {lifetime.totalSessions > 0 && (
+            <div className="section home-lifetime">
+              <span className="num">{lifetime.totalSessions}</span> session
+              {lifetime.totalSessions === 1 ? '' : 's'} ·{' '}
+              <span className="num">{formatCompact(lifetime.totalVolumeKg)}</span> kg lifted
+              {lifetime.since && <> since {formatDate(lifetime.since)}</>}
+            </div>
           )}
         </>
       )}
