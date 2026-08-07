@@ -227,6 +227,9 @@ the fixed bottom nav.
   stats".
 - **Backup banner** — shown when `lastExportAt` is unset (and ≥1 session exists) or older than 30 days.
   Tapping it runs an export immediately.
+- **Lifetime stats footer** — below the backup banner, a single centred line: total sessions ever saved,
+  total kg lifted (`formatCompact`, matching Stats' chart figures), and "since `<date of the first saved
+  session>`". Hidden until at least one session exists, matching "See all stats" and the calendar.
 - **Gear icon** (top right) — Settings sheet: weekly goal, export, import, storage usage
   (`navigator.storage.estimate()`), app version, and a link to the GitHub repo.
 - **Theme toggle** (top right, beside the gear icon) — sun/moon icon button that flips between light

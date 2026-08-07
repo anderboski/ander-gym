@@ -18,6 +18,7 @@ import {
   historyFor,
   lastSessionForTraining,
   latestFor,
+  lifetimeStats,
   monthGrid,
   nextTraining,
   personalRecords,
@@ -655,6 +656,29 @@ describe('session summaries', () => {
 
   it('sums volume, treating bodyweight as zero', () => {
     expect(totalVolume(s)).toBe(10 * 25 + 8 * 30);
+  });
+});
+
+describe('lifetimeStats', () => {
+  it('is all zero/null with no history', () => {
+    expect(lifetimeStats([])).toEqual({ totalSessions: 0, totalVolumeKg: 0, since: null });
+  });
+
+  it('sums sessions and volume, and finds the earliest startedAt', () => {
+    const sessions = [
+      session(at(2026, 8, 1), 'a', [
+        { exerciseId: '0001', sets: [{ reps: 10, weight: 25, at: '' }] },
+      ]),
+      session(at(2026, 7, 20), 'a', [
+        { exerciseId: '0001', sets: [{ reps: 8, weight: 30, at: '' }] },
+      ]),
+      session(at(2026, 7, 25)),
+    ];
+    expect(lifetimeStats(sessions)).toEqual({
+      totalSessions: 3,
+      totalVolumeKg: 10 * 25 + 8 * 30,
+      since: at(2026, 7, 20),
+    });
   });
 });
 
