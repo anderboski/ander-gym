@@ -11,12 +11,14 @@ import { useEffect, useMemo, useState } from 'react';
 import { useGym } from '../data/store';
 import {
   addMonths,
+  averageSessionMinutes,
   completedToday,
   currentWeekCount,
   dayKey,
   daysBetween,
   formatDate,
   formatDaysAgo,
+  formatDurationEstimate,
   isSameDay,
   lastSessionForTraining,
   lifetimeStats,
@@ -84,6 +86,7 @@ export function HomePage() {
   const today = nextTraining(trainings, sessions);
   const doneToday = completedToday(sessions, now);
   const lastForToday = today ? lastSessionForTraining(today.id, sessions) : null;
+  const durationEstimate = today ? averageSessionMinutes(today.id, sessions) : null;
   const lifetime = lifetimeStats(sessions);
 
   const lastExportAt = settings.lastExportAt;
@@ -240,6 +243,12 @@ export function HomePage() {
                       </>
                     ) : (
                       <span>Never done</span>
+                    )}
+                    {durationEstimate !== null && (
+                      <>
+                        <span className="home-card-dot">·</span>
+                        <span>usually {formatDurationEstimate(durationEstimate)}</span>
+                      </>
                     )}
                   </div>
                   <div className="home-card-cta">

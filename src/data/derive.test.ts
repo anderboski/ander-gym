@@ -4,6 +4,7 @@ import {
   adjustRest,
   allLatestFor,
   allPersonalRecords,
+  averageSessionMinutes,
   beatsPersonalRecord,
   completedToday,
   currentWeekCount,
@@ -13,6 +14,7 @@ import {
   exerciseProgress,
   formatCountdown,
   formatDaysAgo,
+  formatDurationEstimate,
   formatElapsed,
   formatShortDate,
   historyFor,
@@ -707,6 +709,23 @@ describe('ordering and today', () => {
     expect(lastSessionForTraining('pecs-back', sessions)?.startedAt).toBe(at(2026, 7, 28));
     expect(lastSessionForTraining('nope', sessions)).toBeNull();
   });
+
+  it('averages session duration for one training', () => {
+    const sessions = [
+      { ...session(at(2026, 7, 20), 'pecs-back'), savedAt: at(2026, 7, 20, 12, 40) }, // 40m
+      { ...session(at(2026, 7, 27), 'pecs-back'), savedAt: at(2026, 7, 27, 13, 0) }, // 60m
+      { ...session(at(2026, 7, 21), 'leg-abs'), savedAt: at(2026, 7, 21, 13, 0) }, // other training
+    ];
+    expect(averageSessionMinutes('pecs-back', sessions)).toBe(50);
+    expect(averageSessionMinutes('nope', sessions)).toBeNull();
+  });
+
+  it('ignores a session whose savedAt is at or before startedAt', () => {
+    const sessions = [
+      { ...session(at(2026, 7, 20), 'pecs-back'), savedAt: at(2026, 7, 20) }, // 0m, skipped
+    ];
+    expect(averageSessionMinutes('pecs-back', sessions)).toBeNull();
+  });
 });
 
 describe('calendar', () => {
@@ -775,6 +794,12 @@ describe('display helpers', () => {
     const start = at(2026, 8, 1, 10, 0);
     expect(formatElapsed(start, new Date(2026, 7, 1, 10, 24))).toBe('24m');
     expect(formatElapsed(start, new Date(2026, 7, 1, 11, 12))).toBe('1h 12m');
+  });
+
+  it('formats a rounded duration estimate', () => {
+    expect(formatDurationEstimate(45)).toBe('~45m');
+    expect(formatDurationEstimate(70)).toBe('~1h 10m');
+    expect(formatDurationEstimate(0.2)).toBe('~1m');
   });
 });
 

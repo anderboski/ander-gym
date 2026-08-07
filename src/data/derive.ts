@@ -97,6 +97,13 @@ export function formatElapsed(fromIso: string, now: Date): string {
   return h > 0 ? `${h}h ${mins % 60}m` : `${mins}m`;
 }
 
+/** `~1h 10m` / `~45m` — a rounded, approximate duration, not a live countdown. */
+export function formatDurationEstimate(minutes: number): string {
+  const whole = Math.max(1, Math.round(minutes));
+  const h = Math.floor(whole / 60);
+  return h > 0 ? `~${h}h ${whole % 60}m` : `~${whole}m`;
+}
+
 /* -------------------------------------------------------------------------- */
 /* Rest timer                                                                  */
 /* -------------------------------------------------------------------------- */
@@ -287,6 +294,22 @@ export function nextTraining(trainings: Training[], sessions: Session[]): Traini
 
 export function lastSessionForTraining(trainingId: string, sessions: Session[]): Session | null {
   return mostRecentSession(sessions.filter((s) => s.trainingId === trainingId));
+}
+
+/**
+ * Average minutes from `startedAt` to `savedAt` across every saved session for
+ * one training, or null with no history to average. A session salvaged from a
+ * force-quit can carry a `savedAt` at or before `startedAt` (e.g. an import
+ * with clock skew) — those contribute nothing rather than dragging the
+ * average negative.
+ */
+export function averageSessionMinutes(trainingId: string, sessions: Session[]): number | null {
+  const minutes = sessions
+    .filter((s) => s.trainingId === trainingId)
+    .map((s) => (new Date(s.savedAt).getTime() - new Date(s.startedAt).getTime()) / 60_000)
+    .filter((m) => m > 0);
+  if (minutes.length === 0) return null;
+  return minutes.reduce((a, b) => a + b, 0) / minutes.length;
 }
 
 /**

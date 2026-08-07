@@ -215,6 +215,9 @@ the fixed bottom nav.
   - If a session was already saved today, show a "Completed today" badge above the card; the card still
     offers the next training in rotation.
   - If a session is currently active, the card is replaced by "Resume session →".
+  - **Duration estimate** — "usually ~45m", the average of `savedAt − startedAt` across every past saved
+    session for that training (`averageSessionMinutes`). Omitted when the training has no saved sessions
+    yet, since there is nothing to average.
 - **"See all stats"** — a row under the week counter, pushing to the Stats view (§5.6). Hidden until at
   least one session exists, so a fresh install keeps its empty state.
 - **Calendar** — below Today, a month grid (Monday-start, six fixed rows so paging never changes the card's
