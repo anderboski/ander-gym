@@ -573,45 +573,6 @@ export function beatsPersonalRecord(
   return atReps !== undefined && set.weight > atReps.weight;
 }
 
-export type PersonalRecordEvent = {
-  exerciseId: string;
-  set: SetEntry;
-};
-
-/**
- * Every set that became a new heaviest-ever load for its exercise, newest
- * first — the log the live "New PR" toast (`beatsPersonalRecord`) never
- * keeps. Same "heaviest ever" definition as `PersonalRecords.heaviest`, so
- * per-rep records don't appear here and a first-ever weighted set for an
- * exercise sets the bar but doesn't count as an event, matching
- * `beatsPersonalRecord`'s own exclusion — it beat nothing. Bodyweight sets
- * never qualify. Walks sessions and sets in logged order, same as `absorb`,
- * rather than sorting by `at` — nothing downstream needs true cross-exercise
- * ordering within a session, and `at` is not guaranteed parseable (see
- * `personalRecords` tests).
- */
-export function personalRecordEvents(sessions: LoggedSession[]): PersonalRecordEvent[] {
-  const heaviestSoFar = new Map<string, number>();
-  const events: PersonalRecordEvent[] = [];
-
-  for (const session of chronological(sessions)) {
-    for (const entry of session.entries) {
-      for (const set of entry.sets) {
-        if (set.weight <= 0) continue;
-        const current = heaviestSoFar.get(entry.exerciseId);
-        if (current === undefined) {
-          heaviestSoFar.set(entry.exerciseId, set.weight);
-        } else if (set.weight > current) {
-          heaviestSoFar.set(entry.exerciseId, set.weight);
-          events.push({ exerciseId: entry.exerciseId, set });
-        }
-      }
-    }
-  }
-
-  return events.reverse();
-}
-
 /* -------------------------------------------------------------------------- */
 /* Progress over time                                                          */
 /* -------------------------------------------------------------------------- */
