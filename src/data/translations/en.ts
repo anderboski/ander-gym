@@ -293,7 +293,7 @@ export const en = {
   'home.greetingMorning': 'Good morning, {name}',
   'home.greetingDay': 'Welcome back, {name}',
   'home.greetingEvening': 'Good evening, {name}',
-  'home.greetingNamePlaceholder': '_ _',
+  'home.greetingNamePlaceholder': '<yourname>',
   'home.greetingAria': 'Open your profile',
 
   'profile.editAria': 'Edit profile',

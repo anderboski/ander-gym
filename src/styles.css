@@ -27,6 +27,11 @@
   --warn: #f59e0b;
   --warn-soft: rgba(245, 158, 11, 0.13);
 
+  /* Inline tappable text (e.g. the Home greeting) — distinct from --accent,
+     which marks state (selected/primary), not "this text is a link". iOS
+     system blue, so it reads as a native affordance. */
+  --link: #0a84ff;
+
   /* Spacing scale */
   --s1: 4px;
   --s2: 8px;
@@ -87,6 +92,8 @@
     --danger-soft: rgba(217, 45, 32, 0.1);
     --warn: #b45309;
     --warn-soft: rgba(180, 83, 9, 0.12);
+
+    --link: #007aff;
 
     --shadow: 0 6px 24px rgba(16, 24, 40, 0.12);
     --shadow-sheet: 0 -10px 40px rgba(16, 24, 40, 0.18);

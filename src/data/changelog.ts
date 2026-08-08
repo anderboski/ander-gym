@@ -104,6 +104,12 @@ export const CHANGELOG: ChangelogEntry[] = [
       'El IMC se muestra automáticamente en cuanto añades una altura y al menos un registro.',
     ],
   },
+  {
+    version: '1.8.1',
+    date: '2026-08-08',
+    en: ['The Home greeting is now clearly a link to your profile — bigger, blue, underlined.'],
+    es: ['El saludo de Inicio ahora se ve claramente como un enlace a tu perfil — más grande, azul y subrayado.'],
+  },
 ];
 
 /** Keep in sync with the bootstrap-independent nature of theme/language: this

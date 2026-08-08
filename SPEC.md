@@ -473,11 +473,12 @@ Reached by tapping the greeting in Home's header (see below); a back control ret
 
 - **The greeting doubles as the entry point.** Home's `<h1>` shows a time-bucketed greeting instead of a
   static "Home" title — morning (5:00–11:59) "Good morning, `<name>`", day (12:00–17:59) "Welcome back,
-  `<name>`", evening (18:00–4:59) "Good evening, `<name>`" (`derive.ts` `greetingBucket`). The text itself is
-  a `<button>` (nested inside the `<h1>` so it stays a real heading for screen readers) that navigates to
-  Profile. With no name set yet, `<name>` is a literal placeholder (`_ _`) rather than falling back to a
-  plain title — the greeting has to stay discoverable as a tap target from the very first launch, not just
-  after someone has already found their way to Profile once.
+  `<name>`", evening (18:00–4:59) "Good evening, `<name>`" (`derive.ts` `greetingBucket`). Only `<name>` is
+  the tap target — a `<button>` nested inside the `<h1>` (so it stays a real heading for screen readers),
+  styled distinctly (`--link` blue, underlined, slightly larger) so it reads as a link; the rest of the
+  greeting is plain heading text. With no name set yet, `<name>` is a literal placeholder (`<yourname>` /
+  `<tu nombre>`) rather than falling back to a plain title — the entry point has to stay discoverable from
+  the very first launch, not just after someone has already found their way to Profile once.
 - **Fields — name, birthdate, height (cm)** — all optional and skippable, edited from a pencil-icon sheet
   next to the name. **Age is never stored**, only `birthdate`; `ageFrom()` derives it on every render, same
   "derive, don't duplicate" rule as everything else in this app (week counts, streaks, "days ago"). A stat
