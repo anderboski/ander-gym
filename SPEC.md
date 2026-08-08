@@ -451,13 +451,7 @@ A push view off Home (`#/stats`), **not** a sixth tab: D1 locks the navigation a
 this route to `home` and the tab bar stays lit on Home while it is open — the same arrangement as a training
 or a session detail. Reached from the "See all stats" row in §5.1; a back control returns to Home.
 
-Four views, all derived from `sessions`, nothing stored:
-- **Last 5 PRs** — the most recent sets that beat a previous heaviest-ever load for their exercise
-  (`personalRecordEvents`), newest first, shown above Weekly volume. A plain list (exercise name, `NxWkg`,
-  date), not a chart — there is no shared axis a squat PR and a curl PR could sit on. Same "heaviest ever"
-  definition as the `🏆` badge on `ExerciseCard` and the live "New PR" toast: a first-ever weighted set for
-  an exercise sets the bar but isn't a PR event, since it beat nothing. Per-rep records (§4 `byReps`) don't
-  appear here, only the overall heaviest. Empty state when nothing has ever been beaten yet.
+Three views, all derived from `sessions`, nothing stored:
 - **Weekly volume** — a line over the last 12 weeks (`weeklySummary`), headlined with this week's kg and
   captioned with the 12-week average and the best week.
 - **Sessions per week** — a bar strip over the same 12 weeks, with the weekly goal as a reference line.

@@ -267,8 +267,6 @@ export const es: Record<TranslationKey, string> = {
   'stats.title': 'Estadísticas',
   'stats.subtitle': 'Todo lo de abajo se calcula a partir de tus sesiones guardadas.',
   'stats.removedExercises': 'Ejercicios eliminados',
-  'stats.recentPrsTitle': 'Últimos 5 PRs',
-  'stats.recentPrsEmpty': 'Todavía no hay récords personales — supera una marca anterior en cualquier ejercicio y aparecerá aquí.',
   'stats.weeklyVolume': 'Volumen semanal',
   'stats.volumeCaption': 'Esta semana · promedio de {weeks} semanas {average} · mejor semana {best}',
   'stats.volumeAria':
