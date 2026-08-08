@@ -109,6 +109,8 @@ type Mutations = {
   restoreTraining: (training: Training) => Promise<void>;
   /** Full new rotation order, as dragged into place. */
   reorderTrainings: (orderedIds: string[]) => Promise<void>;
+  /** Full new exercise order within one training, as dragged into place. */
+  reorderTrainingExercises: (trainingId: string, orderedExerciseIds: string[]) => Promise<void>;
 
   /** Replaces any session already in progress — confirm with the user first. */
   startSession: (trainingId: string) => Promise<void>;
@@ -384,6 +386,15 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       async reorderTrainings(orderedIds) {
         const trainings = await db.reorderTrainings(orderedIds);
         setState((s) => ({ ...s, trainings }));
+      },
+
+      async reorderTrainingExercises(trainingId, orderedExerciseIds) {
+        const updated = await db.reorderTrainingExercises(trainingId, orderedExerciseIds);
+        if (!updated) return;
+        setState((s) => ({
+          ...s,
+          trainings: s.trainings.map((t) => (t.id === trainingId ? updated : t)),
+        }));
       },
 
       async startSession(trainingId) {
