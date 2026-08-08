@@ -15,6 +15,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useGym } from '../data/store';
+import { useLanguage } from '../data/i18n';
 import {
   adjustRest,
   beatsPersonalRecord,
@@ -59,6 +60,7 @@ type PendingTrainingSync = {
 
 export function SessionPage() {
   const { status, active, trainings, getExercise, syncTrainingExercises } = useGym();
+  const { t } = useLanguage();
   const [pendingSync, setPendingSync] = useState<PendingTrainingSync | null>(null);
 
   if (status === 'loading') return <div className="page"><div className="spinner" /></div>;
@@ -84,9 +86,9 @@ export function SessionPage() {
   const syncMessage = (sync: PendingTrainingSync): string => {
     const nameOf = (id: string) => getExercise(id)?.name ?? id;
     const parts: string[] = [];
-    if (sync.addedIds.length > 0) parts.push(`add ${sync.addedIds.map(nameOf).join(', ')}`);
-    if (sync.removedIds.length > 0) parts.push(`remove ${sync.removedIds.map(nameOf).join(', ')}`);
-    return `This session didn't match ${sync.trainingLabel} — ${parts.join(' and ')}. Update the training to match for next time?`;
+    if (sync.addedIds.length > 0) parts.push(t('session.syncAdd', { names: sync.addedIds.map(nameOf).join(', ') }));
+    if (sync.removedIds.length > 0) parts.push(t('session.syncRemove', { names: sync.removedIds.map(nameOf).join(', ') }));
+    return t('session.syncMessage', { training: sync.trainingLabel, parts: parts.join(t('session.syncJoiner')) });
   };
 
   return (
@@ -99,9 +101,9 @@ export function SessionPage() {
 
       {pendingSync && (
         <ConfirmSheet
-          title="Update training?"
+          title={t('session.updateTrainingTitle')}
           message={syncMessage(pendingSync)}
-          confirmLabel="Update"
+          confirmLabel={t('session.update')}
           onCancel={() => {
             setPendingSync(null);
             navigate('/history');
@@ -125,6 +127,7 @@ export function SessionPage() {
 
 function NewSessionView({ trainings }: { trainings: Training[] }) {
   const { startSession } = useGym();
+  const { t } = useLanguage();
   const [starting, setStarting] = useState(false);
 
   const start = (id: string) => {
@@ -137,32 +140,32 @@ function NewSessionView({ trainings }: { trainings: Training[] }) {
   return (
     <div className="page">
       <div className="page-header">
-        <h1 className="page-title">Session</h1>
-        <div className="page-sub">Nothing in progress</div>
+        <h1 className="page-title">{t('tabbar.session')}</h1>
+        <div className="page-sub">{t('session.nothingInProgress')}</div>
       </div>
 
       <div className="section sess-centre">
         <div className="card sess-new">
           <div className="sess-new-head">
-            <div className="sess-new-title">New Session</div>
-            <div className="sess-new-sub">Pick a training day to start.</div>
+            <div className="sess-new-title">{t('session.newSession')}</div>
+            <div className="sess-new-sub">{t('session.pickTrainingDay')}</div>
           </div>
 
           {trainings.length === 0 ? (
-            <div className="empty">No training days found.</div>
+            <div className="empty">{t('session.noTrainingDaysFound')}</div>
           ) : (
-            trainings.map((t) => (
+            trainings.map((tr) => (
               <button
-                key={t.id}
+                key={tr.id}
                 className="sess-new-row card-tappable"
-                onClick={() => start(t.id)}
+                onClick={() => start(tr.id)}
                 disabled={starting}
               >
                 <span className="sess-new-row-text">
-                  <span className="sess-new-label">{t.label}</span>
+                  <span className="sess-new-label">{tr.label}</span>
                 </span>
                 <span className="sess-new-count num">
-                  {t.exerciseIds.length === 1 ? '1 exercise' : `${t.exerciseIds.length} exercises`}
+                  {tr.exerciseIds.length} {t(tr.exerciseIds.length === 1 ? 'browser.exerciseOne' : 'browser.exerciseOther')}
                 </span>
                 <ChevronRightIcon className="sess-new-chevron" />
               </button>
@@ -251,6 +254,7 @@ function RestBar({
   onDismiss: () => void;
   onPickDefault: (seconds: number) => void;
 }) {
+  const { t } = useLanguage();
   const nowMs = useNowMs(rest !== null);
   const phase = rest ? restPhase(rest, nowMs) : null;
   const done = phase === 'done';
@@ -276,38 +280,38 @@ function RestBar({
         {rest ? (
           <>
             <div className={done ? 'sess-rest-time sess-rest-done num' : 'sess-rest-time num'}>
-              {done ? 'Rest done' : formatCountdown(remainingSeconds(rest.targetMs, nowMs))}
+              {done ? t('session.restDone') : formatCountdown(remainingSeconds(rest.targetMs, nowMs))}
             </div>
             <div className="sess-rest-controls">
               <button
                 className="btn btn-sm sess-rest-btn num"
                 disabled={done}
-                aria-label="Take 30 seconds off this rest"
+                aria-label={t('session.restMinus30Aria')}
                 onClick={() => onAdjust(-30)}
               >
                 −30
               </button>
               <button
                 className="btn btn-sm sess-rest-btn num"
-                aria-label="Add 30 seconds to this rest"
+                aria-label={t('session.restPlus30Aria')}
                 onClick={() => onAdjust(30)}
               >
                 +30
               </button>
               <button className="btn btn-sm sess-rest-btn" onClick={onDismiss}>
-                {done ? 'Clear' : 'Skip'}
+                {done ? t('session.clear') : t('session.skip')}
               </button>
             </div>
           </>
         ) : (
           <>
             <div className="sess-rest-time sess-rest-idle">
-              Rest <span className="num">{defaultSeconds}s</span>
+              {t('session.restLabel')} <span className="num">{defaultSeconds}s</span>
             </div>
             <div
               className="sess-rest-controls"
               role="group"
-              aria-label="Rest length for this training day"
+              aria-label={t('session.restLengthAria')}
             >
               {REST_PRESETS.map((seconds) => (
                 <button
@@ -359,6 +363,7 @@ function ActiveView({
     discardSession,
     setTrainingRest,
   } = useGym();
+  const { t } = useLanguage();
   const now = useNow(30_000);
 
   const [addingTo, setAddingTo] = useState<string | null>(null);
@@ -398,9 +403,9 @@ function ActiveView({
     saveSession()
       .then((saved) => {
         if (saved) onSaved(saved, originalExerciseIds);
-        else setNotice('Log at least one set before saving — or discard the session below.');
+        else setNotice(t('session.logAtLeastOneSet'));
       })
-      .catch(() => setNotice('Could not save the session. Try again.'));
+      .catch(() => setNotice(t('session.couldNotSaveSession')));
   };
 
   const openAdd = useCallback((exerciseId: string) => {
@@ -418,7 +423,7 @@ function ActiveView({
           <div>
             <h1 className="page-title">{active.trainingLabel}</h1>
           </div>
-          <div className="sess-elapsed num" aria-label="Elapsed time">
+          <div className="sess-elapsed num" aria-label={t('session.elapsedAria')}>
             <ClockIcon />
             {formatElapsed(active.startedAt, now)}
           </div>
@@ -437,12 +442,10 @@ function ActiveView({
         <div className="section">
           {active.entries.length === 0 ? (
             <div className="card card-pad sess-hint">
-              <p className="sess-hint-title">This training has no exercises yet.</p>
-              <p className="sess-hint-body">
-                Add some from the Trainings tab, then come back — the session keeps running.
-              </p>
+              <p className="sess-hint-title">{t('session.noExercisesYet')}</p>
+              <p className="sess-hint-body">{t('session.addFromTrainingsHint')}</p>
               <button className="btn btn-sm" onClick={() => navigate('/trainings')}>
-                Go to Trainings
+                {t('home.goToTrainings')}
               </button>
             </div>
           ) : (
@@ -480,16 +483,16 @@ function ActiveView({
             onClick={() => setPickingExercise(true)}
           >
             <PlusIcon />
-            Add exercise
+            {t('exercises.addExercise')}
           </button>
           <button className="btn btn-primary btn-lg btn-block" onClick={onSave}>
-            Save session
+            {t('session.saveSession')}
           </button>
           <div className="sess-summary num">
-            {totalSets === 1 ? '1 set logged' : `${totalSets} sets logged`}
+            {t(totalSets === 1 ? 'session.setsLoggedOne' : 'session.setsLoggedOther', { count: totalSets })}
           </div>
           <button className="btn btn-danger btn-sm" onClick={() => setConfirmDiscard(true)}>
-            Discard session
+            {t('session.discardSession')}
           </button>
         </div>
       </div>
@@ -516,7 +519,7 @@ function ActiveView({
       )}
 
       {pickingExercise && (
-        <Sheet title="Add exercise" onClose={() => setPickingExercise(false)} full>
+        <Sheet title={t('exercises.addExercise')} onClose={() => setPickingExercise(false)} full>
           <ExerciseBrowser
             layout="list"
             excludeIds={active.entries.map((e) => e.exerciseId)}
@@ -534,13 +537,17 @@ function ActiveView({
         </Sheet>
       )}
 
-      {newRecord && <Toast message={`🏆 New PR — ${formatSet(newRecord.reps, newRecord.weight)}`} />}
+      {newRecord && <Toast message={t('session.newPrToast', { set: formatSet(newRecord.reps, newRecord.weight) })} />}
 
       {pendingDelete && (
         <ConfirmSheet
-          title="Delete set?"
-          message={`${pendingDelete.label} — set ${pendingDelete.index + 1} of ${pendingDelete.name}.`}
-          confirmLabel="Delete"
+          title={t('session.deleteSetTitle')}
+          message={t('session.deleteSetMessage', {
+            label: pendingDelete.label,
+            index: pendingDelete.index + 1,
+            name: pendingDelete.name,
+          })}
+          confirmLabel={t('common.delete')}
           danger
           onCancel={() => setPendingDelete(null)}
           onConfirm={() => {
@@ -553,15 +560,18 @@ function ActiveView({
 
       {pendingRemoveExercise && (
         <ConfirmSheet
-          title="Remove exercise?"
+          title={t('session.removeExerciseTitle')}
           message={
             pendingRemoveExercise.setCount === 0
-              ? `${pendingRemoveExercise.name} will be removed from this session.`
-              : `${pendingRemoveExercise.name} and its ${pendingRemoveExercise.setCount} logged ${
-                  pendingRemoveExercise.setCount === 1 ? 'set' : 'sets'
-                } will be removed from this session. This cannot be undone.`
+              ? t('session.removeExerciseNoSets', { name: pendingRemoveExercise.name })
+              : t(
+                  pendingRemoveExercise.setCount === 1
+                    ? 'session.removeExerciseWithSetsOne'
+                    : 'session.removeExerciseWithSetsOther',
+                  { name: pendingRemoveExercise.name, count: pendingRemoveExercise.setCount },
+                )
           }
-          confirmLabel="Remove"
+          confirmLabel={t('session.remove')}
           danger
           onCancel={() => setPendingRemoveExercise(null)}
           onConfirm={() => {
@@ -574,13 +584,15 @@ function ActiveView({
 
       {confirmDiscard && (
         <ConfirmSheet
-          title="Discard session?"
+          title={t('session.discardSessionTitle')}
           message={
             totalSets === 0
-              ? 'Nothing has been logged yet. The session will be thrown away.'
-              : `${totalSets} logged ${totalSets === 1 ? 'set' : 'sets'} will be thrown away. This cannot be undone.`
+              ? t('session.discardEmpty')
+              : t(totalSets === 1 ? 'session.discardWithSetsOne' : 'session.discardWithSetsOther', {
+                  count: totalSets,
+                })
           }
-          confirmLabel="Discard"
+          confirmLabel={t('session.discard')}
           danger
           onCancel={() => setConfirmDiscard(false)}
           onConfirm={() => {
@@ -619,8 +631,10 @@ function RowThumb({ exercise, name }: { exercise: Exercise | undefined; name: st
 
 /** One row in the mid-session "add exercise" picker — appends to the session, not the training. */
 function SessPickRow({ exercise, onAdd }: { exercise: Exercise; onAdd: () => void }) {
+  const { t } = useLanguage();
+
   return (
-    <button className="sess-pick" onClick={onAdd} aria-label={`Add ${exercise.name}`}>
+    <button className="sess-pick" onClick={onAdd} aria-label={t('trainingDetail.addAria', { name: exercise.name })}>
       <span className="sess-pick-thumb">
         {exercise.imageUrl ? (
           <img src={exercise.imageUrl} alt="" loading="lazy" decoding="async" />
@@ -658,6 +672,7 @@ function SessionRow({
 }) {
   // An id with no catalogue entry can survive an import; show it rather than crash.
   const name = exercise?.name ?? entry.exerciseId;
+  const { t } = useLanguage();
   const [showHistory, setShowHistory] = useState(false);
 
   return (
@@ -666,7 +681,7 @@ function SessionRow({
         <button
           className="sess-thumb-btn"
           onClick={() => setShowHistory(true)}
-          aria-label={`History for ${name}`}
+          aria-label={t('exerciseCard.historyForAria', { name })}
         >
           <RowThumb exercise={exercise} name={name} />
         </button>
@@ -678,7 +693,7 @@ function SessionRow({
 
       <div className="sess-sets">
         {entry.sets.length === 0 ? (
-          <span className="sess-sets-empty" aria-label={`No sets logged for ${name}`}>
+          <span className="sess-sets-empty" aria-label={t('session.noSetsLoggedAria', { name })}>
             —
           </span>
         ) : (
@@ -689,7 +704,7 @@ function SessionRow({
                 key={`${set.at}-${i}`}
                 className="sess-set num"
                 onClick={() => onPickSet(i, name, label)}
-                aria-label={`Set ${i + 1} of ${name}, ${label}. Tap to delete.`}
+                aria-label={t('session.setAria', { index: i + 1, name, label })}
               >
                 {label}
               </button>
@@ -701,12 +716,12 @@ function SessionRow({
       <button
         className="icon-btn icon-btn-danger sess-remove"
         onClick={() => onRemove(name)}
-        aria-label={`Remove ${name} from this session`}
+        aria-label={t('session.removeFromSessionAria', { name })}
       >
         <TrashIcon />
       </button>
 
-      <button className="icon-btn sess-add" onClick={onAdd} aria-label={`Add set to ${name}`}>
+      <button className="icon-btn sess-add" onClick={onAdd} aria-label={t('session.addSetAria', { name })}>
         <PlusIcon />
       </button>
 
@@ -749,6 +764,7 @@ function SetSheet({
   onSave: (reps: number, weight: number) => void;
   onClose: () => void;
 }) {
+  const { t } = useLanguage();
   const [reps, setReps] = useState(prefill.reps);
   const [weight, setWeight] = useState(prefill.weight);
   const [error, setError] = useState<string | null>(null);
@@ -756,7 +772,7 @@ function SetSheet({
   const submit = () => {
     const repsValue = Number(reps.trim());
     if (!Number.isInteger(repsValue) || repsValue <= 0) {
-      setError('Reps must be a whole number greater than 0.');
+      setError(t('session.repsError'));
       return;
     }
 
@@ -764,7 +780,7 @@ function SetSheet({
     const rawWeight = weight.trim().replace(',', '.');
     const weightValue = rawWeight === '' ? 0 : Number(rawWeight);
     if (!Number.isFinite(weightValue) || weightValue < 0) {
-      setError('Weight must be 0 or more. Leave it empty for bodyweight.');
+      setError(t('session.weightError'));
       return;
     }
 
@@ -777,7 +793,7 @@ function SetSheet({
       onClose={onClose}
       footer={
         <button className="btn btn-primary btn-block" onClick={submit}>
-          Save set
+          {t('session.saveSet')}
         </button>
       }
     >
@@ -791,7 +807,7 @@ function SetSheet({
         <div className="sess-fields">
           <div>
             <label className="label" htmlFor="set-reps">
-              Reps
+              {t('exerciseCard.reps')}
             </label>
             <input
               id="set-reps"
@@ -809,7 +825,7 @@ function SetSheet({
           </div>
           <div>
             <label className="label" htmlFor="set-weight">
-              Weight (kg)
+              {t('session.weightKgLabel')}
             </label>
             <input
               id="set-weight"
@@ -832,7 +848,7 @@ function SetSheet({
             {error}
           </p>
         ) : (
-          <p className="sess-form-hint">Leave the weight empty for a bodyweight set.</p>
+          <p className="sess-form-hint">{t('session.bodyweightHint')}</p>
         )}
 
         {/* Lets the iOS keyboard "go" key submit the form. */}
