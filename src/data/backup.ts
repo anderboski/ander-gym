@@ -6,19 +6,26 @@ import {
   SCHEMA_VERSION,
   clearAll,
   getDB,
+  putCheckin,
   putCustomExercise,
+  putProfileField,
   putSession,
   putSetting,
   putTraining,
   readAll,
 } from './db';
 import { firstGrapheme, parseRestSeconds } from './parse';
-import type { CustomExercise, Session, Settings, Training } from './types';
+import type { CustomExercise, Profile, Session, Settings, Training, WeightCheckin } from './types';
 
 /** A custom exercise with its photo inlined, so a backup is a single file. */
 export type BackupCustomExercise = Omit<CustomExercise, 'imageBlob'> & {
   /** `data:image/jpeg;base64,...` or null. */
   image: string | null;
+};
+
+/** A check-in with its photos inlined, same reasoning as customExercises. */
+export type BackupWeightCheckin = Omit<WeightCheckin, 'photoBlobs'> & {
+  photos: string[];
 };
 
 export type BackupFile = {
@@ -28,6 +35,8 @@ export type BackupFile = {
   sessions: Session[];
   customExercises: BackupCustomExercise[];
   settings: Settings;
+  profile: Profile;
+  checkins: BackupWeightCheckin[];
 };
 
 export type ImportMode = 'merge' | 'replace';
@@ -60,12 +69,19 @@ export function dataUrlToBlob(dataUrl: string): Blob {
 /* -------------------------------------------------------------------------- */
 
 export async function buildBackup(): Promise<BackupFile> {
-  const { trainings, sessions, customExercises, settings } = await readAll();
+  const { trainings, sessions, customExercises, settings, profile, checkins } = await readAll();
 
   const withImages: BackupCustomExercise[] = await Promise.all(
     customExercises.map(async ({ imageBlob, ...rest }) => ({
       ...rest,
       image: imageBlob ? await blobToDataUrl(imageBlob) : null,
+    })),
+  );
+
+  const withPhotos: BackupWeightCheckin[] = await Promise.all(
+    checkins.map(async ({ photoBlobs, ...rest }) => ({
+      ...rest,
+      photos: await Promise.all(photoBlobs.map(blobToDataUrl)),
     })),
   );
 
@@ -76,6 +92,8 @@ export async function buildBackup(): Promise<BackupFile> {
     sessions,
     customExercises: withImages,
     settings,
+    profile,
+    checkins: withPhotos,
   };
 }
 
@@ -191,6 +209,15 @@ export function parseBackup(text: string): BackupFile {
         ? b.settings.favoriteExerciseIds.filter((id): id is string => typeof id === 'string')
         : [],
     },
+    // Both absent entirely from a schema-1 backup (written before this
+    // feature existed) — default rather than reject, same spirit as
+    // `customExercises` defaulting to [] for a backup written before favorites.
+    profile: {
+      name: typeof b.profile?.name === 'string' ? b.profile.name : '',
+      birthdate: typeof b.profile?.birthdate === 'string' ? b.profile.birthdate : null,
+      heightCm: typeof b.profile?.heightCm === 'number' ? b.profile.heightCm : null,
+    },
+    checkins: Array.isArray(b.checkins) ? b.checkins : [],
   };
 }
 
@@ -212,7 +239,16 @@ export async function applyBackup(backup: BackupFile, mode: ImportMode): Promise
     await putCustomExercise({ ...rest, imageBlob: image ? dataUrlToBlob(image) : null });
   }
 
+  for (const c of backup.checkins) {
+    const { photos, ...rest } = c;
+    await putCheckin({ ...rest, photoBlobs: photos.map(dataUrlToBlob) });
+  }
+
   await putSetting('weeklyGoal', backup.settings.weeklyGoal);
   await putSetting('lastExportAt', backup.settings.lastExportAt);
   await putSetting('favoriteExerciseIds', backup.settings.favoriteExerciseIds);
+
+  await putProfileField('name', backup.profile.name);
+  await putProfileField('birthdate', backup.profile.birthdate);
+  await putProfileField('heightCm', backup.profile.heightCm);
 }

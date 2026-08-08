@@ -18,6 +18,7 @@ import {
   daysBetween,
   formatDate,
   formatDurationEstimate,
+  greetingBucket,
   isSameDay,
   lastSessionForTraining,
   lifetimeStats,
@@ -42,12 +43,18 @@ import {
 import { SettingsSheet } from '../components/SettingsSheet';
 import { Toast } from '../components/Sheet';
 import { getTheme, otherTheme, setTheme, type Theme } from '../data/theme';
-import { daysAgoLabel, useLanguage } from '../data/i18n';
+import { daysAgoLabel, useLanguage, type TranslationKey } from '../data/i18n';
 import type { Session, Training } from '../data/types';
 import './HomePage.css';
 
 /** A backup older than this is stale enough to nag about. */
 const BACKUP_MAX_AGE_MS = 30 * 86_400_000;
+
+const GREETING_KEYS: Record<ReturnType<typeof greetingBucket>, TranslationKey> = {
+  morning: 'home.greetingMorning',
+  day: 'home.greetingDay',
+  evening: 'home.greetingEvening',
+};
 
 export function HomePage() {
   const {
@@ -57,6 +64,7 @@ export function HomePage() {
     sessions,
     active,
     settings,
+    profile,
     startSession,
     exportNow,
   } = useGym();
@@ -81,6 +89,9 @@ export function HomePage() {
   }, [toast]);
 
   const now = new Date();
+  const greetingText = t(GREETING_KEYS[greetingBucket(now)], {
+    name: profile.name.trim() || t('home.greetingNamePlaceholder'),
+  });
   const goal = settings.weeklyGoal;
   const weekCount = currentWeekCount(sessions, now);
   const streak = weeklyStreak(sessions, goal, now);
@@ -126,7 +137,11 @@ export function HomePage() {
     <div className="page">
       <header className="page-header home-header">
         <div>
-          <h1 className="page-title">{t('home.title')}</h1>
+          <h1 className="page-title">
+            <button type="button" className="home-greeting" onClick={() => navigate('/profile')} aria-label={t('home.greetingAria')}>
+              {greetingText}
+            </button>
+          </h1>
           <div className="page-sub">
             {now.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' })}
           </div>

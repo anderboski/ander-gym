@@ -2,10 +2,12 @@ import { describe, expect, it } from 'vitest';
 import {
   addMonths,
   adjustRest,
+  ageFrom,
   allLatestFor,
   allPersonalRecords,
   averageSessionMinutes,
   beatsPersonalRecord,
+  bmi,
   completedToday,
   currentWeekCount,
   dayKey,
@@ -17,12 +19,15 @@ import {
   formatDurationEstimate,
   formatElapsed,
   formatShortDate,
+  formatShortLocalDate,
+  greetingBucket,
   historyFor,
   lastSessionForTraining,
   latestFor,
   lifetimeStats,
   monthGrid,
   nextTraining,
+  parseLocalDate,
   personalRecords,
   remainingSeconds,
   REST_DONE_MS,
@@ -88,6 +93,50 @@ describe('daysBetween', () => {
   it('stays whole across a DST transition', () => {
     // European clocks go back on 2026-10-25.
     expect(daysBetween(new Date(2026, 9, 24), new Date(2026, 9, 26))).toBe(2);
+  });
+});
+
+describe('parseLocalDate', () => {
+  it('parses YYYY-MM-DD as local midnight, not UTC', () => {
+    expect(parseLocalDate('2026-08-02')).toEqual(new Date(2026, 7, 2));
+  });
+});
+
+describe('formatShortLocalDate', () => {
+  it('formats a bare YYYY-MM-DD without a UTC-parsing day shift', () => {
+    expect(formatShortLocalDate('2026-08-02')).toBe('2 Aug');
+  });
+});
+
+describe('ageFrom', () => {
+  it('counts a full year once the birthday has passed this year', () => {
+    expect(ageFrom('1990-08-01', new Date(2026, 7, 2))).toBe(36);
+  });
+
+  it('has not incremented yet on the exact birthday — same-day counts as passed', () => {
+    expect(ageFrom('1990-08-02', new Date(2026, 7, 2))).toBe(36);
+  });
+
+  it('has not incremented yet the day before the birthday', () => {
+    expect(ageFrom('1990-08-02', new Date(2026, 7, 1))).toBe(35);
+  });
+});
+
+describe('bmi', () => {
+  it('computes kg / m²', () => {
+    expect(bmi(70, 175)).toBeCloseTo(22.86, 2);
+  });
+});
+
+describe('greetingBucket', () => {
+  it('buckets by hour', () => {
+    expect(greetingBucket(new Date(2026, 7, 2, 5))).toBe('morning');
+    expect(greetingBucket(new Date(2026, 7, 2, 11, 59))).toBe('morning');
+    expect(greetingBucket(new Date(2026, 7, 2, 12))).toBe('day');
+    expect(greetingBucket(new Date(2026, 7, 2, 17, 59))).toBe('day');
+    expect(greetingBucket(new Date(2026, 7, 2, 18))).toBe('evening');
+    expect(greetingBucket(new Date(2026, 7, 2, 4, 59))).toBe('evening');
+    expect(greetingBucket(new Date(2026, 7, 2, 0))).toBe('evening');
   });
 });
 

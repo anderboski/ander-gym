@@ -10,6 +10,7 @@ import { useSyncExternalStore } from 'react';
 export type Route =
   | { name: 'home' }
   | { name: 'stats' }
+  | { name: 'profile' }
   | { name: 'exercises' }
   | { name: 'trainings' }
   | { name: 'training'; id: string }
@@ -38,6 +39,8 @@ export function parseRoute(path: string): Route {
       return { name: 'home' };
     case 'stats':
       return { name: 'stats' };
+    case 'profile':
+      return { name: 'profile' };
     case 'exercises':
       return { name: 'exercises' };
     case 'trainings':
@@ -62,6 +65,7 @@ export function tabOf(route: Route): TabName {
     case 'historyDetail':
       return 'history';
     case 'stats':
+    case 'profile':
       return 'home';
     default:
       return route.name;

@@ -3,6 +3,7 @@ import { WhatsNewGate } from './components/Changelog';
 import { useRoute } from './router';
 import { HomePage } from './pages/HomePage';
 import { StatsPage } from './pages/StatsPage';
+import { ProfilePage } from './pages/ProfilePage';
 import { ExercisesPage } from './pages/ExercisesPage';
 import { TrainingsPage } from './pages/TrainingsPage';
 import { TrainingDetailPage } from './pages/TrainingDetailPage';
@@ -17,6 +18,7 @@ export function App() {
     <div className="app">
       {route.name === 'home' && <HomePage />}
       {route.name === 'stats' && <StatsPage />}
+      {route.name === 'profile' && <ProfilePage />}
       {route.name === 'exercises' && <ExercisesPage />}
       {route.name === 'trainings' && <TrainingsPage />}
       {route.name === 'training' && <TrainingDetailPage trainingId={route.id} />}

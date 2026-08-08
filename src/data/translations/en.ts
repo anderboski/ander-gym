@@ -40,7 +40,6 @@ export const en = {
   'sheet.cancel': 'Cancel',
   'sheet.confirmDefault': 'Confirm',
 
-  'home.title': 'Home',
   'home.themeToDark': 'Switch to dark mode',
   'home.themeToLight': 'Switch to light mode',
   'home.errorTitle': 'Couldn’t load your data',
@@ -290,6 +289,39 @@ export const en = {
   'changelog.gotIt': 'Got it',
   'changelog.title': 'Changelog',
   'changelog.viewAria': 'View changelog',
+
+  'home.greetingMorning': 'Good morning, {name}',
+  'home.greetingDay': 'Welcome back, {name}',
+  'home.greetingEvening': 'Good evening, {name}',
+  'home.greetingNamePlaceholder': '_ _',
+  'home.greetingAria': 'Open your profile',
+
+  'profile.editAria': 'Edit profile',
+  'profile.editTitle': 'Edit profile',
+  'profile.addName': 'Add your name',
+  'profile.ageLabel': 'Age',
+  'profile.heightLabel': 'Height',
+  'profile.heightCmFieldLabel': 'Height (cm)',
+  'profile.heightError': 'Height must be a number greater than 0.',
+  'profile.bmiLabel': 'BMI',
+  'profile.birthdateLabel': 'Birthdate',
+  'profile.weightTrendTitle': 'Weight',
+  'profile.noCheckinsYet': 'No check-ins yet.',
+  'profile.oneCheckinCaption': 'One check-in logged, on {date} — a second one starts the trend.',
+  'profile.checkinsOther': 'check-ins',
+  'profile.weightTrendAria':
+    '{title} across {count} check-ins: {firstKg} on {firstDate} to {lastKg} on {lastDate}, {trend}.',
+  'profile.logWeight': 'Log weight',
+  'profile.checkinsSection': 'Check-ins',
+  'profile.deleteCheckinTitle': 'Delete check-in?',
+  'profile.deleteCheckinMessage': 'This removes the {date} check-in. This cannot be undone.',
+  'profile.deleteCheckinAria': 'Delete check-in from {date}',
+
+  'checkin.dateLabel': 'Date',
+  'checkin.weightError': 'Weight must be a number greater than 0.',
+  'checkin.photosLabel': 'Photos (optional)',
+  'checkin.addPhotos': 'Add photos',
+  'checkin.saveCheckin': 'Save check-in',
 };
 
 export type TranslationKey = keyof typeof en;
