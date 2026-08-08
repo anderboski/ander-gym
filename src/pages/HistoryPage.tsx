@@ -9,29 +9,30 @@ import { useGym } from '../data/store';
 import { formatDateTime, setCount, totalVolume } from '../data/derive';
 import { navigate } from '../router';
 import { ChevronRightIcon } from '../components/icons';
+import { useLanguage, type TFunc } from '../data/i18n';
 import type { Session } from '../data/types';
 import './HistoryPage.css';
 
 /** `12 sets · 1240 kg`, or just the sets for an all-bodyweight session. */
-export function sessionSummary(session: Session): string {
+export function sessionSummary(session: Session, t: TFunc): string {
   const sets = setCount(session);
   const volume = Math.round(totalVolume(session));
-  const setsLabel = `${sets} ${sets === 1 ? 'set' : 'sets'}`;
+  const setsLabel = `${sets} ${t(sets === 1 ? 'common.setOne' : 'common.setsOther')}`;
   return volume > 0 ? `${setsLabel} · ${volume} kg` : setsLabel;
 }
 
 type MonthGroup = { key: string; label: string; sessions: Session[] };
 
-/** `August 2026`, in the device locale. */
-function monthLabel(d: Date): string {
-  return d.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+/** `August 2026`, in the app's chosen locale. */
+function monthLabel(d: Date, locale: string): string {
+  return d.toLocaleDateString(locale, { month: 'long', year: 'numeric' });
 }
 
 /**
  * Split an already-sorted list into consecutive month runs. Because the input
  * is newest-first, a simple run-length pass is enough — no map, no re-sort.
  */
-function groupByMonth(sessions: Session[]): MonthGroup[] {
+function groupByMonth(sessions: Session[], locale: string): MonthGroup[] {
   const groups: MonthGroup[] = [];
 
   for (const session of sessions) {
@@ -40,22 +41,24 @@ function groupByMonth(sessions: Session[]): MonthGroup[] {
     const last = groups[groups.length - 1];
 
     if (last && last.key === key) last.sessions.push(session);
-    else groups.push({ key, label: monthLabel(d), sessions: [session] });
+    else groups.push({ key, label: monthLabel(d, locale), sessions: [session] });
   }
   return groups;
 }
 
 function SessionRow({ session }: { session: Session }) {
+  const { t } = useLanguage();
+
   return (
     <button
       className="card card-tappable history-row"
       onClick={() => navigate(`/history/${session.id}`)}
-      aria-label={`${session.trainingLabel}, ${formatDateTime(session.startedAt)}, ${sessionSummary(session)}`}
+      aria-label={`${session.trainingLabel}, ${formatDateTime(session.startedAt)}, ${sessionSummary(session, t)}`}
     >
       <span className="history-row-main">
         <span className="history-row-date num">{formatDateTime(session.startedAt)}</span>
         <span className="history-row-training">{session.trainingLabel}</span>
-        <span className="history-row-summary">{sessionSummary(session)}</span>
+        <span className="history-row-summary">{sessionSummary(session, t)}</span>
       </span>
       <span className="history-row-chevron" aria-hidden="true">
         <ChevronRightIcon />
@@ -66,15 +69,16 @@ function SessionRow({ session }: { session: Session }) {
 
 export function HistoryPage() {
   const { sessions, status } = useGym();
-  const groups = useMemo(() => groupByMonth(sessions), [sessions]);
+  const { t, locale } = useLanguage();
+  const groups = useMemo(() => groupByMonth(sessions, locale), [sessions, locale]);
 
   return (
     <div className="page">
       <div className="page-header">
-        <h1 className="page-title">History</h1>
+        <h1 className="page-title">{t('tabbar.history')}</h1>
         {sessions.length > 0 && (
           <div className="page-sub">
-            {sessions.length} {sessions.length === 1 ? 'session' : 'sessions'}
+            {sessions.length} {t(sessions.length === 1 ? 'common.sessionsOne' : 'common.sessionsOther')}
           </div>
         )}
       </div>
@@ -82,7 +86,7 @@ export function HistoryPage() {
       {status === 'loading' && <div className="spinner" />}
 
       {status !== 'loading' && sessions.length === 0 && (
-        <div className="empty">No sessions yet — start one from Home.</div>
+        <div className="empty">{t('history.emptyState')}</div>
       )}
 
       {groups.map((group) => (

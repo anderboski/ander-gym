@@ -11,29 +11,31 @@ import { ExerciseBrowser } from '../components/ExerciseBrowser';
 import { ExerciseCard } from '../components/ExerciseCard';
 import { PlusIcon } from '../components/icons';
 import { useGym } from '../data/store';
+import { useLanguage } from '../data/i18n';
 import './ExercisesPage.css';
 
 export function ExercisesPage() {
   const { status, error } = useGym();
+  const { t } = useLanguage();
   const [adding, setAdding] = useState(false);
 
   return (
     <div className="page">
       <div className="page-header exercises-header">
-        <h1 className="page-title">Exercises</h1>
+        <h1 className="page-title">{t('exercises.title')}</h1>
         <button
           className="btn btn-sm btn-primary exercises-add"
           onClick={() => setAdding(true)}
         >
           <PlusIcon />
-          Add exercise
+          {t('exercises.addExercise')}
         </button>
       </div>
 
-      {status === 'loading' && <div className="spinner" aria-label="Loading exercises" />}
+      {status === 'loading' && <div className="spinner" aria-label={t('exercises.loadingAria')} />}
 
       {status === 'error' && (
-        <div className="empty">{error ?? 'The exercise catalogue could not be loaded.'}</div>
+        <div className="empty">{error ?? t('exercises.catalogError')}</div>
       )}
 
       {status === 'ready' && (

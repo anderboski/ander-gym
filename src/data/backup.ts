@@ -101,7 +101,24 @@ export function downloadBackup(backup: BackupFile, filename = backupFilename()):
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
 }
 
-export class BackupError extends Error {}
+/**
+ * `code` (plus optional `vars` for interpolation) lets a translated UI show
+ * this in the user's chosen language — this module has no hook access, so it
+ * cannot call `t()` itself. `message` stays a plain-English fallback for
+ * anywhere that just logs the error.
+ */
+export type BackupErrorCode = 'invalid-json' | 'not-a-backup' | 'newer-schema' | 'missing-data';
+
+export class BackupError extends Error {
+  code: BackupErrorCode;
+  vars?: Record<string, string | number>;
+
+  constructor(code: BackupErrorCode, message: string, vars?: Record<string, string | number>) {
+    super(message);
+    this.code = code;
+    this.vars = vars;
+  }
+}
 
 /**
  * Trainings are trusted as written, with one exception: `restSeconds` feeds a
@@ -136,24 +153,26 @@ export function parseBackup(text: string): BackupFile {
   try {
     data = JSON.parse(text);
   } catch {
-    throw new BackupError('That file is not valid JSON.');
+    throw new BackupError('invalid-json', 'That file is not valid JSON.');
   }
 
   if (typeof data !== 'object' || data === null) {
-    throw new BackupError('That file is not an ander-gym backup.');
+    throw new BackupError('not-a-backup', 'That file is not an ander-gym backup.');
   }
 
   const b = data as Partial<BackupFile>;
   if (typeof b.schemaVersion !== 'number') {
-    throw new BackupError('That file is not an ander-gym backup.');
+    throw new BackupError('not-a-backup', 'That file is not an ander-gym backup.');
   }
   if (b.schemaVersion > SCHEMA_VERSION) {
     throw new BackupError(
+      'newer-schema',
       `This backup was made by a newer version of the app (schema ${b.schemaVersion}).`,
+      { schema: b.schemaVersion },
     );
   }
   if (!Array.isArray(b.trainings) || !Array.isArray(b.sessions)) {
-    throw new BackupError('That backup is missing its trainings or sessions.');
+    throw new BackupError('missing-data', 'That backup is missing its trainings or sessions.');
   }
 
   return {

@@ -24,6 +24,7 @@ import { formatCompact, titleCase } from '../data/parse';
 import { BarList, BarStrip, ChartFigure, LineChart } from '../components/Chart';
 import { ChevronLeftIcon } from '../components/icons';
 import { navigate } from '../router';
+import { useLanguage } from '../data/i18n';
 import './StatsPage.css';
 
 /** Long enough to show a habit, short enough to fit a phone width. */
@@ -36,6 +37,7 @@ const kg = (value: number) => `${formatCompact(value)} kg`;
 
 export function StatsPage() {
   const { status, sessions, exerciseById, settings } = useGym();
+  const { t } = useLanguage();
 
   // Captured once: it is a memo key, and a fresh Date per render would
   // invalidate both aggregates on every keystroke elsewhere in the tree.
@@ -50,7 +52,7 @@ export function StatsPage() {
   if (status === 'loading') {
     return (
       <div className="page">
-        <div className="spinner" role="status" aria-label="Loading" />
+        <div className="spinner" role="status" aria-label={t('common.loading')} />
       </div>
     );
   }
@@ -58,16 +60,16 @@ export function StatsPage() {
   return (
     <div className="page">
       <div className="page-header">
-        <button className="stats-back" onClick={() => navigate('/home')} aria-label="Back to home">
+        <button className="stats-back" onClick={() => navigate('/home')} aria-label={t('stats.backToHomeAria')}>
           <ChevronLeftIcon />
-          <span>Home</span>
+          <span>{t('tabbar.home')}</span>
         </button>
-        <h1 className="page-title">Stats</h1>
-        <div className="page-sub">Everything below is derived from your saved sessions.</div>
+        <h1 className="page-title">{t('stats.title')}</h1>
+        <div className="page-sub">{t('stats.subtitle')}</div>
       </div>
 
       {sessions.length === 0 ? (
-        <div className="empty">No sessions yet — start one from Home.</div>
+        <div className="empty">{t('history.emptyState')}</div>
       ) : (
         <>
           <section className="section">
@@ -87,7 +89,7 @@ export function StatsPage() {
               <MuscleBalance
                 rows={balance}
                 labelOf={(target) =>
-                  target === UNKNOWN_TARGET ? 'Removed exercises' : titleCase(target)
+                  target === UNKNOWN_TARGET ? t('stats.removedExercises') : titleCase(target)
                 }
               />
             </div>
@@ -108,6 +110,7 @@ function edgeLabels(weeks: WeekStat[]): [string, string] | undefined {
 
 /** Weekly volume in kg. A single series, so the title is its legend. */
 function VolumeTrend({ weeks }: { weeks: WeekStat[] }) {
+  const { t } = useLanguage();
   const values = weeks.map((w) => w.volume);
   const current = values[values.length - 1] ?? 0;
   const best = values.reduce((m, v) => Math.max(m, v), 0);
@@ -115,20 +118,15 @@ function VolumeTrend({ weeks }: { weeks: WeekStat[] }) {
 
   return (
     <ChartFigure
-      title="Weekly volume"
+      title={t('stats.weeklyVolume')}
       value={kg(current)}
-      caption={
-        <>
-          This week · {WEEKS}-week average <span className="num">{kg(average)}</span> · best week{' '}
-          <span className="num">{kg(best)}</span>
-        </>
-      }
+      caption={t('stats.volumeCaption', { weeks: WEEKS, average: kg(average), best: kg(best) })}
     >
       <LineChart
         values={values}
         formatTick={formatCompact}
         xLabels={edgeLabels(weeks)}
-        ariaLabel={`Weekly training volume over the last ${WEEKS} weeks, in kilograms: ${kg(current)} this week against a ${WEEKS}-week average of ${kg(average)} and a best week of ${kg(best)}.`}
+        ariaLabel={t('stats.volumeAria', { weeks: WEEKS, current: kg(current), average: kg(average), best: kg(best) })}
       />
     </ChartFigure>
   );
@@ -136,6 +134,7 @@ function VolumeTrend({ weeks }: { weeks: WeekStat[] }) {
 
 /** Sessions per week against the weekly goal. */
 function Consistency({ weeks, goal }: { weeks: WeekStat[]; goal: number }) {
+  const { t } = useLanguage();
   const values = weeks.map((w) => w.sessions);
   const current = values[values.length - 1] ?? 0;
   const met = values.filter((v) => v >= goal).length;
@@ -143,14 +142,9 @@ function Consistency({ weeks, goal }: { weeks: WeekStat[]; goal: number }) {
 
   return (
     <ChartFigure
-      title="Sessions per week"
-      value={`${current} this week`}
-      caption={
-        <>
-          <span className="num">{total}</span> sessions over {WEEKS} weeks · goal of{' '}
-          <span className="num">{goal}</span> met in <span className="num">{met}</span> of them
-        </>
-      }
+      title={t('stats.sessionsPerWeek')}
+      value={t('stats.currentThisWeek', { count: current })}
+      caption={t('stats.consistencyCaption', { total, weeks: WEEKS, goal, met })}
     >
       <BarStrip
         values={values}
@@ -158,7 +152,7 @@ function Consistency({ weeks, goal }: { weeks: WeekStat[]; goal: number }) {
         reference={goal}
         formatTick={(v) => String(v)}
         xLabels={edgeLabels(weeks)}
-        ariaLabel={`Sessions per week over the last ${WEEKS} weeks: ${total} in total, ${current} this week, and the weekly goal of ${goal} met in ${met} of the ${WEEKS} weeks.`}
+        ariaLabel={t('stats.consistencyAria', { weeks: WEEKS, total, current, goal, met })}
       />
     </ChartFigure>
   );
@@ -176,24 +170,28 @@ function MuscleBalance({
   rows: { target: string; volume: number; sets: number }[];
   labelOf: (target: string) => string;
 }) {
+  const { t } = useLanguage();
   const leader = rows[0];
   const trailer = rows[rows.length - 1];
 
   if (!leader || !trailer) {
     return (
-      <ChartFigure title={`Muscle balance · ${BALANCE_DAYS} days`}>
-        <div className="stats-empty">Nothing logged in the last {BALANCE_DAYS} days.</div>
+      <ChartFigure title={t('stats.muscleBalanceTitle', { days: BALANCE_DAYS })}>
+        <div className="stats-empty">{t('stats.muscleBalanceEmpty', { days: BALANCE_DAYS })}</div>
       </ChartFigure>
     );
   }
 
   return (
     <ChartFigure
-      title={`Muscle balance · ${BALANCE_DAYS} days`}
+      title={t('stats.muscleBalanceTitle', { days: BALANCE_DAYS })}
       caption={
         rows.length > 1
-          ? `Most volume on ${labelOf(leader.target).toLowerCase()}, least on ${labelOf(trailer.target).toLowerCase()}. A muscle you have not trained at all is simply absent from this list.`
-          : 'Only one muscle group trained in this window.'
+          ? t('stats.muscleBalanceCaption', {
+              most: labelOf(leader.target).toLowerCase(),
+              least: labelOf(trailer.target).toLowerCase(),
+            })
+          : t('stats.muscleBalanceSingle')
       }
     >
       <BarList
@@ -202,7 +200,7 @@ function MuscleBalance({
           label: labelOf(row.target),
           value: row.volume,
           valueLabel: kg(row.volume),
-          note: `${row.sets} ${row.sets === 1 ? 'set' : 'sets'}`,
+          note: `${row.sets} ${t(row.sets === 1 ? 'common.setOne' : 'common.setsOther')}`,
         }))}
       />
     </ChartFigure>

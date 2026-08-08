@@ -54,12 +54,14 @@ export function interpolate(template: string, vars?: Vars): string {
   return template.replace(/\{(\w+)\}/g, (match, key) => (key in vars ? String(vars[key]) : match));
 }
 
+export type TFunc = (key: TranslationKey, vars?: Vars) => string;
+
 type LanguageContextValue = {
   language: Language;
   /** `LOCALE[language]`, for `toLocaleDateString` calls. */
   locale: string;
   setLanguage: (language: Language) => void;
-  t: (key: TranslationKey, vars?: Vars) => string;
+  t: TFunc;
 };
 
 const LanguageContext = createContext<LanguageContextValue | null>(null);
@@ -87,4 +89,16 @@ export function useLanguage(): LanguageContextValue {
   const ctx = useContext(LanguageContext);
   if (!ctx) throw new Error('useLanguage must be used within a LanguageProvider');
   return ctx;
+}
+
+/**
+ * Translated equivalent of derive.ts's `formatDaysAgo` ('today' / '-1 day' /
+ * '-N days'), for pages that have adopted i18n. Kept separate from derive.ts
+ * rather than changing that function's signature, since not every page uses
+ * this yet and derive.ts is meant to stay pure/UI-agnostic.
+ */
+export function daysAgoLabel(t: TFunc, days: number): string {
+  if (days <= 0) return t('common.today');
+  if (days === 1) return t('common.daysAgoOne');
+  return t('common.daysAgoOther', { days });
 }

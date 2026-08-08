@@ -14,8 +14,9 @@
  */
 import { useEffect, useMemo, useRef, useState, type FormEvent, type PointerEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { daysBetween, formatDate, formatDaysAgo, lastSessionForTraining } from '../data/derive';
+import { daysBetween, formatDate, lastSessionForTraining } from '../data/derive';
 import { useGym } from '../data/store';
+import { daysAgoLabel, useLanguage } from '../data/i18n';
 import type { Session, Training } from '../data/types';
 import { Sheet, Toast } from '../components/Sheet';
 import {
@@ -120,6 +121,7 @@ function useTrainingDrag(order: string[], setOrder: (next: string[]) => void, on
 /* -------------------------------------------------------------------------- */
 
 function CardBody({ training, sessions, now }: { training: Training; sessions: Session[]; now: Date }) {
+  const { t } = useLanguage();
   const last = lastSessionForTraining(training.id, sessions);
   const count = training.exerciseIds.length;
 
@@ -129,12 +131,12 @@ function CardBody({ training, sessions, now }: { training: Training; sessions: S
       <span className="tr-card-sub">
         <span>
           {last
-            ? `${formatDate(last.startedAt)} · ${formatDaysAgo(daysBetween(new Date(last.startedAt), now))}`
-            : 'Never done'}
+            ? `${formatDate(last.startedAt)} · ${daysAgoLabel(t, daysBetween(new Date(last.startedAt), now))}`
+            : t('home.neverDone')}
         </span>
         <span className="sep">·</span>
         <span>
-          {count} {count === 1 ? 'exercise' : 'exercises'}
+          {count} {t(count === 1 ? 'browser.exerciseOne' : 'browser.exerciseOther')}
         </span>
       </span>
     </span>
@@ -158,6 +160,7 @@ function TrainingNameSheet({
   onClose: () => void;
   onSubmit: (name: string) => Promise<unknown>;
 }) {
+  const { t } = useLanguage();
   const [name, setName] = useState(initialName);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -173,7 +176,7 @@ function TrainingNameSheet({
       await onSubmit(name.trim());
       onClose();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Could not save.');
+      setError(err instanceof Error ? err.message : t('trainings.couldNotSave'));
       setSaving(false);
     }
   }
@@ -184,7 +187,7 @@ function TrainingNameSheet({
       onClose={onClose}
       footer={
         <button type="submit" form={NAME_FORM_ID} className="btn btn-primary btn-block" disabled={!canSave}>
-          {saving ? 'Saving…' : 'Save'}
+          {saving ? t('common.saving') : t('common.save')}
         </button>
       }
     >
@@ -196,7 +199,7 @@ function TrainingNameSheet({
         )}
         <div className="tr-name-field">
           <label className="label" htmlFor="training-name">
-            Name
+            {t('common.name')}
           </label>
           <input
             id="training-name"
@@ -207,7 +210,7 @@ function TrainingNameSheet({
             value={name}
             autoCapitalize="words"
             autoCorrect="off"
-            placeholder="e.g. Push day"
+            placeholder={t('trainings.namePlaceholder')}
             onChange={(e) => setName(e.target.value)}
           />
         </div>
@@ -231,6 +234,7 @@ function TrainingEmojiSheet({
   onClose: () => void;
   onSubmit: (emoji: string) => Promise<unknown>;
 }) {
+  const { t } = useLanguage();
   const [emoji, setEmoji] = useState(initialEmoji);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -243,14 +247,14 @@ function TrainingEmojiSheet({
       await onSubmit(emoji);
       onClose();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Could not save.');
+      setError(err instanceof Error ? err.message : t('trainings.couldNotSave'));
       setSaving(false);
     }
   }
 
   return (
     <Sheet
-      title="Choose an icon"
+      title={t('trainings.chooseIcon')}
       onClose={onClose}
       footer={
         <button
@@ -259,7 +263,7 @@ function TrainingEmojiSheet({
           className="btn btn-primary btn-block"
           disabled={saving}
         >
-          {saving ? 'Saving…' : 'Save'}
+          {saving ? t('common.saving') : t('common.save')}
         </button>
       }
     >
@@ -271,7 +275,7 @@ function TrainingEmojiSheet({
         )}
         <div className="tr-name-field">
           <label className="label" htmlFor="training-emoji">
-            Icon
+            {t('trainings.icon')}
           </label>
           {/* No emoji placeholder: browsers don't dim color-emoji glyphs the way
               they dim placeholder text, so one would look identical to a real value. */}
@@ -283,9 +287,7 @@ function TrainingEmojiSheet({
             value={emoji}
             onChange={(e) => setEmoji(e.target.value)}
           />
-          <p className="tr-emoji-hint">
-            A single letter, symbol, or emoji. Leave blank to use the default.
-          </p>
+          <p className="tr-emoji-hint">{t('trainings.iconHint')}</p>
         </div>
       </form>
     </Sheet>
@@ -309,6 +311,7 @@ function TrainingEditSheet({
   onSave: (name: string) => Promise<unknown>;
   onArchiveButtonClick: () => void;
 }) {
+  const { t } = useLanguage();
   const [name, setName] = useState(training.label);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -324,18 +327,18 @@ function TrainingEditSheet({
       await onSave(name.trim());
       onClose();
     } catch (err: unknown) {
-      setError(err instanceof Error ? err.message : 'Could not save.');
+      setError(err instanceof Error ? err.message : t('trainings.couldNotSave'));
       setSaving(false);
     }
   }
 
   return (
     <Sheet
-      title="Edit training"
+      title={t('trainings.editTraining')}
       onClose={onClose}
       footer={
         <button type="submit" form={EDIT_FORM_ID} className="btn btn-primary btn-block" disabled={!canSave}>
-          {saving ? 'Saving…' : 'Save'}
+          {saving ? t('common.saving') : t('common.save')}
         </button>
       }
     >
@@ -347,7 +350,7 @@ function TrainingEditSheet({
         )}
         <div className="tr-name-field">
           <label className="label" htmlFor="training-edit-name">
-            Name
+            {t('common.name')}
           </label>
           <input
             id="training-edit-name"
@@ -358,7 +361,7 @@ function TrainingEditSheet({
             value={name}
             autoCapitalize="words"
             autoCorrect="off"
-            placeholder="e.g. Push day"
+            placeholder={t('trainings.namePlaceholder')}
             onChange={(e) => setName(e.target.value)}
           />
         </div>
@@ -366,7 +369,7 @@ function TrainingEditSheet({
 
       <button type="button" className="btn btn-ghost btn-block tr-archive-btn" onClick={onArchiveButtonClick}>
         <ArchiveIcon />
-        {training.archived ? 'Unarchive training' : 'Archive training'}
+        {training.archived ? t('trainings.unarchiveTraining') : t('trainings.archiveTraining')}
       </button>
     </Sheet>
   );
@@ -387,24 +390,25 @@ function ArchiveOrDeleteSheet({
   onArchive: () => void;
   onDelete: () => void;
 }) {
+  const { t } = useLanguage();
+
   return (
     <Sheet
-      title="No sessions yet"
+      title={t('trainings.noSessionsYetTitle')}
       onClose={onClose}
       footer={
         <>
           <button type="button" className="btn btn-danger btn-block" onClick={onDelete}>
-            Delete training
+            {t('trainings.deleteTraining')}
           </button>
           <button type="button" className="btn btn-primary btn-block" onClick={onArchive}>
-            Archive training
+            {t('trainings.archiveTraining')}
           </button>
         </>
       }
     >
       <p style={{ color: 'var(--text-dim)', fontSize: 15 }}>
-        “{training.label}” has no logged sessions, so it can be deleted for good instead of just
-        archived. Archiving keeps it around and out of the way; deleting removes it entirely.
+        {t('trainings.archiveOrDeleteMessage', { name: training.label })}
       </p>
     </Sheet>
   );
@@ -427,12 +431,13 @@ function ArchivedTrainingsSheet({
   onClose: () => void;
   onEdit: (training: Training) => void;
 }) {
+  const { t } = useLanguage();
   const ordered = [...trainings].sort((a, b) => a.order - b.order);
 
   return (
-    <Sheet title="Archived trainings" onClose={onClose} full>
+    <Sheet title={t('trainings.archivedTrainings')} onClose={onClose} full>
       <div className="tr-list">
-        {ordered.length === 0 && <div className="empty">No archived trainings.</div>}
+        {ordered.length === 0 && <div className="empty">{t('trainings.noArchivedTrainings')}</div>}
 
         {ordered.map((training) => (
           <div key={training.id} className="tr-card">
@@ -448,7 +453,7 @@ function ArchivedTrainingsSheet({
             <button
               type="button"
               className="tr-card-edit"
-              aria-label={`Edit ${training.label}`}
+              aria-label={t('trainings.editAria', { name: training.label })}
               onClick={() => onEdit(training)}
             >
               <PencilIcon />
@@ -476,6 +481,7 @@ export function TrainingsPage() {
     restoreTraining,
     reorderTrainings,
   } = useGym();
+  const { t } = useLanguage();
   const now = new Date();
 
   const activeTrainings = useMemo(() => trainings.filter((t) => !t.archived), [trainings]);
@@ -519,7 +525,7 @@ export function TrainingsPage() {
 
     if (training.archived) {
       await archiveTraining(training.id, false);
-      setToast({ message: 'Training unarchived.' });
+      setToast({ message: t('trainings.unarchivedToast') });
       return;
     }
 
@@ -532,8 +538,8 @@ export function TrainingsPage() {
 
     await archiveTraining(training.id, true);
     setToast({
-      message: 'Training archived.',
-      actionLabel: 'Undo',
+      message: t('trainings.archivedToast'),
+      actionLabel: t('common.undo'),
       onAction: () => void archiveTraining(training.id, false),
     });
   }
@@ -542,8 +548,8 @@ export function TrainingsPage() {
     setDeleteChoiceFor(null);
     await archiveTraining(training.id, true);
     setToast({
-      message: 'Training archived.',
-      actionLabel: 'Undo',
+      message: t('trainings.archivedToast'),
+      actionLabel: t('common.undo'),
       onAction: () => void archiveTraining(training.id, false),
     });
   }
@@ -553,8 +559,8 @@ export function TrainingsPage() {
     const deleted = await deleteTraining(training.id);
     if (!deleted) return;
     setToast({
-      message: 'Training deleted.',
-      actionLabel: 'Undo',
+      message: t('trainings.deletedToast'),
+      actionLabel: t('common.undo'),
       onAction: () => void restoreTraining(deleted),
     });
   }
@@ -565,13 +571,13 @@ export function TrainingsPage() {
     <div className="page">
       <header className="page-header tr-header">
         <div>
-          <h1 className="page-title">Trainings</h1>
-          <div className="page-sub">Your training days, in rotation order</div>
+          <h1 className="page-title">{t('trainings.title')}</h1>
+          <div className="page-sub">{t('trainings.subtitle')}</div>
         </div>
         <button
           type="button"
           className="icon-btn"
-          aria-label="Archived trainings"
+          aria-label={t('trainings.archivedTrainings')}
           onClick={() => setArchivedOpen(true)}
         >
           <ArchiveIcon />
@@ -581,9 +587,9 @@ export function TrainingsPage() {
       <div className="tr-list">
         {ordered.length === 0 && (
           <div className="empty">
-            No training days yet — add one below to get started.
+            {t('trainings.emptyMain')}
             {archivedTrainings.length > 0 &&
-              ` You have ${archivedTrainings.length} archived — tap the archive icon above to view them.`}
+              t('trainings.emptyArchivedHint', { count: archivedTrainings.length })}
           </div>
         )}
 
@@ -596,7 +602,7 @@ export function TrainingsPage() {
             <button
               type="button"
               className="tr-card-grip"
-              aria-label={`Reorder ${training.label}`}
+              aria-label={t('trainings.reorderAria', { name: training.label })}
               onPointerDown={(e) => drag.onGripDown(training.id, e)}
               onPointerMove={drag.onGripMove}
               onPointerUp={drag.onGripUp}
@@ -608,7 +614,7 @@ export function TrainingsPage() {
             <button
               type="button"
               className="tr-card-emoji"
-              aria-label={`Change icon for ${training.label}`}
+              aria-label={t('trainings.changeIconAria', { name: training.label })}
               onClick={() => setPickingEmojiFor(training)}
             >
               {training.emoji ?? training.label.charAt(0).toUpperCase()}
@@ -622,7 +628,7 @@ export function TrainingsPage() {
             <button
               type="button"
               className="tr-card-edit"
-              aria-label={`Edit ${training.label}`}
+              aria-label={t('trainings.editAria', { name: training.label })}
               onClick={() => setEditing(training)}
             >
               <PencilIcon />
@@ -632,7 +638,7 @@ export function TrainingsPage() {
 
         <button className="tr-add-card" onClick={() => setAdding(true)}>
           <PlusIcon />
-          Add training day
+          {t('trainings.addTrainingDay')}
         </button>
       </div>
 
@@ -667,7 +673,7 @@ export function TrainingsPage() {
 
       {adding && (
         <TrainingNameSheet
-          title="New training day"
+          title={t('trainings.newTrainingDay')}
           onClose={() => setAdding(false)}
           onSubmit={(name) => addTraining(name)}
         />

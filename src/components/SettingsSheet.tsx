@@ -6,9 +6,9 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { useGym } from '../data/store';
-import { BackupError, type ImportMode } from '../data/backup';
+import { BackupError, type BackupErrorCode, type ImportMode } from '../data/backup';
 import { formatDate } from '../data/derive';
-import { useLanguage, type Language } from '../data/i18n';
+import { useLanguage, type Language, type TranslationKey } from '../data/i18n';
 import { ConfirmSheet, Sheet } from './Sheet';
 import { CheckIcon, DownloadIcon, GitHubIcon, UploadIcon } from './icons';
 import packageJson from '../../package.json';
@@ -19,6 +19,14 @@ const LANGUAGES: { code: Language; flag: string; name: string }[] = [
   { code: 'en', flag: '🇬🇧', name: 'English' },
   { code: 'es', flag: '🇪🇸', name: 'Español' },
 ];
+
+/** BackupError has no hook access to translate itself — mapped here instead. */
+const BACKUP_ERROR_KEYS: Record<BackupErrorCode, TranslationKey> = {
+  'invalid-json': 'backup.invalidJson',
+  'not-a-backup': 'backup.notABackup',
+  'newer-schema': 'backup.newerSchema',
+  'missing-data': 'backup.missingData',
+};
 
 const GOAL_MIN = 1;
 const GOAL_MAX = 14;
@@ -115,9 +123,11 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
     } catch (e) {
       setConfirmReplace(false);
       setErrorText(
-        e instanceof BackupError || e instanceof Error
-          ? e.message
-          : t('settings.importFailed'),
+        e instanceof BackupError
+          ? t(BACKUP_ERROR_KEYS[e.code], e.vars)
+          : e instanceof Error
+            ? e.message
+            : t('settings.importFailed'),
       );
     } finally {
       setBusy(false);
