@@ -8,10 +8,17 @@ import { useEffect, useRef, useState } from 'react';
 import { useGym } from '../data/store';
 import { BackupError, type ImportMode } from '../data/backup';
 import { formatDate } from '../data/derive';
+import { useLanguage, type Language } from '../data/i18n';
 import { ConfirmSheet, Sheet } from './Sheet';
 import { CheckIcon, DownloadIcon, GitHubIcon, UploadIcon } from './icons';
 import packageJson from '../../package.json';
 import '../pages/HomePage.css';
+
+/** Language names are shown as endonyms — always in their own language, never translated. */
+const LANGUAGES: { code: Language; flag: string; name: string }[] = [
+  { code: 'en', flag: '🇬🇧', name: 'English' },
+  { code: 'es', flag: '🇪🇸', name: 'Español' },
+];
 
 const GOAL_MIN = 1;
 const GOAL_MAX = 14;
@@ -30,6 +37,7 @@ function formatMb(bytes: number): string {
 
 export function SettingsSheet({ onClose }: { onClose: () => void }) {
   const { settings, setWeeklyGoal, exportNow, importFrom } = useGym();
+  const { t, language, setLanguage } = useLanguage();
 
   const fileInput = useRef<HTMLInputElement>(null);
   const [pendingFile, setPendingFile] = useState<File | null>(null);
@@ -87,9 +95,9 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
     setErrorText(null);
     try {
       await exportNow();
-      setMessage('Backup downloaded.');
+      setMessage(t('common.backupDownloaded'));
     } catch (e) {
-      setErrorText(e instanceof Error ? e.message : 'Export failed.');
+      setErrorText(e instanceof Error ? e.message : t('common.exportFailed'));
     } finally {
       setBusy(false);
     }
@@ -103,13 +111,13 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
     try {
       await importFrom(pendingFile, mode);
       clearFile();
-      setMessage(mode === 'replace' ? 'Data replaced from backup.' : 'Backup merged in.');
+      setMessage(mode === 'replace' ? t('settings.dataReplaced') : t('settings.backupMerged'));
     } catch (e) {
       setConfirmReplace(false);
       setErrorText(
         e instanceof BackupError || e instanceof Error
           ? e.message
-          : 'That file could not be imported.',
+          : t('settings.importFailed'),
       );
     } finally {
       setBusy(false);
@@ -117,16 +125,16 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
   }
 
   return (
-    <Sheet title="Settings" onClose={onClose}>
+    <Sheet title={t('settings.title')} onClose={onClose}>
       {/* --- weekly goal --------------------------------------------------- */}
       <section className="settings-block">
-        <div className="section-title">Weekly goal</div>
+        <div className="section-title">{t('settings.weeklyGoal')}</div>
         <div className="settings-row">
-          <span className="settings-row-label">Trainings per week</span>
+          <span className="settings-row-label">{t('settings.trainingsPerWeek')}</span>
           <div className="stepper">
             <button
               className="stepper-btn"
-              aria-label="Decrease weekly goal"
+              aria-label={t('settings.decreaseGoal')}
               disabled={goal <= GOAL_MIN || busy}
               onClick={() => void setWeeklyGoal(goal - 1)}
             >
@@ -137,7 +145,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
             </span>
             <button
               className="stepper-btn"
-              aria-label="Increase weekly goal"
+              aria-label={t('settings.increaseGoal')}
               disabled={goal >= GOAL_MAX || busy}
               onClick={() => void setWeeklyGoal(goal + 1)}
             >
@@ -147,47 +155,59 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
         </div>
       </section>
 
+      {/* --- language -------------------------------------------------------- */}
+      <section className="settings-block">
+        <div className="section-title">{t('settings.language')}</div>
+        <div className="settings-lang-row">
+          {LANGUAGES.map((l) => (
+            <button
+              key={l.code}
+              type="button"
+              className="chip settings-lang-chip"
+              aria-pressed={language === l.code}
+              onClick={() => setLanguage(l.code)}
+            >
+              <span aria-hidden="true">{l.flag}</span> {l.name}
+            </button>
+          ))}
+        </div>
+      </section>
+
       {/* --- rest timer ----------------------------------------------------- */}
       <section className="settings-block">
-        <div className="section-title">Rest timer</div>
-        <p className="settings-hint">
-          Rest length is set per training day, from the bar under the session title.
-        </p>
-        <p className="settings-hint">
-          The countdown is visual. iOS Safari has no vibration, and a Home Screen app cannot send
-          notifications, so a rest that ends while this app is in the background or the phone is
-          locked passes silently. Android devices get a short vibration at zero.
-        </p>
+        <div className="section-title">{t('settings.restTimer')}</div>
+        <p className="settings-hint">{t('settings.restTimerHint1')}</p>
+        <p className="settings-hint">{t('settings.restTimerHint2')}</p>
       </section>
 
       {/* --- export -------------------------------------------------------- */}
       <section className="settings-block">
-        <div className="section-title">Backup</div>
+        <div className="section-title">{t('settings.backup')}</div>
         <button className="btn btn-block" disabled={busy} onClick={() => void handleExport()}>
           <DownloadIcon className="settings-btn-icon" />
-          Export data
+          {t('settings.exportData')}
         </button>
         <p className="settings-hint">
-          Last export:{' '}
+          {t('settings.lastExport')}{' '}
           <span className="num">
-            {settings.lastExportAt ? formatDate(settings.lastExportAt) : 'Never'}
+            {settings.lastExportAt ? formatDate(settings.lastExportAt) : t('common.never')}
           </span>
         </p>
       </section>
 
       {/* --- import -------------------------------------------------------- */}
       <section className="settings-block">
-        <div className="section-title">Import</div>
+        <div className="section-title">{t('settings.import')}</div>
 
         <label className="btn btn-block settings-file">
           <UploadIcon className="settings-btn-icon" />
-          {pendingFile ? 'Choose a different file' : 'Choose backup file'}
+          {pendingFile ? t('settings.chooseDifferentFile') : t('settings.chooseBackupFile')}
           <input
             ref={fileInput}
             className="settings-file-input"
             type="file"
             accept="application/json,.json"
-            aria-label="Choose backup file"
+            aria-label={t('settings.chooseBackupFile')}
             onChange={onPickFile}
           />
         </label>
@@ -197,25 +217,21 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
             <div className="settings-file-name">{pendingFile.name}</div>
 
             <button className="btn btn-block" disabled={busy} onClick={() => void runImport('merge')}>
-              Merge
+              {t('settings.merge')}
             </button>
-            <p className="settings-hint">
-              Keeps what is on this device and adds the file’s records; the file wins on conflicts.
-            </p>
+            <p className="settings-hint">{t('settings.mergeHint')}</p>
 
             <button
               className="btn btn-block btn-danger"
               disabled={busy}
               onClick={() => setConfirmReplace(true)}
             >
-              Replace
+              {t('settings.replace')}
             </button>
-            <p className="settings-hint">
-              Deletes every training, session and custom exercise here first, then loads the file.
-            </p>
+            <p className="settings-hint">{t('settings.replaceHint')}</p>
 
             <button className="btn btn-block btn-ghost" disabled={busy} onClick={clearFile}>
-              Cancel
+              {t('sheet.cancel')}
             </button>
           </div>
         )}
@@ -232,46 +248,47 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
           {message}
         </p>
       )}
-      {busy && <div className="spinner" role="status" aria-label="Working" />}
+      {busy && <div className="spinner" role="status" aria-label={t('settings.working')} />}
 
       {/* --- storage ------------------------------------------------------- */}
       <section className="settings-block">
-        <div className="section-title">Storage</div>
+        <div className="section-title">{t('settings.storage')}</div>
         {storage ? (
           <>
             <p className="settings-hint">
               <span className="num">
-                {storage.usage === null ? 'Unknown' : formatMb(storage.usage)}
+                {storage.usage === null ? t('common.unknown') : formatMb(storage.usage)}
               </span>{' '}
-              used
+              {t('settings.used')}
               {storage.quota !== null && (
                 <>
                   {' '}
-                  of <span className="num">{formatMb(storage.quota)}</span> available
+                  {t('settings.of')} <span className="num">{formatMb(storage.quota)}</span>{' '}
+                  {t('settings.available')}
                 </>
               )}
             </p>
             <p className="settings-hint">
               {storage.persisted === null
-                ? 'Persistence status unavailable.'
+                ? t('settings.persistUnavailable')
                 : storage.persisted
-                  ? 'Storage is persisted — the browser will not evict it automatically.'
-                  : 'Storage is not persisted — the browser may evict it. Keep exporting.'}
+                  ? t('settings.persisted')
+                  : t('settings.notPersisted')}
             </p>
           </>
         ) : (
-          <p className="settings-hint">Storage usage is not available on this device.</p>
+          <p className="settings-hint">{t('settings.storageUnavailable')}</p>
         )}
       </section>
 
       <div className="settings-footer">
-        <p className="settings-version">ander-gym v{packageJson.version}</p>
+        <p className="settings-version">{t('settings.version', { version: packageJson.version })}</p>
         <a
           className="icon-btn"
           href={GITHUB_URL}
           target="_blank"
           rel="noopener noreferrer"
-          aria-label="View source on GitHub"
+          aria-label={t('settings.viewSource')}
         >
           <GitHubIcon />
         </a>
@@ -279,9 +296,9 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
 
       {confirmReplace && (
         <ConfirmSheet
-          title="Replace all data?"
-          message="This deletes every training, session and custom exercise on this device and loads the backup file in their place. It cannot be undone."
-          confirmLabel="Replace everything"
+          title={t('settings.confirmReplaceTitle')}
+          message={t('settings.confirmReplaceMessage')}
+          confirmLabel={t('settings.confirmReplaceLabel')}
           danger
           onConfirm={() => void runImport('replace')}
           onCancel={() => setConfirmReplace(false)}

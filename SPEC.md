@@ -233,12 +233,21 @@ the fixed bottom nav.
 - **Lifetime stats footer** — below the backup banner, a single centred line: total sessions ever saved,
   total kg lifted (`formatCompact`, matching Stats' chart figures), and "since `<date of the first saved
   session>`". Hidden until at least one session exists, matching "See all stats" and the calendar.
-- **Gear icon** (top right) — Settings sheet: weekly goal, export, import, storage usage
+- **Gear icon** (top right) — Settings sheet: weekly goal, language, export, import, storage usage
   (`navigator.storage.estimate()`), app version, and a link to the GitHub repo.
 - **Theme toggle** (top right, beside the gear icon) — sun/moon icon button that flips between light
   and dark, overriding the OS `prefers-color-scheme`. Persisted in `localStorage` (not the `settings`
   IndexedDB store, so it can be read and applied synchronously before first paint — see the inline
   bootstrap script in `index.html`). Defaults to the OS preference until the user picks explicitly.
+- **Language** — English or Spanish, chosen from a "Language" section in the Settings sheet: two chip
+  buttons, a UK flag for English and a Spain flag for Spanish, with the active one visually selected.
+  Covers the app's own chrome — labels, buttons, empty states, toasts, dates — everywhere. **Exercise
+  names, categories, equipment and targets stay English always**, since they come verbatim from
+  `data/exercises.json`, not from the app's own copy. Persisted in `localStorage`
+  (`ander-gym-language`, not the `settings` IndexedDB store — same reasoning and the same inline
+  bootstrap script in `index.html` as the theme toggle, so the app never flashes English before
+  switching to a stored Spanish choice). Defaults to the browser's language if it starts with `es`,
+  English otherwise, until the user picks explicitly.
 
 **Acceptance:** with zero data and no trainings created yet, the page shows 0/3, no streak, no banner, and
 an empty state prompting the user to add a training day from the Trainings tab.

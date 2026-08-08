@@ -7,13 +7,16 @@ import { registerSW } from 'virtual:pwa-register';
 import './styles.css';
 import { App } from './App';
 import { GymProvider } from './data/store';
+import { LanguageProvider } from './data/i18n';
 
 registerSW({ immediate: true });
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
-    <GymProvider>
-      <App />
-    </GymProvider>
+    <LanguageProvider>
+      <GymProvider>
+        <App />
+      </GymProvider>
+    </LanguageProvider>
   </StrictMode>,
 );
