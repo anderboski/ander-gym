@@ -28,6 +28,7 @@ import {
   monthGrid,
   nextTraining,
   parseLocalDate,
+  personalRecordEvents,
   personalRecords,
   remainingSeconds,
   REST_DONE_MS,
@@ -473,6 +474,88 @@ describe('beatsPersonalRecord', () => {
   it('rejects bodyweight sets and the first set of an exercise', () => {
     expect(beatsPersonalRecord({ reps: 20, weight: 0 }, records)).toBe(false);
     expect(beatsPersonalRecord({ reps: 10, weight: 100 }, null)).toBe(false);
+  });
+});
+
+describe('personalRecordEvents', () => {
+  it('is empty with no sessions', () => {
+    expect(personalRecordEvents([])).toEqual([]);
+  });
+
+  it('does not count a first-ever weighted set as an event', () => {
+    const events = personalRecordEvents([
+      session(at(2026, 7, 1), 'a', [
+        { exerciseId: '0001', sets: [{ reps: 10, weight: 25, at: at(2026, 7, 1) }] },
+      ]),
+    ]);
+    expect(events).toEqual([]);
+  });
+
+  it('records an event each time a heavier set is logged, newest first', () => {
+    const events = personalRecordEvents([
+      session(at(2026, 7, 1), 'a', [
+        { exerciseId: '0001', sets: [{ reps: 10, weight: 25, at: at(2026, 7, 1) }] },
+      ]),
+      session(at(2026, 7, 8), 'a', [
+        { exerciseId: '0001', sets: [{ reps: 8, weight: 30, at: at(2026, 7, 8) }] },
+      ]),
+      session(at(2026, 7, 15), 'a', [
+        { exerciseId: '0001', sets: [{ reps: 5, weight: 40, at: at(2026, 7, 15) }] },
+      ]),
+    ]);
+
+    expect(events).toEqual([
+      { exerciseId: '0001', set: { reps: 5, weight: 40, at: at(2026, 7, 15) } },
+      { exerciseId: '0001', set: { reps: 8, weight: 30, at: at(2026, 7, 8) } },
+    ]);
+  });
+
+  it('ignores sets that tie or fall short of the current best', () => {
+    const events = personalRecordEvents([
+      session(at(2026, 7, 1), 'a', [
+        { exerciseId: '0001', sets: [{ reps: 10, weight: 30, at: at(2026, 7, 1) }] },
+      ]),
+      session(at(2026, 7, 8), 'a', [
+        {
+          exerciseId: '0001',
+          sets: [
+            { reps: 10, weight: 30, at: at(2026, 7, 8) },
+            { reps: 12, weight: 20, at: at(2026, 7, 8) },
+          ],
+        },
+      ]),
+    ]);
+    expect(events).toEqual([]);
+  });
+
+  it('ignores bodyweight sets', () => {
+    const events = personalRecordEvents([
+      session(at(2026, 7, 1), 'a', [
+        { exerciseId: '0001', sets: [{ reps: 10, weight: 20, at: at(2026, 7, 1) }] },
+      ]),
+      session(at(2026, 7, 8), 'a', [
+        { exerciseId: '0001', sets: [{ reps: 12, weight: 0, at: at(2026, 7, 8) }] },
+      ]),
+    ]);
+    expect(events).toEqual([]);
+  });
+
+  it('tracks every exercise independently, ordered across exercises by session', () => {
+    const events = personalRecordEvents([
+      session(at(2026, 7, 1), 'a', [
+        { exerciseId: '0001', sets: [{ reps: 10, weight: 25, at: at(2026, 7, 1) }] },
+        { exerciseId: '0002', sets: [{ reps: 10, weight: 50, at: at(2026, 7, 1) }] },
+      ]),
+      session(at(2026, 7, 8), 'a', [
+        { exerciseId: '0001', sets: [{ reps: 8, weight: 30, at: at(2026, 7, 8) }] },
+        { exerciseId: '0002', sets: [{ reps: 8, weight: 55, at: at(2026, 7, 8) }] },
+      ]),
+    ]);
+
+    expect(events.map((e) => [e.exerciseId, e.set.weight])).toEqual([
+      ['0002', 55],
+      ['0001', 30],
+    ]);
   });
 });
 

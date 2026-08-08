@@ -29,3 +29,39 @@
   color: var(--text-faint);
   padding: var(--s4) 0;
 }
+
+.stats-pr-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+
+.stats-pr-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s2);
+  padding: var(--s2) var(--s3);
+  background: var(--bg-raised);
+  border: 1px solid var(--border);
+  border-radius: var(--r-md);
+}
+
+.stats-pr-name {
+  flex: 1;
+  min-width: 0;
+  font-size: 15px;
+  font-weight: 650;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.stats-pr-set {
+  font-size: 15px;
+  color: var(--text-dim);
+}
+
+.stats-pr-date {
+  font-size: 13px;
+  color: var(--text-faint);
+}
