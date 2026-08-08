@@ -9,8 +9,9 @@ import { useGym } from '../data/store';
 import { BackupError, type BackupErrorCode, type ImportMode } from '../data/backup';
 import { formatDate } from '../data/derive';
 import { useLanguage, type Language, type TranslationKey } from '../data/i18n';
+import { ChangelogSheet } from './Changelog';
 import { ConfirmSheet, Sheet } from './Sheet';
-import { CheckIcon, DownloadIcon, GitHubIcon, UploadIcon } from './icons';
+import { CheckIcon, DownloadIcon, GiftIcon, GitHubIcon, UploadIcon } from './icons';
 import packageJson from '../../package.json';
 import '../pages/HomePage.css';
 
@@ -54,6 +55,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
   const [message, setMessage] = useState<string | null>(null);
   const [errorText, setErrorText] = useState<string | null>(null);
   const [storage, setStorage] = useState<StorageInfo | null>(null);
+  const [changelogOpen, setChangelogOpen] = useState(false);
 
   /* navigator.storage is missing in older WebKit and in non-secure contexts. */
   useEffect(() => {
@@ -293,6 +295,14 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
 
       <div className="settings-footer">
         <p className="settings-version">{t('settings.version', { version: packageJson.version })}</p>
+        <button
+          type="button"
+          className="icon-btn"
+          onClick={() => setChangelogOpen(true)}
+          aria-label={t('changelog.viewAria')}
+        >
+          <GiftIcon />
+        </button>
         <a
           className="icon-btn"
           href={GITHUB_URL}
@@ -314,6 +324,8 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
           onCancel={() => setConfirmReplace(false)}
         />
       )}
+
+      {changelogOpen && <ChangelogSheet onClose={() => setChangelogOpen(false)} />}
     </Sheet>
   );
 }
