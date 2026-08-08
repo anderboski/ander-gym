@@ -261,6 +261,25 @@ export const en = {
     'This permanently removes the session from {date} and its {count} logged set. This cannot be undone.',
   'historyDetail.deleteMessageOther':
     'This permanently removes the session from {date} and its {count} logged sets. This cannot be undone.',
+
+  'stats.backToHomeAria': 'Back to home',
+  'stats.title': 'Stats',
+  'stats.subtitle': 'Everything below is derived from your saved sessions.',
+  'stats.removedExercises': 'Removed exercises',
+  'stats.weeklyVolume': 'Weekly volume',
+  'stats.volumeCaption': 'This week · {weeks}-week average {average} · best week {best}',
+  'stats.volumeAria':
+    'Weekly training volume over the last {weeks} weeks, in kilograms: {current} this week against a {weeks}-week average of {average} and a best week of {best}.',
+  'stats.sessionsPerWeek': 'Sessions per week',
+  'stats.currentThisWeek': '{count} this week',
+  'stats.consistencyCaption': '{total} sessions over {weeks} weeks · goal of {goal} met in {met} of them',
+  'stats.consistencyAria':
+    'Sessions per week over the last {weeks} weeks: {total} in total, {current} this week, and the weekly goal of {goal} met in {met} of the {weeks} weeks.',
+  'stats.muscleBalanceTitle': 'Muscle balance · {days} days',
+  'stats.muscleBalanceEmpty': 'Nothing logged in the last {days} days.',
+  'stats.muscleBalanceCaption':
+    'Most volume on {most}, least on {least}. A muscle you have not trained at all is simply absent from this list.',
+  'stats.muscleBalanceSingle': 'Only one muscle group trained in this window.',
 };
 
 export type TranslationKey = keyof typeof en;

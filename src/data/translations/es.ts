@@ -263,4 +263,24 @@ export const es: Record<TranslationKey, string> = {
     'Esto elimina permanentemente la sesión del {date} y su {count} serie registrada. No se puede deshacer.',
   'historyDetail.deleteMessageOther':
     'Esto elimina permanentemente la sesión del {date} y sus {count} series registradas. No se puede deshacer.',
+
+  'stats.backToHomeAria': 'Volver a Inicio',
+  'stats.title': 'Estadísticas',
+  'stats.subtitle': 'Todo lo de abajo se calcula a partir de tus sesiones guardadas.',
+  'stats.removedExercises': 'Ejercicios eliminados',
+  'stats.weeklyVolume': 'Volumen semanal',
+  'stats.volumeCaption': 'Esta semana · promedio de {weeks} semanas {average} · mejor semana {best}',
+  'stats.volumeAria':
+    'Volumen de entrenamiento semanal en las últimas {weeks} semanas, en kilogramos: {current} esta semana frente a un promedio de {weeks} semanas de {average} y una mejor semana de {best}.',
+  'stats.sessionsPerWeek': 'Sesiones por semana',
+  'stats.currentThisWeek': '{count} esta semana',
+  'stats.consistencyCaption':
+    '{total} sesiones en {weeks} semanas · objetivo de {goal} cumplido en {met} de ellas',
+  'stats.consistencyAria':
+    'Sesiones por semana en las últimas {weeks} semanas: {total} en total, {current} esta semana, y el objetivo semanal de {goal} cumplido en {met} de las {weeks} semanas.',
+  'stats.muscleBalanceTitle': 'Equilibrio muscular · {days} días',
+  'stats.muscleBalanceEmpty': 'No se ha registrado nada en los últimos {days} días.',
+  'stats.muscleBalanceCaption':
+    'Más volumen en {most}, menos en {least}. Un músculo que no hayas entrenado en absoluto simplemente no aparece en esta lista.',
+  'stats.muscleBalanceSingle': 'Solo se entrenó un grupo muscular en esta ventana.',
 };
