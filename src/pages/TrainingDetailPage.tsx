@@ -5,14 +5,17 @@ import { Sheet, Toast } from '../components/Sheet';
 import { ChevronLeftIcon, PlusIcon } from '../components/icons';
 import { titleCase } from '../data/parse';
 import { useGym } from '../data/store';
+import { useLanguage } from '../data/i18n';
 import type { Exercise } from '../data/types';
 import { navigate } from '../router';
 import './TrainingsPage.css';
 
 /** One row in the "add exercise" picker. */
 function PickerRow({ exercise, onAdd }: { exercise: Exercise; onAdd: () => void }) {
+  const { t } = useLanguage();
+
   return (
-    <button className="tr-pick" onClick={onAdd} aria-label={`Add ${exercise.name}`}>
+    <button className="tr-pick" onClick={onAdd} aria-label={t('trainingDetail.addAria', { name: exercise.name })}>
       <span className="tr-pick-thumb">
         {exercise.imageUrl ? (
           <img src={exercise.imageUrl} alt="" loading="lazy" decoding="async" />
@@ -36,6 +39,7 @@ function PickerRow({ exercise, onAdd }: { exercise: Exercise; onAdd: () => void 
 export function TrainingDetailPage({ trainingId }: { trainingId: string }) {
   const { getTraining, getExercise, addExerciseToTraining, removeExerciseFromTraining, status } =
     useGym();
+  const { t } = useLanguage();
   const [picking, setPicking] = useState(false);
   const [undo, setUndo] = useState<string | null>(null);
 
@@ -60,13 +64,13 @@ export function TrainingDetailPage({ trainingId }: { trainingId: string }) {
     return (
       <div className="page">
         <div className="page-header">
-          <h1 className="page-title">Not found</h1>
+          <h1 className="page-title">{t('trainingDetail.notFoundTitle')}</h1>
         </div>
         <div className="empty">
-          That training day no longer exists.
+          {t('trainingDetail.notFoundBody')}
           <div style={{ marginTop: 'var(--s4)' }}>
             <button className="btn" onClick={() => navigate('/trainings')}>
-              Back to trainings
+              {t('trainingDetail.backToTrainings')}
             </button>
           </div>
         </div>
@@ -82,13 +86,13 @@ export function TrainingDetailPage({ trainingId }: { trainingId: string }) {
     <div className="page">
       <button className="tr-back" onClick={() => navigate('/trainings')}>
         <ChevronLeftIcon />
-        Trainings
+        {t('trainings.title')}
       </button>
 
       <div className="page-header" style={{ paddingTop: 'var(--s2)' }}>
         <h1 className="page-title">{training.label}</h1>
         <div className="page-sub">
-          {exercises.length} {exercises.length === 1 ? 'exercise' : 'exercises'}
+          {exercises.length} {t(exercises.length === 1 ? 'browser.exerciseOne' : 'browser.exerciseOther')}
         </div>
       </div>
 
@@ -107,12 +111,12 @@ export function TrainingDetailPage({ trainingId }: { trainingId: string }) {
 
         <button className="tr-add-card" onClick={() => setPicking(true)}>
           <PlusIcon />
-          Add exercise
+          {t('exercises.addExercise')}
         </button>
       </div>
 
       {picking && (
-        <Sheet title="Add exercise" onClose={() => setPicking(false)} full>
+        <Sheet title={t('exercises.addExercise')} onClose={() => setPicking(false)} full>
           <ExerciseBrowser
             layout="list"
             excludeIds={training.exerciseIds}
@@ -132,8 +136,8 @@ export function TrainingDetailPage({ trainingId }: { trainingId: string }) {
 
       {undo && (
         <Toast
-          message="Exercise removed"
-          actionLabel="Undo"
+          message={t('trainingDetail.exerciseRemoved')}
+          actionLabel={t('common.undo')}
           onAction={() => {
             void addExerciseToTraining(training.id, undo);
             setUndo(null);

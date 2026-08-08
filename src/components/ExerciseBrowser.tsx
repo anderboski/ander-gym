@@ -13,6 +13,7 @@ import { useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode
 import { titleCase } from '../data/parse';
 import { countActiveFacets, facetOptions, searchExercises, toggleFacet } from '../data/search';
 import { useGym } from '../data/store';
+import { useLanguage } from '../data/i18n';
 import {
   EMPTY_FACETS,
   FACET_KEYS,
@@ -46,6 +47,7 @@ export function ExerciseBrowser({
   sortDoneFirst,
 }: ExerciseBrowserProps): ReactElement {
   const { exercises, exerciseLatest, exerciseRecords, settings } = useGym();
+  const { t } = useLanguage();
 
   const [query, setQuery] = useState('');
   const [facets, setFacets] = useState<Facets>(EMPTY_FACETS);
@@ -124,13 +126,13 @@ export function ExerciseBrowser({
       <div className="browser-search">
         <div className="browser-search-field">
           <label className="browser-sr-only" htmlFor="exercise-search">
-            Search exercises
+            {t('browser.searchLabel')}
           </label>
           <input
             id="exercise-search"
             type="search"
             className="input input-search"
-            placeholder="Search exercises"
+            placeholder={t('browser.searchLabel')}
             inputMode="search"
             autoCapitalize="none"
             autoCorrect="off"
@@ -142,7 +144,7 @@ export function ExerciseBrowser({
             <button
               type="button"
               className="browser-search-clear"
-              aria-label="Clear search"
+              aria-label={t('browser.clearSearch')}
               onClick={() => setQuery('')}
             >
               &times;
@@ -160,7 +162,7 @@ export function ExerciseBrowser({
               aria-pressed={onlyPR}
               onClick={() => setOnlyPR((v) => !v)}
             >
-              🏆 PR only
+              🏆 {t('browser.prOnly')}
             </button>
             <button
               type="button"
@@ -168,7 +170,7 @@ export function ExerciseBrowser({
               aria-pressed={onlyFavorites}
               onClick={() => setOnlyFavorites((v) => !v)}
             >
-              ⭐ Favorites
+              ⭐ {t('browser.favorites')}
             </button>
           </div>
         </div>
@@ -203,18 +205,18 @@ export function ExerciseBrowser({
                 setOnlyFavorites(false);
               }}
             >
-              Clear all ({activeFacets})
+              {t('browser.clearAll', { count: activeFacets })}
             </button>
           </div>
         )}
       </div>
 
       <div className="browser-count" role="status">
-        {matches.length} {matches.length === 1 ? 'exercise' : 'exercises'}
+        {matches.length} {t(matches.length === 1 ? 'browser.exerciseOne' : 'browser.exerciseOther')}
       </div>
 
       {matches.length === 0 ? (
-        <div className="empty">No exercises match those filters.</div>
+        <div className="empty">{t('browser.noMatches')}</div>
       ) : (
         <div className={layout === 'carousel' ? 'browser-strip' : 'browser-list'}>
           {visible.map((ex) => renderItem(ex))}

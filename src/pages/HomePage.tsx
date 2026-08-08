@@ -42,16 +42,9 @@ import {
 import { SettingsSheet } from '../components/SettingsSheet';
 import { Toast } from '../components/Sheet';
 import { getTheme, otherTheme, setTheme, type Theme } from '../data/theme';
-import { useLanguage, type TranslationKey } from '../data/i18n';
+import { daysAgoLabel, useLanguage } from '../data/i18n';
 import type { Session, Training } from '../data/types';
 import './HomePage.css';
-
-/** `formatDaysAgo` (derive.ts) in English only — this page needs it translated. */
-function daysAgoLabel(t: (key: TranslationKey, vars?: Record<string, string | number>) => string, days: number): string {
-  if (days <= 0) return t('common.today');
-  if (days === 1) return t('common.daysAgoOne');
-  return t('common.daysAgoOther', { days });
-}
 
 /** A backup older than this is stale enough to nag about. */
 const BACKUP_MAX_AGE_MS = 30 * 86_400_000;
@@ -318,7 +311,7 @@ export function HomePage() {
           {lifetime.totalSessions > 0 && (
             <div className="section home-lifetime">
               <span className="num">{lifetime.totalSessions}</span>{' '}
-              {t(lifetime.totalSessions === 1 ? 'home.lifetimeSessionsOne' : 'home.lifetimeSessionsOther')} ·{' '}
+              {t(lifetime.totalSessions === 1 ? 'common.sessionsOne' : 'common.sessionsOther')} ·{' '}
               <span className="num">{formatCompact(lifetime.totalVolumeKg)}</span> {t('home.lifetimeKgLifted')}
               {lifetime.since && <> {t('home.lifetimeSince', { date: formatDate(lifetime.since) })}</>}
             </div>

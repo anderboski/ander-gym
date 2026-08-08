@@ -4,13 +4,13 @@ import {
   exerciseProgress,
   formatDate,
   formatDateTime,
-  formatDaysAgo,
   formatShortDate,
   historyFor,
   type ExerciseRecord,
   type ProgressMetric,
 } from '../data/derive';
 import { formatSet, formatWeight, titleCase } from '../data/parse';
+import { daysAgoLabel, useLanguage } from '../data/i18n';
 import type { Exercise, SetEntry } from '../data/types';
 import { ChartFigure, LineChart } from './Chart';
 import { Sheet } from './Sheet';
@@ -19,12 +19,14 @@ import './ExerciseCard.css';
 
 /** Two-column reps/weight table — the "training matrix" from the spec. */
 export function SetMatrix({ sets }: { sets: SetEntry[] }) {
+  const { t } = useLanguage();
+
   return (
     <table className="set-matrix">
       <thead>
         <tr>
-          <th scope="col">Reps</th>
-          <th scope="col">Weight</th>
+          <th scope="col">{t('exerciseCard.reps')}</th>
+          <th scope="col">{t('exerciseCard.weight')}</th>
         </tr>
       </thead>
       <tbody>
@@ -62,11 +64,6 @@ function Thumb({ exercise }: { exercise: Exercise }) {
 /* Progress chart (SPEC §5.2)                                                  */
 /* -------------------------------------------------------------------------- */
 
-const METRICS: Record<ProgressMetric, { label: string; title: string }> = {
-  topWeight: { label: 'Top set', title: 'Top-set weight' },
-  e1rm: { label: 'Est. 1RM', title: 'Estimated 1RM' },
-};
-
 /** Toggle order. Top set first: it is the number the user actually lifted. */
 const METRIC_ORDER: ProgressMetric[] = ['topWeight', 'e1rm'];
 
@@ -80,12 +77,18 @@ const kg = (value: number) => `${formatWeight(Math.round(value * 10) / 10)} kg`;
  * one point is not a trend), and an actual line from two sessions up.
  */
 function ExerciseProgress({ history }: { history: ExerciseRecord[] }) {
+  const { t } = useLanguage();
   const [metric, setMetric] = useState<ProgressMetric>('topWeight');
   const points = useMemo(() => exerciseProgress(history, metric), [history, metric]);
 
-  const active = METRICS[metric];
+  const metrics: Record<ProgressMetric, { label: string; title: string }> = {
+    topWeight: { label: t('exerciseCard.topSet'), title: t('exerciseCard.topSetWeightTitle') },
+    e1rm: { label: t('exerciseCard.estOneRM'), title: t('exerciseCard.estimatedOneRMTitle') },
+  };
+
+  const active = metrics[metric];
   const toggle = (
-    <div className="ex-progress-toggle" role="group" aria-label="Chart metric">
+    <div className="ex-progress-toggle" role="group" aria-label={t('exerciseCard.chartMetricAria')}>
       {METRIC_ORDER.map((id) => (
         <button
           key={id}
@@ -93,7 +96,7 @@ function ExerciseProgress({ history }: { history: ExerciseRecord[] }) {
           aria-pressed={id === metric}
           onClick={() => setMetric(id)}
         >
-          {METRICS[id].label}
+          {metrics[id].label}
         </button>
       ))}
     </div>
@@ -104,15 +107,16 @@ function ExerciseProgress({ history }: { history: ExerciseRecord[] }) {
 
   // Logged, but never with weight: Epley and a weight axis both need a load.
   if (!first || !last) {
-    return (
-      <div className="ex-progress ex-progress-none">
-        Logged at bodyweight only — there is no load to chart yet.
-      </div>
-    );
+    return <div className="ex-progress ex-progress-none">{t('exerciseCard.bodyweightOnly')}</div>;
   }
 
   const delta = last.value - first.value;
-  const trend = delta > 0 ? `up ${kg(delta)}` : delta < 0 ? `down ${kg(-delta)}` : 'no change';
+  const trend =
+    delta > 0
+      ? t('exerciseCard.trendUp', { kg: kg(delta) })
+      : delta < 0
+        ? t('exerciseCard.trendDown', { kg: kg(-delta) })
+        : t('exerciseCard.trendNoChange');
 
   if (points.length === 1) {
     return (
@@ -121,7 +125,7 @@ function ExerciseProgress({ history }: { history: ExerciseRecord[] }) {
           title={active.title}
           value={kg(last.value)}
           action={toggle}
-          caption={`One session logged, on ${formatShortDate(last.at)} — a second one starts the trend.`}
+          caption={t('exerciseCard.oneSessionCaption', { date: formatShortDate(last.at) })}
         >
           <div className="ex-progress-single num">{formatSet(last.set.reps, last.set.weight)}</div>
         </ChartFigure>
@@ -137,7 +141,8 @@ function ExerciseProgress({ history }: { history: ExerciseRecord[] }) {
         action={toggle}
         caption={
           <>
-            {points.length} sessions · {formatShortDate(first.at)} → {formatShortDate(last.at)} ·{' '}
+            {points.length} {t('common.sessionsOther')} · {formatShortDate(first.at)} →{' '}
+            {formatShortDate(last.at)} ·{' '}
             <span className="num">
               {delta > 0 ? '+' : ''}
               {kg(delta)}
@@ -149,7 +154,15 @@ function ExerciseProgress({ history }: { history: ExerciseRecord[] }) {
           values={points.map((p) => p.value)}
           formatTick={(v) => formatWeight(Math.round(v * 10) / 10)}
           xLabels={[formatShortDate(first.at), formatShortDate(last.at)]}
-          ariaLabel={`${active.title} across ${points.length} sessions: ${kg(first.value)} on ${formatShortDate(first.at)} to ${kg(last.value)} on ${formatShortDate(last.at)}, ${trend}.`}
+          ariaLabel={t('exerciseCard.multiSessionAria', {
+            title: active.title,
+            count: points.length,
+            firstKg: kg(first.value),
+            firstDate: formatShortDate(first.at),
+            lastKg: kg(last.value),
+            lastDate: formatShortDate(last.at),
+            trend,
+          })}
         />
       </ChartFigure>
     </div>
@@ -165,12 +178,13 @@ export function ExerciseHistorySheet({
   onClose: () => void;
 }) {
   const { sessions } = useGym();
+  const { t } = useLanguage();
   const records = useMemo(() => historyFor(exercise.id, sessions), [exercise.id, sessions]);
 
   return (
     <Sheet title={exercise.name} onClose={onClose} full>
       {records.length === 0 ? (
-        <div className="empty">No history yet.</div>
+        <div className="empty">{t('exerciseCard.noHistorySheet')}</div>
       ) : (
         <>
           <ExerciseProgress history={records} />
@@ -178,7 +192,7 @@ export function ExerciseHistorySheet({
             <div className="ex-history-entry" key={session.id}>
               <div className="ex-history-head">
                 <span className="ex-history-date">{formatDateTime(session.startedAt)}</span>
-                <span className="ex-history-ago">{formatDaysAgo(daysAgo)}</span>
+                <span className="ex-history-ago">{daysAgoLabel(t, daysAgo)}</span>
               </div>
               <SetMatrix sets={sets} />
             </div>
@@ -203,6 +217,7 @@ export type ExerciseCardProps = {
  */
 export function ExerciseCard({ exercise, variant = 'carousel', onRemove }: ExerciseCardProps) {
   const { exerciseRecords, exerciseLatest, settings, toggleFavorite } = useGym();
+  const { t } = useLanguage();
   const [showHistory, setShowHistory] = useState(false);
   const latest = exerciseLatest.get(exercise.id) ?? null;
   const best = exerciseRecords.get(exercise.id)?.heaviest;
@@ -214,7 +229,7 @@ export function ExerciseCard({ exercise, variant = 'carousel', onRemove }: Exerc
         {best && (
           <div
             className="ex-card-pr num"
-            aria-label={`Personal record: ${best.reps} reps at ${formatWeight(best.weight)} kilograms`}
+            aria-label={t('exerciseCard.prAria', { reps: best.reps, weight: formatWeight(best.weight) })}
           >
             <span aria-hidden="true">🏆</span>
             {formatSet(best.reps, best.weight)}
@@ -224,7 +239,7 @@ export function ExerciseCard({ exercise, variant = 'carousel', onRemove }: Exerc
         <button
           className="ex-card-media"
           onClick={() => setShowHistory(true)}
-          aria-label={`History for ${exercise.name}`}
+          aria-label={t('exerciseCard.historyForAria', { name: exercise.name })}
         >
           <Thumb exercise={exercise} />
         </button>
@@ -234,14 +249,22 @@ export function ExerciseCard({ exercise, variant = 'carousel', onRemove }: Exerc
             type="button"
             className="ex-card-favorite"
             aria-pressed={isFavorite}
-            aria-label={isFavorite ? `Remove ${exercise.name} from favorites` : `Add ${exercise.name} to favorites`}
+            aria-label={
+              isFavorite
+                ? t('exerciseCard.removeFromFavoritesAria', { name: exercise.name })
+                : t('exerciseCard.addToFavoritesAria', { name: exercise.name })
+            }
             onClick={() => void toggleFavorite(exercise.id)}
           >
             <StarIcon filled={isFavorite} />
           </button>
 
           {onRemove && (
-            <button className="ex-card-remove" onClick={onRemove} aria-label={`Remove ${exercise.name}`}>
+            <button
+              className="ex-card-remove"
+              onClick={onRemove}
+              aria-label={t('exerciseCard.removeAria', { name: exercise.name })}
+            >
               <TrashIcon />
             </button>
           )}
@@ -251,7 +274,7 @@ export function ExerciseCard({ exercise, variant = 'carousel', onRemove }: Exerc
           <div className="ex-card-name">{exercise.name}</div>
 
           <div className="ex-card-meta">
-            {exercise.isCustom && <span className="pill pill-accent">Custom</span>}
+            {exercise.isCustom && <span className="pill pill-accent">{t('exerciseCard.custom')}</span>}
             <span className="pill">{titleCase(exercise.equipment)}</span>
             <span className="pill">{titleCase(exercise.target)}</span>
           </div>
@@ -260,12 +283,12 @@ export function ExerciseCard({ exercise, variant = 'carousel', onRemove }: Exerc
             <>
               <div className="ex-card-latest">
                 <span>{formatDate(latest.session.startedAt)}</span>
-                <span style={{ color: 'var(--text-faint)' }}>{formatDaysAgo(latest.daysAgo)}</span>
+                <span style={{ color: 'var(--text-faint)' }}>{daysAgoLabel(t, latest.daysAgo)}</span>
               </div>
               <SetMatrix sets={latest.sets} />
             </>
           ) : (
-            <div className="ex-card-none">No history yet</div>
+            <div className="ex-card-none">{t('exerciseCard.noHistory')}</div>
           )}
         </div>
       </div>

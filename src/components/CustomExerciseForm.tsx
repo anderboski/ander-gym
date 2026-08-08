@@ -10,6 +10,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { titleCase } from '../data/parse';
 import { facetOptions } from '../data/search';
 import { useGym } from '../data/store';
+import { useLanguage } from '../data/i18n';
 import { FACET_KEYS, FACET_LABELS, type Exercise, type FacetKey } from '../data/types';
 import { Sheet } from './Sheet';
 import './ExerciseBrowser.css';
@@ -24,6 +25,7 @@ export type CustomExerciseFormProps = {
 
 export function CustomExerciseForm({ onClose, onSaved }: CustomExerciseFormProps) {
   const { exercises, addCustomExercise } = useGym();
+  const { t } = useLanguage();
   const options = useMemo(() => facetOptions(exercises), [exercises]);
 
   const [name, setName] = useState('');
@@ -78,14 +80,14 @@ export function CustomExerciseForm({ onClose, onSaved }: CustomExerciseFormProps
     } catch (err: unknown) {
       // Most likely the image decode/encode step — keep the form open with
       // everything the user typed still in it.
-      setError(err instanceof Error ? err.message : 'Could not save the exercise.');
+      setError(err instanceof Error ? err.message : t('customExerciseForm.couldNotSave'));
       setSaving(false);
     }
   }
 
   return (
     <Sheet
-      title="Add exercise"
+      title={t('exercises.addExercise')}
       onClose={onClose}
       footer={
         <button
@@ -94,7 +96,7 @@ export function CustomExerciseForm({ onClose, onSaved }: CustomExerciseFormProps
           className="btn btn-primary btn-block"
           disabled={!canSave}
         >
-          {saving ? 'Saving…' : 'Save exercise'}
+          {saving ? t('common.saving') : t('customExerciseForm.saveExercise')}
         </button>
       }
     >
@@ -107,7 +109,7 @@ export function CustomExerciseForm({ onClose, onSaved }: CustomExerciseFormProps
 
         <div className="cxf-field">
           <label className="label" htmlFor="cxf-name">
-            Name
+            {t('common.name')}
           </label>
           <input
             id="cxf-name"
@@ -117,7 +119,7 @@ export function CustomExerciseForm({ onClose, onSaved }: CustomExerciseFormProps
             value={name}
             autoCapitalize="words"
             autoCorrect="off"
-            placeholder="e.g. Cable crossover"
+            placeholder={t('customExerciseForm.namePlaceholder')}
             onChange={(e) => setName(e.target.value)}
           />
         </div>
@@ -144,7 +146,7 @@ export function CustomExerciseForm({ onClose, onSaved }: CustomExerciseFormProps
 
         <div className="cxf-field">
           <label className="label" htmlFor="cxf-photo">
-            Photo (optional)
+            {t('customExerciseForm.photoOptional')}
           </label>
           <input
             id="cxf-photo"
@@ -157,9 +159,9 @@ export function CustomExerciseForm({ onClose, onSaved }: CustomExerciseFormProps
 
           {preview && (
             <div className="cxf-preview">
-              <img src={preview} alt="Selected photo preview" />
+              <img src={preview} alt={t('customExerciseForm.photoPreviewAlt')} />
               <button type="button" className="btn btn-sm btn-ghost" onClick={clearPhoto}>
-                Remove photo
+                {t('customExerciseForm.removePhoto')}
               </button>
             </div>
           )}
