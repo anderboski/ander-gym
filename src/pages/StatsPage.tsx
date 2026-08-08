@@ -15,16 +15,19 @@ import { useMemo, useState } from 'react';
 import { useGym } from '../data/store';
 import {
   formatShortDate,
+  personalRecordEvents,
   UNKNOWN_TARGET,
   volumeByTarget,
   weeklySummary,
+  type PersonalRecordEvent,
   type WeekStat,
 } from '../data/derive';
-import { formatCompact, titleCase } from '../data/parse';
+import { formatCompact, formatSet, titleCase } from '../data/parse';
 import { BarList, BarStrip, ChartFigure, LineChart } from '../components/Chart';
 import { ChevronLeftIcon } from '../components/icons';
 import { navigate } from '../router';
 import { useLanguage } from '../data/i18n';
+import type { Exercise } from '../data/types';
 import './StatsPage.css';
 
 /** Long enough to show a habit, short enough to fit a phone width. */
@@ -32,6 +35,9 @@ const WEEKS = 12;
 
 /** The window the muscle-balance breakdown asks "am I skipping legs?" over. */
 const BALANCE_DAYS = 30;
+
+/** How many recent PRs the list shows — a glance, not a full log. */
+const RECENT_PRS = 5;
 
 const kg = (value: number) => `${formatCompact(value)} kg`;
 
@@ -47,6 +53,10 @@ export function StatsPage() {
   const balance = useMemo(
     () => volumeByTarget(sessions, exerciseById, BALANCE_DAYS, now),
     [sessions, exerciseById, now],
+  );
+  const recentPrs = useMemo(
+    () => personalRecordEvents(sessions).slice(0, RECENT_PRS),
+    [sessions],
   );
 
   if (status === 'loading') {
@@ -72,6 +82,12 @@ export function StatsPage() {
         <div className="empty">{t('history.emptyState')}</div>
       ) : (
         <>
+          <section className="section">
+            <div className="card card-pad">
+              <RecentPRs events={recentPrs} exerciseById={exerciseById} />
+            </div>
+          </section>
+
           <section className="section">
             <div className="card card-pad">
               <VolumeTrend weeks={weeks} />
@@ -106,6 +122,46 @@ function edgeLabels(weeks: WeekStat[]): [string, string] | undefined {
   const first = weeks[0];
   const last = weeks[weeks.length - 1];
   return first && last ? [formatShortDate(first.start), formatShortDate(last.start)] : undefined;
+}
+
+/**
+ * The last few times a set became a new heaviest-ever load for its exercise.
+ * A plain list, not a chart — there is no shared axis a "heaviest weight"
+ * across unrelated exercises (a squat PR and a curl PR) could sit on.
+ */
+function RecentPRs({
+  events,
+  exerciseById,
+}: {
+  events: PersonalRecordEvent[];
+  exerciseById: Map<string, Exercise>;
+}) {
+  const { t } = useLanguage();
+
+  if (events.length === 0) {
+    return (
+      <ChartFigure title={t('stats.recentPrsTitle')}>
+        <div className="stats-empty">{t('stats.recentPrsEmpty')}</div>
+      </ChartFigure>
+    );
+  }
+
+  return (
+    <ChartFigure title={t('stats.recentPrsTitle')}>
+      <ul className="stats-pr-list">
+        {events.map(({ exerciseId, set }, i) => {
+          const name = exerciseById.get(exerciseId)?.name ?? exerciseId;
+          return (
+            <li className="stats-pr-row" key={`${exerciseId}-${i}`}>
+              <span className="stats-pr-name">{name}</span>
+              <span className="stats-pr-set num">{formatSet(set.reps, set.weight)}</span>
+              <span className="stats-pr-date num">{formatShortDate(set.at)}</span>
+            </li>
+          );
+        })}
+      </ul>
+    </ChartFigure>
+  );
 }
 
 /** Weekly volume in kg. A single series, so the title is its legend. */

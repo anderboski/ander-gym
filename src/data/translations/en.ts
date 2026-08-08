@@ -265,6 +265,8 @@ export const en = {
   'stats.title': 'Stats',
   'stats.subtitle': 'Everything below is derived from your saved sessions.',
   'stats.removedExercises': 'Removed exercises',
+  'stats.recentPrsTitle': 'Last 5 PRs',
+  'stats.recentPrsEmpty': 'No personal records yet — beat a previous best on any exercise and it shows up here.',
   'stats.weeklyVolume': 'Weekly volume',
   'stats.volumeCaption': 'This week · {weeks}-week average {average} · best week {best}',
   'stats.volumeAria':
