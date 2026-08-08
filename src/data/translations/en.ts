@@ -285,6 +285,11 @@ export const en = {
   'backup.notABackup': 'That file is not an ander-gym backup.',
   'backup.newerSchema': 'This backup was made by a newer version of the app (schema {schema}).',
   'backup.missingData': 'That backup is missing its trainings or sessions.',
+
+  'changelog.whatsNewTitle': 'What’s new in {version}',
+  'changelog.gotIt': 'Got it',
+  'changelog.title': 'Changelog',
+  'changelog.viewAria': 'View changelog',
 };
 
 export type TranslationKey = keyof typeof en;

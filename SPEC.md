@@ -234,7 +234,7 @@ the fixed bottom nav.
   total kg lifted (`formatCompact`, matching Stats' chart figures), and "since `<date of the first saved
   session>`". Hidden until at least one session exists, matching "See all stats" and the calendar.
 - **Gear icon** (top right) — Settings sheet: weekly goal, language, export, import, storage usage
-  (`navigator.storage.estimate()`), app version, and a link to the GitHub repo.
+  (`navigator.storage.estimate()`), app version, a changelog link, and a link to the GitHub repo.
 - **Theme toggle** (top right, beside the gear icon) — sun/moon icon button that flips between light
   and dark, overriding the OS `prefers-color-scheme`. Persisted in `localStorage` (not the `settings`
   IndexedDB store, so it can be read and applied synchronously before first paint — see the inline
@@ -248,6 +248,18 @@ the fixed bottom nav.
   bootstrap script in `index.html` as the theme toggle, so the app never flashes English before
   switching to a stored Spanish choice). Defaults to the browser's language if it starts with `es`,
   English otherwise, until the user picks explicitly.
+- **"What's new" popup** — release notes (`data/changelog.ts`, one entry per version, English and Spanish)
+  shown automatically after an update, in the current language. Tracked by a `localStorage` key
+  (`ander-gym-last-seen-version`, same device-local reasoning as theme/language — no accounts, so this is
+  already per-phone, which fits multiple people sharing the app across separate installs) holding the
+  last version the user has seen. On launch, every changelog entry newer than that is queued and shown one
+  sheet at a time, **oldest first**; dismissing one (the "Got it" button, the "×", Escape, or the backdrop)
+  persists progress and advances to the next, so a partially-seen queue survives the app being closed
+  mid-way. Shown for every version bump — there is no "notable vs. routine" distinction. If nothing has
+  been recorded yet (a brand-new install, or an existing install predating this feature), only the single
+  latest entry is queued rather than the entire history back to 1.0.0, so the feature announces itself
+  without dumping old release notes on returning users. The full history is always reachable from Settings
+  (gift-icon link beside the GitHub link), newest first, regardless of what has been "seen".
 
 **Acceptance:** with zero data and no trainings created yet, the page shows 0/3, no streak, no banner, and
 an empty state prompting the user to add a training day from the Trainings tab.

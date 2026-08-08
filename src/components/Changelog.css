@@ -1,0 +1,40 @@
+/* "What's new" popup + Settings changelog sheet. Tokens only. */
+
+.changelog-notes {
+  margin: 0;
+  padding-left: var(--s5);
+  color: var(--text-dim);
+  font-size: 15px;
+  line-height: 1.5;
+}
+
+.changelog-notes li + li {
+  margin-top: var(--s2);
+}
+
+.changelog-dismiss {
+  margin-top: var(--s5);
+}
+
+.changelog-entry + .changelog-entry {
+  margin-top: var(--s6);
+  padding-top: var(--s5);
+  border-top: 1px solid var(--border);
+}
+
+.changelog-entry-head {
+  display: flex;
+  align-items: baseline;
+  gap: var(--s3);
+  margin-bottom: var(--s3);
+}
+
+.changelog-entry-version {
+  font-size: 16px;
+  font-weight: 700;
+}
+
+.changelog-entry-date {
+  font-size: 13px;
+  color: var(--text-faint);
+}

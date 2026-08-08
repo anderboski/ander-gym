@@ -289,4 +289,9 @@ export const es: Record<TranslationKey, string> = {
   'backup.newerSchema':
     'Esta copia de seguridad se creó con una versión más reciente de la app (esquema {schema}).',
   'backup.missingData': 'A esa copia de seguridad le faltan sus entrenamientos o sesiones.',
+
+  'changelog.whatsNewTitle': 'Novedades en {version}',
+  'changelog.gotIt': 'Entendido',
+  'changelog.title': 'Historial de cambios',
+  'changelog.viewAria': 'Ver historial de cambios',
 };
