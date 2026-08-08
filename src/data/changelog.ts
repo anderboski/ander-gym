@@ -110,6 +110,16 @@ export const CHANGELOG: ChangelogEntry[] = [
     en: ['The Home greeting is now clearly a link to your profile — bigger, blue, underlined.'],
     es: ['El saludo de Inicio ahora se ve claramente como un enlace a tu perfil — más grande, azul y subrayado.'],
   },
+  {
+    version: '1.9.0',
+    date: '2026-08-08',
+    en: [
+      'Reorder the exercises within a training day by dragging the grip on each card — the new order also applies to your next session.',
+    ],
+    es: [
+      'Reordena los ejercicios de un entrenamiento arrastrando la manija de cada tarjeta — el nuevo orden también se aplica a tu próxima sesión.',
+    ],
+  },
 ];
 
 /** Keep in sync with the bootstrap-independent nature of theme/language: this

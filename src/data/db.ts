@@ -194,6 +194,26 @@ export async function reorderTrainings(orderedIds: string[]): Promise<Training[]
   return getTrainings();
 }
 
+/**
+ * Applies a new exercise order within one training, from the full dragged
+ * sequence — same "known ids first, any leftover appended" shape as
+ * `reorderTrainings`, but rewriting `exerciseIds` in place rather than each
+ * record's own `order` field.
+ */
+export async function reorderTrainingExercises(
+  id: string,
+  orderedExerciseIds: string[],
+): Promise<Training | null> {
+  const training = (await getTrainings()).find((t) => t.id === id);
+  if (!training) return null;
+
+  const known = orderedExerciseIds.filter((exId) => training.exerciseIds.includes(exId));
+  const leftover = training.exerciseIds.filter((exId) => !known.includes(exId));
+  const updated = { ...training, exerciseIds: [...known, ...leftover] };
+  await putTraining(updated);
+  return updated;
+}
+
 /* -------------------------------------------------------------------------- */
 /* Sessions                                                                    */
 /* -------------------------------------------------------------------------- */

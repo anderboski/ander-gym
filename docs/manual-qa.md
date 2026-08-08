@@ -52,6 +52,10 @@ Target: `https://anderboski.github.io/ander-gym/`
 - [ ] Trainings → press and drag the grip handle on the left of **Legs** up above
       **Push day**. Release — the list reflects the new order immediately.
 - [ ] Home → today's training now follows the new rotation order.
+- [ ] Open a training with 3+ exercises → press and drag the grip handle on the
+      left of the last exercise's card up above the first. Release — the list
+      reflects the new order immediately, and reloading the app keeps it.
+- [ ] Session → start that training — the exercises appear in the new order.
 - [ ] Confirm there is no way to delete a training day anywhere in the UI.
 
 ## 3c. Rest timer

@@ -12,11 +12,12 @@
  * sessions and no session currently in progress has nothing to protect, so
  * it's the one case that can be deleted outright (with undo).
  */
-import { useEffect, useMemo, useRef, useState, type FormEvent, type PointerEvent } from 'react';
+import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
 import { daysBetween, formatDate, lastSessionForTraining } from '../data/derive';
 import { useGym } from '../data/store';
 import { daysAgoLabel, useLanguage } from '../data/i18n';
+import { useDragReorder } from '../hooks/useDragReorder';
 import type { Session, Training } from '../data/types';
 import { Sheet, Toast } from '../components/Sheet';
 import {
@@ -28,93 +29,6 @@ import {
 } from '../components/icons';
 import { navigate } from '../router';
 import './TrainingsPage.css';
-
-/* -------------------------------------------------------------------------- */
-/* Drag-to-reorder                                                             */
-/* -------------------------------------------------------------------------- */
-
-type Ghost = { top: number; left: number; width: number; height: number };
-
-/**
- * Reorders `order` live as the grip is dragged, comparing the dragged card's
- * centre against each neighbour's midpoint and swapping one slot at a time —
- * cheap, and correct regardless of how tall any individual card is. The
- * dragged card itself is rendered by a fixed-position ghost that tracks the
- * pointer; the row in the list just dims in place to mark its current slot.
- */
-function useTrainingDrag(order: string[], setOrder: (next: string[]) => void, onCommit: (ids: string[]) => void) {
-  const itemRefs = useRef(new Map<string, HTMLDivElement>());
-  const dragMeta = useRef<{ id: string; grabOffset: number; height: number } | null>(null);
-  const orderRef = useRef(order);
-  orderRef.current = order;
-
-  const [draggingId, setDraggingId] = useState<string | null>(null);
-  const [ghost, setGhost] = useState<Ghost | null>(null);
-
-  function setItemRef(id: string) {
-    return (el: HTMLDivElement | null) => {
-      if (el) itemRefs.current.set(id, el);
-      else itemRefs.current.delete(id);
-    };
-  }
-
-  function onGripDown(id: string, e: PointerEvent<HTMLButtonElement>) {
-    e.preventDefault();
-    const card = itemRefs.current.get(id);
-    if (!card) return;
-    const rect = card.getBoundingClientRect();
-    dragMeta.current = { id, grabOffset: e.clientY - rect.top, height: rect.height };
-    setGhost({ top: rect.top, left: rect.left, width: rect.width, height: rect.height });
-    setDraggingId(id);
-    e.currentTarget.setPointerCapture(e.pointerId);
-  }
-
-  function onGripMove(e: PointerEvent<HTMLButtonElement>) {
-    const meta = dragMeta.current;
-    if (!meta) return;
-    const top = e.clientY - meta.grabOffset;
-    setGhost((g) => (g ? { ...g, top } : g));
-
-    const ids = orderRef.current;
-    const idx = ids.indexOf(meta.id);
-    const draggedCenter = top + meta.height / 2;
-    const current = ids[idx];
-    if (current === undefined) return;
-
-    const aboveId = idx > 0 ? ids[idx - 1] : undefined;
-    if (aboveId !== undefined) {
-      const above = itemRefs.current.get(aboveId)?.getBoundingClientRect();
-      if (above && draggedCenter < above.top + above.height / 2) {
-        const next = [...ids];
-        next[idx - 1] = current;
-        next[idx] = aboveId;
-        setOrder(next);
-        return;
-      }
-    }
-
-    const belowId = idx < ids.length - 1 ? ids[idx + 1] : undefined;
-    if (belowId !== undefined) {
-      const below = itemRefs.current.get(belowId)?.getBoundingClientRect();
-      if (below && draggedCenter > below.top + below.height / 2) {
-        const next = [...ids];
-        next[idx + 1] = current;
-        next[idx] = belowId;
-        setOrder(next);
-      }
-    }
-  }
-
-  function onGripUp() {
-    if (!dragMeta.current) return;
-    dragMeta.current = null;
-    setDraggingId(null);
-    setGhost(null);
-    onCommit(orderRef.current);
-  }
-
-  return { draggingId, ghost, setItemRef, onGripDown, onGripMove, onGripUp };
-}
 
 /* -------------------------------------------------------------------------- */
 /* Card body (shared between the real row and the drag ghost)                  */
@@ -517,7 +431,7 @@ export function TrainingsPage() {
   const byId = useMemo(() => new Map(trainings.map((t) => [t.id, t])), [trainings]);
   const ordered = order.map((id) => byId.get(id)).filter((t): t is Training => t !== undefined);
 
-  const drag = useTrainingDrag(order, setOrder, (next) => void reorderTrainings(next));
+  const drag = useDragReorder(order, setOrder, (next) => void reorderTrainings(next));
   const draggingTraining = drag.draggingId ? byId.get(drag.draggingId) : undefined;
 
   async function handleArchiveButtonClick(training: Training) {
