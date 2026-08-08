@@ -90,6 +90,20 @@ export const CHANGELOG: ChangelogEntry[] = [
       'Se añadió un historial de cambios completo, accesible desde Ajustes.',
     ],
   },
+  {
+    version: '1.8.0',
+    date: '2026-08-08',
+    en: [
+      'Added a profile — name, birthdate and height, tap the greeting on Home to open it.',
+      'Log your weight over time, with an optional photo per check-in, and see the trend on a chart.',
+      'BMI shows automatically once you’ve added a height and at least one check-in.',
+    ],
+    es: [
+      'Se añadió un perfil — nombre, fecha de nacimiento y altura; toca el saludo en Inicio para abrirlo.',
+      'Registra tu peso a lo largo del tiempo, con una foto opcional por registro, y consulta la tendencia en un gráfico.',
+      'El IMC se muestra automáticamente en cuanto añades una altura y al menos un registro.',
+    ],
+  },
 ];
 
 /** Keep in sync with the bootstrap-independent nature of theme/language: this

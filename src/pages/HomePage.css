@@ -22,6 +22,25 @@
   margin-right: calc(-1 * var(--s3));
 }
 
+/* The greeting doubles as the entry point to the profile section — a <button>
+   inside the <h1> so it stays a real heading for screen readers while also
+   being tappable. Buttons don't inherit type styles by default, so pull the
+   parent's back explicitly. */
+.home-greeting {
+  display: block;
+  font: inherit;
+  color: inherit;
+  letter-spacing: inherit;
+  background: none;
+  border: none;
+  padding: 0;
+  text-align: left;
+}
+
+.home-greeting:active {
+  opacity: 0.6;
+}
+
 /* --------------------------------------------------------------------------
    Week counter + goal ring
    -------------------------------------------------------------------------- */

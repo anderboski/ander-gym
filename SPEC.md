@@ -71,7 +71,7 @@ URLs are built as `` `${import.meta.env.BASE_URL}data/…` `` so they survive th
 
 ## 3. Persistence
 
-IndexedDB via `idb`. Database `ander-gym`, version 1.
+IndexedDB via `idb`. Database `ander-gym`, version 2.
 
 | Store | Key | Value |
 |---|---|---|
@@ -80,6 +80,16 @@ IndexedDB via `idb`. Database `ander-gym`, version 1.
 | `activeSession` | literal `'current'` | `{ trainingId, trainingLabel, startedAt, entries }` |
 | `customExercises` | `id` (`c-<uuid>`) | Exercise fields + `isCustom: true`, `imageBlob?: Blob` |
 | `settings` | key string | `weeklyGoal` (default `3`), `lastExportAt`, `favoriteExerciseIds` (default `[]`), `schemaVersion` |
+| `profile` | key string | `name` (default `''`), `birthdate` (default `null`), `heightCm` (default `null`) — see §5.7 |
+| `checkins` | `id` (`ck-<uuid>`) | `{ id, date, weightKg, photoBlobs: Blob[] }` — index on `date`, see §5.7 |
+
+**Migrations.** `DB_VERSION` went from `1` to `2` when `profile`/`checkins` were added — the first migration
+this app has ever needed. `upgrade()` is keyed on `oldVersion` (`if (oldVersion < 1) …`, `if (oldVersion < 2)
+…`), so it only ever creates a store once; existing stores and their data are untouched by a later bump. Any
+future store addition follows the same shape: a new `if (oldVersion < N)` block, never rewriting the ones
+before it. `getDB()` also sets `blocked`/`blocking` handlers (a second open tab holding an old connection
+would otherwise stall the upgrade with no feedback) — first exercised for this bump, worth keeping for the
+next one.
 
 ```ts
 type SetEntry   = { reps: number; weight: number; at: string };      // weight in kg, 0 allowed
@@ -108,8 +118,12 @@ Rules:
 Reachable from a gear icon on Home (Settings sheet).
 
 - **Export** — one JSON file, `ander-gym-YYYY-MM-DD.json`, containing every store plus
-  `{ schemaVersion, exportedAt }`. Custom-exercise blobs are inlined as base64 data URLs. Delivered via
-  `Blob` + `<a download>` (works in iOS Safari and standalone mode). On success, write `lastExportAt`.
+  `{ schemaVersion, exportedAt }`. Custom-exercise blobs and check-in photo blobs are both inlined as
+  base64 data URLs (same technique, `blobToDataUrl`/`dataUrlToBlob`). Delivered via `Blob` + `<a download>`
+  (works in iOS Safari and standalone mode). On success, write `lastExportAt`.
+- `profile`/`checkins` are absent entirely from a `schemaVersion: 1` backup (written before they existed) —
+  a missing `profile` defaults to `{ name: '', birthdate: null, heightCm: null }` and a missing `checkins`
+  defaults to `[]`, same "default rather than reject" handling as an old backup missing `favoriteExerciseIds`.
 - `restSeconds` travels inside the trainings array, so it needs no format change. On import a value
   that could not run a countdown (non-numeric, zero, negative, `NaN`) is dropped rather than
   corrected — the training falls back to the default, which is what an absent field already means.
@@ -208,6 +222,8 @@ Every page has a title area that respects the iOS safe-area inset at the top, an
 the fixed bottom nav.
 
 ### 5.1 Home
+- **Greeting / profile entry point** — the page's `<h1>` is a time-bucketed greeting ("Good morning,
+  `<name>`" etc.) doubling as a tappable link into Profile (§5.7), rather than a static "Home" title.
 - **Week counter** — "N trainings this week", with a progress ring against `weeklyGoal`.
 - **Streak** — "🔥 3 weeks" when `weeklyStreak ≥ 1`; hidden at 0.
 - **Today's training card** — the result of `nextTraining()`: label, body parts, and last-done date +
@@ -450,6 +466,34 @@ would cost more bundle than the three charts are worth against the Lighthouse ta
 a single series in `--accent` — no categorical palette to keep colourblind-safe — carries `role="img"` with
 an `aria-label` stating the trend in words, and scrolls inside its own container rather than widening the
 page. Colours and spacing come only from the tokens in `styles.css`, so both themes follow automatically.
+
+### 5.7 Profile
+A push view off Home (`#/profile`), same arrangement as Stats — not a sixth tab, `tabOf()` maps it to `home`.
+Reached by tapping the greeting in Home's header (see below); a back control returns to Home.
+
+- **The greeting doubles as the entry point.** Home's `<h1>` shows a time-bucketed greeting instead of a
+  static "Home" title — morning (5:00–11:59) "Good morning, `<name>`", day (12:00–17:59) "Welcome back,
+  `<name>`", evening (18:00–4:59) "Good evening, `<name>`" (`derive.ts` `greetingBucket`). The text itself is
+  a `<button>` (nested inside the `<h1>` so it stays a real heading for screen readers) that navigates to
+  Profile. With no name set yet, `<name>` is a literal placeholder (`_ _`) rather than falling back to a
+  plain title — the greeting has to stay discoverable as a tap target from the very first launch, not just
+  after someone has already found their way to Profile once.
+- **Fields — name, birthdate, height (cm)** — all optional and skippable, edited from a pencil-icon sheet
+  next to the name. **Age is never stored**, only `birthdate`; `ageFrom()` derives it on every render, same
+  "derive, don't duplicate" rule as everything else in this app (week counts, streaks, "days ago"). A stat
+  row (age / height / BMI) only renders the values that are actually available — no forced setup, matching
+  every other empty state in this app.
+- **BMI** (`derive.ts` `bmi`, kg / m²) is shown whenever both a height and at least one check-in exist. It
+  reads the *latest* check-in's weight — there is no separate stored "current weight" field, since that
+  would just be the same number kept in two places, able to drift out of sync.
+- **Weight check-ins** — date (defaults to today, native `<input type="date">`), weight in kg, and any
+  number of optional photos (multi-file picker, each downscaled the same way as a custom-exercise photo —
+  `downscaleImage`, §2). A check-in list below the chart, newest first, shows each entry's date, weight, and
+  delta from the previous (older) entry; deleting one asks for confirmation first.
+- **Weight trend chart** — the same three-shape design as the exercise progress chart in §5.2: no check-ins
+  yet → one line saying so; one check-in → a figure, not a line (one point is not a trend); two or more → an
+  actual `LineChart` (`components/Chart.tsx`, reused as-is) with the latest value as the headline and
+  `n check-ins · first → last · ±Δ` as the caption.
 
 ---
 

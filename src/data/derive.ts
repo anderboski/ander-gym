@@ -49,6 +49,44 @@ export function isSameDay(a: Date, b: Date): boolean {
   return daysBetween(a, b) === 0;
 }
 
+/**
+ * Parses a `YYYY-MM-DD` string as local midnight, not UTC — `new Date(str)`
+ * would shift a day in any timezone west of UTC, the same DST/timezone trap
+ * every other date helper here is built to avoid.
+ */
+export function parseLocalDate(isoDate: string): Date {
+  const [y, m, d] = isoDate.split('-').map(Number);
+  return new Date(y ?? 1970, (m ?? 1) - 1, d ?? 1);
+}
+
+/** Whole years from `birthdate` (`YYYY-MM-DD`) to `now`. */
+export function ageFrom(birthdate: string, now: Date): number {
+  const b = parseLocalDate(birthdate);
+  let age = now.getFullYear() - b.getFullYear();
+  const hadBirthdayThisYear =
+    now.getMonth() > b.getMonth() ||
+    (now.getMonth() === b.getMonth() && now.getDate() >= b.getDate());
+  if (!hadBirthdayThisYear) age -= 1;
+  return age;
+}
+
+/** Standard BMI (kg / m²). Caller supplies both — this is deliberately not
+ *  wired to any specific weight/height source. */
+export function bmi(weightKg: number, heightCm: number): number {
+  const heightM = heightCm / 100;
+  return weightKg / (heightM * heightM);
+}
+
+export type GreetingBucket = 'morning' | 'day' | 'evening';
+
+/** Morning 5:00–11:59, day 12:00–17:59, evening everything else (18:00–4:59). */
+export function greetingBucket(now: Date): GreetingBucket {
+  const hour = now.getHours();
+  if (hour >= 5 && hour < 12) return 'morning';
+  if (hour >= 12 && hour < 18) return 'day';
+  return 'evening';
+}
+
 /* -------------------------------------------------------------------------- */
 /* Formatting                                                                  */
 /* -------------------------------------------------------------------------- */
@@ -78,9 +116,23 @@ const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', '
  * Spelled out here rather than via `toLocaleDateString` so the output does not
  * depend on the device locale, which would move the axis labels under the user.
  */
-export function formatShortDate(iso: string): string {
-  const d = new Date(iso);
+function shortDateLabel(d: Date): string {
   return `${d.getDate()} ${MONTHS[d.getMonth()] ?? ''}`;
+}
+
+/** `23 Jul` from a full timestamp (session/set `at` fields). */
+export function formatShortDate(iso: string): string {
+  return shortDateLabel(new Date(iso));
+}
+
+/**
+ * `23 Jul` from a bare `YYYY-MM-DD` date (check-ins) — parsed as local
+ * midnight via `parseLocalDate` rather than `formatShortDate`'s `new
+ * Date(iso)`, which would read a date-only string as UTC and can land on the
+ * wrong day west of UTC.
+ */
+export function formatShortLocalDate(isoDate: string): string {
+  return shortDateLabel(parseLocalDate(isoDate));
 }
 
 /** `today`, `-1 day`, `-9 days` */

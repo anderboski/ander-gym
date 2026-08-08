@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it } from 'vitest';
-import { deleteDB } from 'idb';
+import { deleteDB, openDB } from 'idb';
 import * as db from './db';
 import { applyBackup, backupFilename, buildBackup, dataUrlToBlob, parseBackup, BackupError } from './backup';
 import type { Session } from './types';
@@ -199,6 +199,71 @@ describe('settings', () => {
   });
 });
 
+describe('profile', () => {
+  it('defaults when unset', async () => {
+    expect(await db.getProfile()).toEqual({ name: '', birthdate: null, heightCm: null });
+  });
+
+  it('persists overrides field by field', async () => {
+    await db.putProfileField('name', 'Ander');
+    await db.putProfileField('birthdate', '1990-08-02');
+    await db.putProfileField('heightCm', 178);
+    expect(await db.getProfile()).toEqual({
+      name: 'Ander',
+      birthdate: '1990-08-02',
+      heightCm: 178,
+    });
+  });
+});
+
+describe('checkins', () => {
+  it('is empty until something is logged', async () => {
+    expect(await db.getCheckins()).toEqual([]);
+  });
+
+  it('persists and deletes', async () => {
+    const checkin = { id: 'ck-1', date: '2026-08-01', weightKg: 80, photoBlobs: [] };
+    await db.putCheckin(checkin);
+    expect(await db.getCheckins()).toEqual([checkin]);
+
+    await db.deleteCheckin('ck-1');
+    expect(await db.getCheckins()).toEqual([]);
+  });
+});
+
+describe('DB_VERSION 1 -> 2 migration', () => {
+  it('preserves existing data and adds the profile/checkins stores', async () => {
+    // Simulate a real device still on the old schema: open at version 1 with
+    // only the original five stores (this app's actual v1 upgrade(), before
+    // profile/checkins existed), write something, then close.
+    const v1 = await openDB(db.DB_NAME, 1, {
+      upgrade(rawDb) {
+        rawDb.createObjectStore('trainings', { keyPath: 'id' });
+        const sessions = rawDb.createObjectStore('sessions', { keyPath: 'id' });
+        sessions.createIndex('startedAt', 'startedAt');
+        rawDb.createObjectStore('activeSession');
+        rawDb.createObjectStore('customExercises', { keyPath: 'id' });
+        rawDb.createObjectStore('settings');
+      },
+    });
+    await v1.put('trainings', { id: 't-1', label: 'Push day', order: 0, exerciseIds: [] });
+    await v1.put('settings', 5, 'weeklyGoal');
+    v1.close();
+
+    // The app's own getDB() should now upgrade this in place, in memory, to
+    // version 2 — old data untouched, new stores usable immediately.
+    expect(await db.getTrainings()).toEqual([
+      { id: 't-1', label: 'Push day', order: 0, exerciseIds: [] },
+    ]);
+    expect((await db.getSettings()).weeklyGoal).toBe(5);
+
+    expect(await db.getProfile()).toEqual({ name: '', birthdate: null, heightCm: null });
+    await db.putProfileField('name', 'Ander');
+    expect((await db.getProfile()).name).toBe('Ander');
+    expect(await db.getCheckins()).toEqual([]);
+  });
+});
+
 describe('backup round trip', () => {
   it('exports and restores everything, including a custom-exercise photo', async () => {
     await db.putTraining({ id: 'leg-abs', label: 'Leg-abs', order: 1, exerciseIds: ['0001'] });
@@ -238,6 +303,30 @@ describe('backup round trip', () => {
     );
   });
 
+  it('round-trips a profile and a check-in with a photo', async () => {
+    await db.putProfileField('name', 'Ander');
+    await db.putProfileField('birthdate', '1990-08-02');
+    await db.putProfileField('heightCm', 178);
+
+    const photo = new Blob([new Uint8Array([9, 8, 7])], { type: 'image/jpeg' });
+    await db.putCheckin({ id: 'ck-1', date: '2026-08-01', weightKg: 80.5, photoBlobs: [photo] });
+
+    const backup = await buildBackup();
+    expect(backup.profile).toEqual({ name: 'Ander', birthdate: '1990-08-02', heightCm: 178 });
+    expect(backup.checkins[0]?.photos[0]).toMatch(/^data:image\/jpeg;base64,/);
+
+    const restored = parseBackup(JSON.stringify(backup));
+    await db.clearAll();
+    await applyBackup(restored, 'replace');
+
+    expect(await db.getProfile()).toEqual({ name: 'Ander', birthdate: '1990-08-02', heightCm: 178 });
+    const checkin = (await db.getCheckins())[0];
+    expect(checkin?.weightKg).toBe(80.5);
+    expect(new Uint8Array(await checkin!.photoBlobs[0]!.arrayBuffer())).toEqual(
+      new Uint8Array([9, 8, 7]),
+    );
+  });
+
   it('round-trips an archived training', async () => {
     await db.putTraining({ id: 'leg-abs', label: 'Leg-abs', order: 1, exerciseIds: [], archived: true });
 
@@ -272,6 +361,23 @@ describe('backup round trip', () => {
     await applyBackup(backup, 'replace');
 
     expect((await db.getSettings()).favoriteExerciseIds).toEqual([]);
+  });
+
+  it('tolerates a backup written before profile/check-ins existed', async () => {
+    const backup = parseBackup(
+      JSON.stringify({
+        schemaVersion: 1,
+        exportedAt: '2026-08-01T00:00:00.000Z',
+        trainings: [],
+        sessions: [],
+        customExercises: [],
+        settings: { weeklyGoal: 3, lastExportAt: null },
+      }),
+    );
+    await applyBackup(backup, 'replace');
+
+    expect(await db.getProfile()).toEqual({ name: '', birthdate: null, heightCm: null });
+    expect(await db.getCheckins()).toEqual([]);
   });
 
   it("round-trips a training day's rest length", async () => {

@@ -4,18 +4,21 @@
  */
 import { openDB, type IDBPDatabase, type DBSchema } from 'idb';
 import {
+  DEFAULT_PROFILE,
   DEFAULT_SETTINGS,
   TRAINING_ID_PREFIX,
   type ActiveSession,
   type CustomExercise,
+  type Profile,
   type Session,
   type Settings,
   type Training,
+  type WeightCheckin,
 } from './types';
 
 export const DB_NAME = 'ander-gym';
-export const DB_VERSION = 1;
-export const SCHEMA_VERSION = 1;
+export const DB_VERSION = 2;
+export const SCHEMA_VERSION = 2;
 
 /** The single key used by the activeSession store. */
 const ACTIVE_KEY = 'current';
@@ -26,19 +29,43 @@ interface GymDB extends DBSchema {
   activeSession: { key: string; value: ActiveSession };
   customExercises: { key: string; value: CustomExercise };
   settings: { key: string; value: unknown };
+  profile: { key: string; value: unknown };
+  checkins: { key: string; value: WeightCheckin; indexes: { date: string } };
 }
 
 let dbPromise: Promise<IDBPDatabase<GymDB>> | null = null;
 
 export function getDB(): Promise<IDBPDatabase<GymDB>> {
   dbPromise ??= openDB<GymDB>(DB_NAME, DB_VERSION, {
-    upgrade(db) {
-      db.createObjectStore('trainings', { keyPath: 'id' });
-      const sessions = db.createObjectStore('sessions', { keyPath: 'id' });
-      sessions.createIndex('startedAt', 'startedAt');
-      db.createObjectStore('activeSession');
-      db.createObjectStore('customExercises', { keyPath: 'id' });
-      db.createObjectStore('settings');
+    // Version-aware from here on: every store below already exists on real
+    // devices at `oldVersion` 1, so it can only ever be created once. Adding
+    // a store for the next version means a new `if` block, never touching
+    // the ones before it — this is the app's first migration, so treat this
+    // shape as the template for the next one.
+    upgrade(db, oldVersion) {
+      if (oldVersion < 1) {
+        db.createObjectStore('trainings', { keyPath: 'id' });
+        const sessions = db.createObjectStore('sessions', { keyPath: 'id' });
+        sessions.createIndex('startedAt', 'startedAt');
+        db.createObjectStore('activeSession');
+        db.createObjectStore('customExercises', { keyPath: 'id' });
+        db.createObjectStore('settings');
+      }
+      if (oldVersion < 2) {
+        db.createObjectStore('profile');
+        const checkins = db.createObjectStore('checkins', { keyPath: 'id' });
+        checkins.createIndex('date', 'date');
+      }
+    },
+    // A second tab/instance holding an older connection open would otherwise
+    // block the upgrade transaction indefinitely with no feedback. Blunt but
+    // honest: a full reload is the only way to actually release that old
+    // connection, and this is the first version bump this app has ever had.
+    blocked() {
+      window.alert('ander-gym needs to update its storage — please close any other open tabs of this app and reload.');
+    },
+    blocking() {
+      window.location.reload();
     },
   });
   return dbPromise;
@@ -239,6 +266,45 @@ export async function putSetting<K extends keyof Settings>(
 }
 
 /* -------------------------------------------------------------------------- */
+/* Profile                                                                     */
+/* -------------------------------------------------------------------------- */
+
+export async function getProfile(): Promise<Profile> {
+  const db = await getDB();
+  const name = await db.get('profile', 'name');
+  const birthdate = await db.get('profile', 'birthdate');
+  const heightCm = await db.get('profile', 'heightCm');
+  return {
+    name: typeof name === 'string' ? name : DEFAULT_PROFILE.name,
+    birthdate: typeof birthdate === 'string' ? birthdate : null,
+    heightCm: typeof heightCm === 'number' ? heightCm : null,
+  };
+}
+
+export async function putProfileField<K extends keyof Profile>(
+  key: K,
+  value: Profile[K],
+): Promise<void> {
+  await (await getDB()).put('profile', value, key);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Weight check-ins                                                            */
+/* -------------------------------------------------------------------------- */
+
+export async function getCheckins(): Promise<WeightCheckin[]> {
+  return (await getDB()).getAll('checkins');
+}
+
+export async function putCheckin(checkin: WeightCheckin): Promise<void> {
+  await (await getDB()).put('checkins', checkin);
+}
+
+export async function deleteCheckin(id: string): Promise<void> {
+  await (await getDB()).delete('checkins', id);
+}
+
+/* -------------------------------------------------------------------------- */
 /* Bulk (backup / restore)                                                     */
 /* -------------------------------------------------------------------------- */
 
@@ -247,12 +313,16 @@ export async function readAll(): Promise<{
   sessions: Session[];
   customExercises: CustomExercise[];
   settings: Settings;
+  profile: Profile;
+  checkins: WeightCheckin[];
 }> {
   return {
     trainings: await getTrainings(),
     sessions: await getSessions(),
     customExercises: await getCustomExercises(),
     settings: await getSettings(),
+    profile: await getProfile(),
+    checkins: await getCheckins(),
   };
 }
 
@@ -260,7 +330,7 @@ export async function readAll(): Promise<{
 export async function clearAll(): Promise<void> {
   const db = await getDB();
   const tx = db.transaction(
-    ['trainings', 'sessions', 'activeSession', 'customExercises', 'settings'],
+    ['trainings', 'sessions', 'activeSession', 'customExercises', 'settings', 'profile', 'checkins'],
     'readwrite',
   );
   await Promise.all([
@@ -268,6 +338,8 @@ export async function clearAll(): Promise<void> {
     tx.objectStore('sessions').clear(),
     tx.objectStore('activeSession').clear(),
     tx.objectStore('customExercises').clear(),
+    tx.objectStore('profile').clear(),
+    tx.objectStore('checkins').clear(),
     tx.objectStore('settings').clear(),
     tx.done,
   ]);

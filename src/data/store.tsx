@@ -28,12 +28,16 @@ import {
   revokeCustomUrls,
 } from './exercises';
 import {
+  CHECKIN_ID_PREFIX,
+  DEFAULT_PROFILE,
   DEFAULT_SETTINGS,
   type ActiveSession,
   type Exercise,
+  type Profile,
   type Session,
   type Settings,
   type Training,
+  type WeightCheckin,
 } from './types';
 
 export type GymStatus = 'loading' | 'ready' | 'error';
@@ -50,6 +54,9 @@ export type GymState = {
   sessions: Session[];
   active: ActiveSession | null;
   settings: Settings;
+  profile: Profile;
+  /** Weight check-ins, newest first — same convention as `sessions`. */
+  checkins: WeightCheckin[];
 };
 
 export type NewCustomExercise = {
@@ -57,6 +64,13 @@ export type NewCustomExercise = {
   category: string;
   equipment: string;
   target: string;
+};
+
+export type NewCheckin = {
+  /** `YYYY-MM-DD`, local. */
+  date: string;
+  weightKg: number;
+  photos: File[];
 };
 
 type Mutations = {
@@ -114,6 +128,11 @@ type Mutations = {
   toggleFavorite: (exerciseId: string) => Promise<void>;
   exportNow: () => Promise<void>;
   importFrom: (file: File, mode: ImportMode) => Promise<void>;
+
+  /** Replaces the whole profile — the edit sheet collects all fields at once. */
+  setProfile: (profile: Profile) => Promise<void>;
+  addCheckin: (input: NewCheckin) => Promise<WeightCheckin>;
+  deleteCheckin: (id: string) => Promise<void>;
 };
 
 type Lookups = {
@@ -141,12 +160,19 @@ const INITIAL: GymState = {
   sessions: [],
   active: null,
   settings: DEFAULT_SETTINGS,
+  profile: DEFAULT_PROFILE,
+  checkins: [],
 };
 
 function byNewest(sessions: Session[]): Session[] {
   return [...sessions].sort(
     (a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
   );
+}
+
+/** `date` is `YYYY-MM-DD`, so a plain string sort is already chronological. */
+function byNewestCheckin(checkins: WeightCheckin[]): WeightCheckin[] {
+  return [...checkins].sort((a, b) => b.date.localeCompare(a.date));
 }
 
 export function GymProvider({ children }: { children: React.ReactNode }) {
@@ -158,14 +184,17 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
 
   /** Full reload from disk. Used on boot and after an import. */
   const reload = useCallback(async () => {
-    const [rawExercises, trainings, custom, sessions, active, settings] = await Promise.all([
-      fetchRawExercises(),
-      db.getTrainings(),
-      db.getCustomExercises(),
-      db.getSessions(),
-      db.getActiveSession(),
-      db.getSettings(),
-    ]);
+    const [rawExercises, trainings, custom, sessions, active, settings, profile, checkins] =
+      await Promise.all([
+        fetchRawExercises(),
+        db.getTrainings(),
+        db.getCustomExercises(),
+        db.getSessions(),
+        db.getActiveSession(),
+        db.getSettings(),
+        db.getProfile(),
+        db.getCheckins(),
+      ]);
 
     revokeCustomUrls(liveCustomExercises.current);
     const customExercises = custom.map(customToExercise);
@@ -182,6 +211,8 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       sessions: byNewest(sessions),
       active,
       settings,
+      profile,
+      checkins: byNewestCheckin(checkins),
     });
   }, []);
 
@@ -460,6 +491,31 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       async importFrom(file, mode) {
         await applyBackup(parseBackup(await file.text()), mode);
         await reload();
+      },
+
+      async setProfile(profile) {
+        await db.putProfileField('name', profile.name);
+        await db.putProfileField('birthdate', profile.birthdate);
+        await db.putProfileField('heightCm', profile.heightCm);
+        setState((s) => ({ ...s, profile }));
+      },
+
+      async addCheckin(input) {
+        const photoBlobs = await Promise.all(input.photos.map((f) => downscaleImage(f)));
+        const checkin: WeightCheckin = {
+          id: `${CHECKIN_ID_PREFIX}${crypto.randomUUID()}`,
+          date: input.date,
+          weightKg: input.weightKg,
+          photoBlobs,
+        };
+        await db.putCheckin(checkin);
+        setState((s) => ({ ...s, checkins: byNewestCheckin([...s.checkins, checkin]) }));
+        return checkin;
+      },
+
+      async deleteCheckin(id) {
+        await db.deleteCheckin(id);
+        setState((s) => ({ ...s, checkins: s.checkins.filter((c) => c.id !== id) }));
       },
     }),
     [mutateActive, reload],

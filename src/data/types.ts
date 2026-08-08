@@ -127,6 +127,35 @@ export const DEFAULT_SETTINGS: Settings = {
   favoriteExerciseIds: [],
 };
 
+/**
+ * Static identity — things that rarely change. Current weight is deliberately
+ * NOT here: it's the latest `WeightCheckin`, not a field that could drift out
+ * of sync with the check-in history.
+ */
+export type Profile = {
+  name: string;
+  /** `YYYY-MM-DD`, local. Age is derived from this (derive.ts `ageFrom`), never stored. */
+  birthdate: string | null;
+  heightCm: number | null;
+};
+
+export const DEFAULT_PROFILE: Profile = {
+  name: '',
+  birthdate: null,
+  heightCm: null,
+};
+
+export const CHECKIN_ID_PREFIX = 'ck-';
+
+/** One weight log entry. Photos are optional and there can be more than one. */
+export type WeightCheckin = {
+  id: string;
+  /** `YYYY-MM-DD`, local — a check-in is a day, not a timestamp. */
+  date: string;
+  weightKg: number;
+  photoBlobs: Blob[];
+};
+
 /** Facet keys the Exercises filter exposes, in on-screen order. */
 export const FACET_KEYS = ['category', 'equipment', 'target'] as const;
 export type FacetKey = (typeof FACET_KEYS)[number];
