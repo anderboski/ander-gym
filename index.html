@@ -33,6 +33,26 @@
       })();
     </script>
 
+    <!--
+      Applies the user's language choice (src/data/i18n.tsx) before first
+      paint, so the app never flashes English text before switching to
+      Spanish. Falls back to the browser language, then English.
+    -->
+    <script>
+      (function () {
+        try {
+          var stored = localStorage.getItem('ander-gym-language');
+          var lang =
+            stored === 'en' || stored === 'es'
+              ? stored
+              : navigator.language.toLowerCase().indexOf('es') === 0
+                ? 'es'
+                : 'en';
+          document.documentElement.setAttribute('lang', lang);
+        } catch (e) {}
+      })();
+    </script>
+
     <!-- iOS standalone -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
     <meta name="mobile-web-app-capable" content="yes" />

@@ -1,5 +1,6 @@
 import { useEffect } from 'react';
 import { createPortal } from 'react-dom';
+import { useLanguage } from '../data/i18n';
 import { CloseIcon } from './icons';
 
 /** Locks page scroll while any sheet is mounted (nesting-safe). */
@@ -32,6 +33,7 @@ type SheetProps = {
  */
 export function Sheet({ title, full, onClose, children, footer, headerAction }: SheetProps) {
   useScrollLock();
+  const { t } = useLanguage();
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -54,7 +56,7 @@ export function Sheet({ title, full, onClose, children, footer, headerAction }: 
           <div className="sheet-title">{title}</div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s1)' }}>
             {headerAction}
-            <button className="icon-btn" onClick={onClose} aria-label="Close">
+            <button className="icon-btn" onClick={onClose} aria-label={t('sheet.close')}>
               <CloseIcon />
             </button>
           </div>
@@ -79,11 +81,13 @@ type ConfirmProps = {
 export function ConfirmSheet({
   title,
   message,
-  confirmLabel = 'Confirm',
+  confirmLabel,
   danger,
   onConfirm,
   onCancel,
 }: ConfirmProps) {
+  const { t } = useLanguage();
+
   return (
     <Sheet
       title={title}
@@ -91,14 +95,14 @@ export function ConfirmSheet({
       footer={
         <>
           <button className="btn btn-ghost" style={{ flex: 1 }} onClick={onCancel}>
-            Cancel
+            {t('sheet.cancel')}
           </button>
           <button
             className={danger ? 'btn btn-danger' : 'btn btn-primary'}
             style={{ flex: 1 }}
             onClick={onConfirm}
           >
-            {confirmLabel}
+            {confirmLabel ?? t('sheet.confirmDefault')}
           </button>
         </>
       }

@@ -17,7 +17,6 @@ import {
   dayKey,
   daysBetween,
   formatDate,
-  formatDaysAgo,
   formatDurationEstimate,
   isSameDay,
   lastSessionForTraining,
@@ -43,8 +42,16 @@ import {
 import { SettingsSheet } from '../components/SettingsSheet';
 import { Toast } from '../components/Sheet';
 import { getTheme, otherTheme, setTheme, type Theme } from '../data/theme';
+import { useLanguage, type TranslationKey } from '../data/i18n';
 import type { Session, Training } from '../data/types';
 import './HomePage.css';
+
+/** `formatDaysAgo` (derive.ts) in English only — this page needs it translated. */
+function daysAgoLabel(t: (key: TranslationKey, vars?: Record<string, string | number>) => string, days: number): string {
+  if (days <= 0) return t('common.today');
+  if (days === 1) return t('common.daysAgoOne');
+  return t('common.daysAgoOther', { days });
+}
 
 /** A backup older than this is stale enough to nag about. */
 const BACKUP_MAX_AGE_MS = 30 * 86_400_000;
@@ -61,6 +68,7 @@ export function HomePage() {
     exportNow,
   } = useGym();
 
+  const { t, locale } = useLanguage();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [busy, setBusy] = useState(false);
@@ -102,7 +110,7 @@ export function HomePage() {
       await startSession(trainingId);
       navigate('/session');
     } catch (e) {
-      setToast(e instanceof Error ? e.message : 'Could not start the session.');
+      setToast(e instanceof Error ? e.message : t('common.couldNotStartSession'));
     } finally {
       setBusy(false);
     }
@@ -113,9 +121,9 @@ export function HomePage() {
     setBusy(true);
     try {
       await exportNow();
-      setToast('Backup downloaded.');
+      setToast(t('common.backupDownloaded'));
     } catch (e) {
-      setToast(e instanceof Error ? e.message : 'Export failed.');
+      setToast(e instanceof Error ? e.message : t('common.exportFailed'));
     } finally {
       setBusy(false);
     }
@@ -125,39 +133,37 @@ export function HomePage() {
     <div className="page">
       <header className="page-header home-header">
         <div>
-          <h1 className="page-title">Home</h1>
+          <h1 className="page-title">{t('home.title')}</h1>
           <div className="page-sub">
-            {now.toLocaleDateString('en-US', { weekday: 'long', day: 'numeric', month: 'long' })}
+            {now.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' })}
           </div>
         </div>
         <div className="home-header-actions">
           <button
             className="icon-btn"
-            aria-label={theme === 'light' ? 'Switch to dark mode' : 'Switch to light mode'}
+            aria-label={theme === 'light' ? t('home.themeToDark') : t('home.themeToLight')}
             onClick={toggleTheme}
           >
             {theme === 'light' ? <SunIcon /> : <MoonIcon />}
           </button>
-          <button className="icon-btn" aria-label="Settings" onClick={() => setSettingsOpen(true)}>
+          <button className="icon-btn" aria-label={t('settings.title')} onClick={() => setSettingsOpen(true)}>
             <GearIcon />
           </button>
         </div>
       </header>
 
-      {status === 'loading' && <div className="spinner" role="status" aria-label="Loading" />}
+      {status === 'loading' && <div className="spinner" role="status" aria-label={t('common.loading')} />}
 
       {status === 'error' && (
         <div className="section">
           <div className="card card-pad home-error">
             <AlertIcon className="home-error-icon" />
             <div className="home-error-body">
-              <div className="home-error-title">Couldn’t load your data</div>
-              <p className="home-error-text">{error ?? 'Unknown error.'}</p>
-              <p className="home-error-text">
-                Your data is still on the device. Reload to try again.
-              </p>
+              <div className="home-error-title">{t('home.errorTitle')}</div>
+              <p className="home-error-text">{error ?? t('common.unknownError')}</p>
+              <p className="home-error-text">{t('home.errorBody')}</p>
               <button className="btn btn-sm" onClick={() => window.location.reload()}>
-                Reload
+                {t('common.reload')}
               </button>
             </div>
           </div>
@@ -172,14 +178,14 @@ export function HomePage() {
               <GoalRing count={weekCount} goal={goal} />
               <div className="home-week-text">
                 <div className="home-week-count">
-                  {weekCount} training{weekCount === 1 ? '' : 's'} this week
+                  {t(weekCount === 1 ? 'home.weekCountOne' : 'home.weekCountOther', { count: weekCount })}
                 </div>
                 <div className="home-week-goal">
-                  Goal <span className="num">{goal}</span> per week
+                  {t('home.goalPrefix')} <span className="num">{goal}</span> {t('home.goalSuffix')}
                 </div>
                 {streak > 0 && (
                   <div className="home-streak">
-                    🔥 {streak} week{streak === 1 ? '' : 's'}
+                    🔥 {t(streak === 1 ? 'home.streakWeekOne' : 'home.streakWeekOther', { count: streak })}
                   </div>
                 )}
               </div>
@@ -193,8 +199,8 @@ export function HomePage() {
                 onClick={() => navigate('/stats')}
               >
                 <span className="home-stats-text">
-                  <span className="home-stats-title">See all stats</span>
-                  <span className="home-stats-sub">Volume, consistency and muscle balance</span>
+                  <span className="home-stats-title">{t('home.seeAllStats')}</span>
+                  <span className="home-stats-sub">{t('home.seeAllStatsSub')}</span>
                 </span>
                 <ChevronRightIcon className="home-card-chevron" />
               </button>
@@ -203,11 +209,11 @@ export function HomePage() {
 
           {/* --- today's training ----------------------------------------- */}
           <section className="section">
-            <div className="section-title">Today</div>
+            <div className="section-title">{t('home.todaySection')}</div>
 
             {doneToday && (
               <div className="home-done">
-                <span className="pill pill-accent">Completed today</span>
+                <span className="pill pill-accent">{t('home.completedToday')}</span>
                 <span className="home-done-label">{doneToday.trainingLabel}</span>
               </div>
             )}
@@ -218,9 +224,9 @@ export function HomePage() {
                 onClick={() => navigate('/session')}
               >
                 <div className="home-card-main">
-                  <span className="pill pill-accent">In progress</span>
+                  <span className="pill pill-accent">{t('home.inProgress')}</span>
                   <div className="home-card-title">{active.trainingLabel}</div>
-                  <div className="home-card-cta">Resume session</div>
+                  <div className="home-card-cta">{t('home.resumeSession')}</div>
                 </div>
                 <ChevronRightIcon className="home-card-chevron" />
               </button>
@@ -238,35 +244,35 @@ export function HomePage() {
                         <span className="num">{formatDate(lastForToday.startedAt)}</span>
                         <span className="home-card-dot">·</span>
                         <span>
-                          {formatDaysAgo(daysBetween(new Date(lastForToday.startedAt), now))}
+                          {daysAgoLabel(t, daysBetween(new Date(lastForToday.startedAt), now))}
                         </span>
                       </>
                     ) : (
-                      <span>Never done</span>
+                      <span>{t('home.neverDone')}</span>
                     )}
                     {durationEstimate !== null && (
                       <>
                         <span className="home-card-dot">·</span>
-                        <span>usually {formatDurationEstimate(durationEstimate)}</span>
+                        <span>{t('home.usuallyDuration', { duration: formatDurationEstimate(durationEstimate) })}</span>
                       </>
                     )}
                   </div>
                   <div className="home-card-cta">
                     <PlayIcon className="home-card-cta-icon" />
-                    Start session
+                    {t('home.startSession')}
                   </div>
                 </div>
                 <ChevronRightIcon className="home-card-chevron" />
               </button>
             ) : (
               <div className="card card-pad">
-                <div className="empty">No training days yet — add one from the Trainings tab.</div>
+                <div className="empty">{t('home.noTrainingsYet')}</div>
                 <button
                   className="btn btn-sm"
                   style={{ marginTop: 'var(--s3)' }}
                   onClick={() => navigate('/trainings')}
                 >
-                  Go to Trainings
+                  {t('home.goToTrainings')}
                 </button>
               </div>
             )}
@@ -275,8 +281,8 @@ export function HomePage() {
           {/* --- calendar --------------------------------------------------- */}
           {sessions.length > 0 && (
             <section className="section">
-              <div className="section-title">Calendar</div>
-              <HomeCalendar sessions={sessions} trainings={trainings} now={now} />
+              <div className="section-title">{t('home.calendarSection')}</div>
+              <HomeCalendar sessions={sessions} trainings={trainings} now={now} locale={locale} />
             </section>
           )}
 
@@ -292,17 +298,14 @@ export function HomePage() {
                   <AlertIcon className="home-banner-icon" />
                   <span className="home-banner-text">
                     <span className="home-banner-title">
-                      {lastExportAt ? 'Your backup is out of date' : 'Back up your data'}
+                      {lastExportAt ? t('home.backupOutdated') : t('home.backupFirst')}
                     </span>
-                    <span className="home-banner-body">
-                      Everything lives only on this iPhone and there is no server copy — Safari can
-                      evict it at any time. Tap to download a backup file.
-                    </span>
+                    <span className="home-banner-body">{t('home.backupBody')}</span>
                   </span>
                 </button>
                 <button
                   className="icon-btn home-banner-dismiss"
-                  aria-label="Dismiss backup reminder"
+                  aria-label={t('home.dismissBackup')}
                   onClick={() => setBannerDismissed(true)}
                 >
                   <CloseIcon />
@@ -314,10 +317,10 @@ export function HomePage() {
           {/* --- lifetime stats footer -------------------------------------- */}
           {lifetime.totalSessions > 0 && (
             <div className="section home-lifetime">
-              <span className="num">{lifetime.totalSessions}</span> session
-              {lifetime.totalSessions === 1 ? '' : 's'} ·{' '}
-              <span className="num">{formatCompact(lifetime.totalVolumeKg)}</span> kg lifted
-              {lifetime.since && <> since {formatDate(lifetime.since)}</>}
+              <span className="num">{lifetime.totalSessions}</span>{' '}
+              {t(lifetime.totalSessions === 1 ? 'home.lifetimeSessionsOne' : 'home.lifetimeSessionsOther')} ·{' '}
+              <span className="num">{formatCompact(lifetime.totalVolumeKg)}</span> {t('home.lifetimeKgLifted')}
+              {lifetime.since && <> {t('home.lifetimeSince', { date: formatDate(lifetime.since) })}</>}
             </div>
           )}
         </>
@@ -368,20 +371,23 @@ function HomeCalendar({
   sessions,
   trainings,
   now,
+  locale,
 }: {
   sessions: Session[];
   trainings: Training[];
   now: Date;
+  locale: string;
 }) {
+  const { t } = useLanguage();
   const [month, setMonth] = useState<Date>(() => startOfMonth(now));
   const byDay = useMemo(() => sessionsByDay(sessions), [sessions]);
-  const trainingsById = useMemo(() => new Map(trainings.map((t) => [t.id, t])), [trainings]);
+  const trainingsById = useMemo(() => new Map(trainings.map((tr) => [tr.id, tr])), [trainings]);
   const grid = useMemo(() => monthGrid(month), [month]);
 
-  const monthLabel = month.toLocaleDateString(undefined, { month: 'long', year: 'numeric' });
+  const monthLabel = month.toLocaleDateString(locale, { month: 'long', year: 'numeric' });
   const weekdays = grid.slice(0, 7).map(({ date }) => ({
-    narrow: date.toLocaleDateString(undefined, { weekday: 'narrow' }),
-    full: date.toLocaleDateString(undefined, { weekday: 'long' }),
+    narrow: date.toLocaleDateString(locale, { weekday: 'narrow' }),
+    full: date.toLocaleDateString(locale, { weekday: 'long' }),
   }));
 
   return (
@@ -389,7 +395,7 @@ function HomeCalendar({
       <div className="home-cal-head">
         <button
           className="icon-btn"
-          aria-label="Previous month"
+          aria-label={t('home.prevMonth')}
           onClick={() => setMonth((m) => addMonths(m, -1))}
         >
           <ChevronLeftIcon />
@@ -397,7 +403,7 @@ function HomeCalendar({
         <div className="home-cal-title">{monthLabel}</div>
         <button
           className="icon-btn"
-          aria-label="Next month"
+          aria-label={t('home.nextMonth')}
           onClick={() => setMonth((m) => addMonths(m, 1))}
         >
           <ChevronRightIcon />
@@ -434,7 +440,7 @@ function HomeCalendar({
               className={classes.join(' ')}
               key={date.toISOString()}
               onClick={() => navigate(`/history/${session.id}`)}
-              aria-label={`${date.toLocaleDateString(undefined, { day: 'numeric', month: 'long' })}, ${session.trainingLabel}`}
+              aria-label={`${date.toLocaleDateString(locale, { day: 'numeric', month: 'long' })}, ${session.trainingLabel}`}
             >
               <span className="home-cal-daynum">{date.getDate()}</span>
               <span className="home-cal-dot" aria-hidden="true">
