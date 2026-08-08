@@ -18,6 +18,8 @@ export const es: Record<TranslationKey, string> = {
   'common.daysAgoOther': '-{days} días',
   'common.sessionsOne': 'sesión',
   'common.sessionsOther': 'sesiones',
+  'common.setOne': 'serie',
+  'common.setsOther': 'series',
   'common.saving': 'Guardando…',
   'common.save': 'Guardar',
   'common.name': 'Nombre',
@@ -244,4 +246,21 @@ export const es: Record<TranslationKey, string> = {
   'session.saveSet': 'Guardar serie',
   'session.weightKgLabel': 'Peso (kg)',
   'session.bodyweightHint': 'Deja el peso vacío para una serie con peso corporal.',
+
+  'history.emptyState': 'Aún no hay sesiones — empieza una desde Inicio.',
+
+  'historyDetail.backAria': 'Volver al historial',
+  'historyDetail.notLogged': 'Sin registrar',
+  'historyDetail.notFoundTitle': 'Sesión no encontrada',
+  'historyDetail.notFoundBody': 'Puede que se haya eliminado, o el enlace esté desactualizado.',
+  'historyDetail.backToHistory': 'Volver al historial',
+  'historyDetail.volumeLabel': 'Volumen',
+  'historyDetail.durationLabel': 'Duración',
+  'historyDetail.noExercises': 'Esta sesión no tiene ejercicios.',
+  'historyDetail.deleteSessionButton': 'Eliminar sesión',
+  'historyDetail.deleteSessionTitle': '¿Eliminar sesión?',
+  'historyDetail.deleteMessageOne':
+    'Esto elimina permanentemente la sesión del {date} y su {count} serie registrada. No se puede deshacer.',
+  'historyDetail.deleteMessageOther':
+    'Esto elimina permanentemente la sesión del {date} y sus {count} series registradas. No se puede deshacer.',
 };

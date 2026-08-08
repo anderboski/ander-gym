@@ -15,14 +15,17 @@ import { navigate } from '../router';
 import { SetMatrix } from '../components/ExerciseCard';
 import { ConfirmSheet } from '../components/Sheet';
 import { ChevronLeftIcon } from '../components/icons';
+import { useLanguage } from '../data/i18n';
 import type { Exercise, Session, SessionEntry } from '../data/types';
 import './HistoryPage.css';
 
 function BackButton() {
+  const { t } = useLanguage();
+
   return (
-    <button className="history-back" onClick={() => navigate('/history')} aria-label="Back to history">
+    <button className="history-back" onClick={() => navigate('/history')} aria-label={t('historyDetail.backAria')}>
       <ChevronLeftIcon />
-      <span>History</span>
+      <span>{t('tabbar.history')}</span>
     </button>
   );
 }
@@ -42,6 +45,7 @@ function Stat({ value, label }: { value: string; label: string }) {
  * import falls back to its raw id rather than rendering blank.
  */
 function EntryRow({ entry, exercise }: { entry: SessionEntry; exercise: Exercise | undefined }) {
+  const { t } = useLanguage();
   const name = exercise?.name ?? entry.exerciseId;
   const logged = entry.sets.length > 0;
 
@@ -70,7 +74,7 @@ function EntryRow({ entry, exercise }: { entry: SessionEntry; exercise: Exercise
         {logged ? (
           <SetMatrix sets={entry.sets} />
         ) : (
-          <div className="history-entry-none">Not logged</div>
+          <div className="history-entry-none">{t('historyDetail.notLogged')}</div>
         )}
       </div>
     </div>
@@ -78,16 +82,18 @@ function EntryRow({ entry, exercise }: { entry: SessionEntry; exercise: Exercise
 }
 
 function NotFound() {
+  const { t } = useLanguage();
+
   return (
     <div className="page">
       <div className="page-header">
         <BackButton />
-        <h1 className="page-title">Session not found</h1>
-        <div className="page-sub">It may have been deleted, or the link is out of date.</div>
+        <h1 className="page-title">{t('historyDetail.notFoundTitle')}</h1>
+        <div className="page-sub">{t('historyDetail.notFoundBody')}</div>
       </div>
       <div className="section">
         <button className="btn btn-primary btn-block" onClick={() => navigate('/history')}>
-          Back to History
+          {t('historyDetail.backToHistory')}
         </button>
       </div>
     </div>
@@ -96,6 +102,7 @@ function NotFound() {
 
 function SessionDetail({ session, onDeleted }: { session: Session; onDeleted: () => void }) {
   const { getExercise, deleteSession } = useGym();
+  const { t } = useLanguage();
   const [confirming, setConfirming] = useState(false);
 
   const sets = setCount(session);
@@ -118,16 +125,19 @@ function SessionDetail({ session, onDeleted }: { session: Session; onDeleted: ()
         <div className="page-sub">{session.trainingLabel}</div>
 
         <div className="history-stats">
-          <Stat value={String(sets)} label={sets === 1 ? 'Set' : 'Sets'} />
-          <Stat value={volume > 0 ? `${formatWeight(volume)} kg` : '—'} label="Volume" />
-          <Stat value={formatElapsed(session.startedAt, new Date(session.savedAt))} label="Duration" />
+          <Stat value={String(sets)} label={t(sets === 1 ? 'common.setOne' : 'common.setsOther')} />
+          <Stat value={volume > 0 ? `${formatWeight(volume)} kg` : '—'} label={t('historyDetail.volumeLabel')} />
+          <Stat
+            value={formatElapsed(session.startedAt, new Date(session.savedAt))}
+            label={t('historyDetail.durationLabel')}
+          />
         </div>
       </div>
 
       <section className="section">
-        <h2 className="section-title">Exercises</h2>
+        <h2 className="section-title">{t('tabbar.exercises')}</h2>
         {session.entries.length === 0 ? (
-          <div className="empty">This session has no exercises.</div>
+          <div className="empty">{t('historyDetail.noExercises')}</div>
         ) : (
           <div className="history-entries">
             {session.entries.map((entry, i) => (
@@ -143,15 +153,18 @@ function SessionDetail({ session, onDeleted }: { session: Session; onDeleted: ()
 
       <section className="section history-detail-danger">
         <button className="btn btn-danger btn-block" onClick={() => setConfirming(true)}>
-          Delete session
+          {t('historyDetail.deleteSessionButton')}
         </button>
       </section>
 
       {confirming && (
         <ConfirmSheet
-          title="Delete session?"
-          message={`This permanently removes the session from ${formatDateTime(session.startedAt)} and its ${sets} logged ${sets === 1 ? 'set' : 'sets'}. This cannot be undone.`}
-          confirmLabel="Delete"
+          title={t('historyDetail.deleteSessionTitle')}
+          message={t(sets === 1 ? 'historyDetail.deleteMessageOne' : 'historyDetail.deleteMessageOther', {
+            date: formatDateTime(session.startedAt),
+            count: sets,
+          })}
+          confirmLabel={t('common.delete')}
           danger
           onConfirm={() => void onDelete()}
           onCancel={() => setConfirming(false)}

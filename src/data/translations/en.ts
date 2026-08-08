@@ -21,6 +21,8 @@ export const en = {
   'common.daysAgoOther': '-{days} days',
   'common.sessionsOne': 'session',
   'common.sessionsOther': 'sessions',
+  'common.setOne': 'set',
+  'common.setsOther': 'sets',
   'common.saving': 'Saving…',
   'common.save': 'Save',
   'common.name': 'Name',
@@ -242,6 +244,23 @@ export const en = {
   'session.saveSet': 'Save set',
   'session.weightKgLabel': 'Weight (kg)',
   'session.bodyweightHint': 'Leave the weight empty for a bodyweight set.',
+
+  'history.emptyState': 'No sessions yet — start one from Home.',
+
+  'historyDetail.backAria': 'Back to history',
+  'historyDetail.notLogged': 'Not logged',
+  'historyDetail.notFoundTitle': 'Session not found',
+  'historyDetail.notFoundBody': 'It may have been deleted, or the link is out of date.',
+  'historyDetail.backToHistory': 'Back to History',
+  'historyDetail.volumeLabel': 'Volume',
+  'historyDetail.durationLabel': 'Duration',
+  'historyDetail.noExercises': 'This session has no exercises.',
+  'historyDetail.deleteSessionButton': 'Delete session',
+  'historyDetail.deleteSessionTitle': 'Delete session?',
+  'historyDetail.deleteMessageOne':
+    'This permanently removes the session from {date} and its {count} logged set. This cannot be undone.',
+  'historyDetail.deleteMessageOther':
+    'This permanently removes the session from {date} and its {count} logged sets. This cannot be undone.',
 };
 
 export type TranslationKey = keyof typeof en;
