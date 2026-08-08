@@ -297,7 +297,7 @@ export const es: Record<TranslationKey, string> = {
   'home.greetingMorning': 'Buenos días, {name}',
   'home.greetingDay': 'Bienvenido de nuevo, {name}',
   'home.greetingEvening': 'Buenas noches, {name}',
-  'home.greetingNamePlaceholder': '_ _',
+  'home.greetingNamePlaceholder': '<tu nombre>',
   'home.greetingAria': 'Abrir tu perfil',
 
   'profile.editAria': 'Editar perfil',

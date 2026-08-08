@@ -22,22 +22,25 @@
   margin-right: calc(-1 * var(--s3));
 }
 
-/* The greeting doubles as the entry point to the profile section — a <button>
-   inside the <h1> so it stays a real heading for screen readers while also
-   being tappable. Buttons don't inherit type styles by default, so pull the
-   parent's back explicitly. */
-.home-greeting {
-  display: block;
+/* Only the name is the entry point to the profile section — a <button>
+   inline inside the <h1> (real heading for screen readers, still tappable),
+   styled distinctly so it reads as a link; the rest of the greeting stays
+   plain heading text. Buttons don't inherit type styles by default, so pull
+   the parent's back explicitly. */
+.home-greeting-name {
+  display: inline;
   font: inherit;
-  color: inherit;
+  font-size: 31px;
+  color: var(--link);
   letter-spacing: inherit;
   background: none;
   border: none;
   padding: 0;
-  text-align: left;
+  text-decoration: underline;
+  text-underline-offset: 3px;
 }
 
-.home-greeting:active {
+.home-greeting-name:active {
   opacity: 0.6;
 }
 

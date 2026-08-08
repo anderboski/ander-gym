@@ -89,9 +89,11 @@ export function HomePage() {
   }, [toast]);
 
   const now = new Date();
-  const greetingText = t(GREETING_KEYS[greetingBucket(now)], {
-    name: profile.name.trim() || t('home.greetingNamePlaceholder'),
-  });
+  // Split around the {name} token instead of interpolating it, so only the
+  // name itself renders as the clickable/blue part — the rest of the
+  // greeting stays plain heading text.
+  const [greetingPrefix, greetingSuffix = ''] = t(GREETING_KEYS[greetingBucket(now)]).split('{name}');
+  const greetingName = profile.name.trim() || t('home.greetingNamePlaceholder');
   const goal = settings.weeklyGoal;
   const weekCount = currentWeekCount(sessions, now);
   const streak = weeklyStreak(sessions, goal, now);
@@ -138,9 +140,11 @@ export function HomePage() {
       <header className="page-header home-header">
         <div>
           <h1 className="page-title">
-            <button type="button" className="home-greeting" onClick={() => navigate('/profile')} aria-label={t('home.greetingAria')}>
-              {greetingText}
+            {greetingPrefix}
+            <button type="button" className="home-greeting-name" onClick={() => navigate('/profile')} aria-label={t('home.greetingAria')}>
+              {greetingName}
             </button>
+            {greetingSuffix}
           </h1>
           <div className="page-sub">
             {now.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' })}
