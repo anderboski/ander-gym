@@ -369,6 +369,11 @@ Training days are fully user-managed — there is no fixed list and nothing is s
 - Tapping a card's body (not the grip or pencil) opens its detail view: the training's exercises rendered
   as `ExerciseCard`s **with** the trash icon (removal is immediate, undoable via a toast for 5 s), and a
   trailing **"+"** card. This works the same whether the training is active or archived.
+- **Exercise reorder.** Each exercise's card in the detail view has its own grip handle to its left — the
+  same drag-to-reorder interaction as the trainings list, scoped to this training's `exerciseIds`. The drop
+  position becomes the new `exerciseIds` order, which is exactly the order a new session against this
+  training lists its exercises in (§5.4) and the order they're rendered in here and on Home's per-training
+  card.
 - The "+" card opens an exercise picker — the same search + facet UI as the Exercises page in selection
   mode. Picking one appends it to `exerciseIds`. Already-included exercises are shown as disabled.
 - Duplicate exercises within one training are rejected.

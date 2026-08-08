@@ -209,6 +209,26 @@
   padding: 0 var(--s4);
 }
 
+/* One exercise row: a drag handle beside the (tall, block-variant) card. */
+.tr-detail-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--s1);
+}
+
+.tr-detail-row-card {
+  flex: 1;
+  min-width: 0;
+}
+
+/* The dragged row's floating copy, tracking the pointer. */
+.tr-detail-ghost {
+  position: fixed;
+  z-index: 60;
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  pointer-events: none;
+}
+
 /* The trailing "+" card that opens the exercise picker. */
 .tr-add-card {
   width: 100%;

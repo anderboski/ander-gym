@@ -104,6 +104,16 @@ export const CHANGELOG: ChangelogEntry[] = [
       'El IMC se muestra automáticamente en cuanto añades una altura y al menos un registro.',
     ],
   },
+  {
+    version: '1.9.0',
+    date: '2026-08-08',
+    en: [
+      'Reorder the exercises within a training day by dragging the grip on each card — the new order also applies to your next session.',
+    ],
+    es: [
+      'Reordena los ejercicios de un entrenamiento arrastrando la manija de cada tarjeta — el nuevo orden también se aplica a tu próxima sesión.',
+    ],
+  },
 ];
 
 /** Keep in sync with the bootstrap-independent nature of theme/language: this

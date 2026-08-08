@@ -155,6 +155,37 @@ describe('reorderTrainings', () => {
   });
 });
 
+describe('reorderTrainingExercises', () => {
+  it('applies a new exercise order within one training', async () => {
+    const training = await db.createTraining('Push day');
+    await db.putTraining({ ...training, exerciseIds: ['0001', '0002', '0003'] });
+
+    const updated = await db.reorderTrainingExercises(training.id, ['0003', '0001', '0002']);
+    expect(updated?.exerciseIds).toEqual(['0003', '0001', '0002']);
+    expect((await db.getTrainings())[0]?.exerciseIds).toEqual(['0003', '0001', '0002']);
+  });
+
+  it('keeps an exercise missing from the given ids, appended at the end', async () => {
+    const training = await db.createTraining('Push day');
+    await db.putTraining({ ...training, exerciseIds: ['0001', '0002'] });
+
+    const updated = await db.reorderTrainingExercises(training.id, ['0002']);
+    expect(updated?.exerciseIds).toEqual(['0002', '0001']);
+  });
+
+  it('ignores an id from outside the training', async () => {
+    const training = await db.createTraining('Push day');
+    await db.putTraining({ ...training, exerciseIds: ['0001', '0002'] });
+
+    const updated = await db.reorderTrainingExercises(training.id, ['0002', '0001', '9999']);
+    expect(updated?.exerciseIds).toEqual(['0002', '0001']);
+  });
+
+  it('returns null for an unknown training id', async () => {
+    expect(await db.reorderTrainingExercises('nope', ['0001'])).toBeNull();
+  });
+});
+
 describe('active session', () => {
   it('round-trips and clears', async () => {
     const active = {
