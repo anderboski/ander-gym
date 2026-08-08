@@ -283,4 +283,10 @@ export const es: Record<TranslationKey, string> = {
   'stats.muscleBalanceCaption':
     'Más volumen en {most}, menos en {least}. Un músculo que no hayas entrenado en absoluto simplemente no aparece en esta lista.',
   'stats.muscleBalanceSingle': 'Solo se entrenó un grupo muscular en esta ventana.',
+
+  'backup.invalidJson': 'Ese archivo no es JSON válido.',
+  'backup.notABackup': 'Ese archivo no es una copia de seguridad de ander-gym.',
+  'backup.newerSchema':
+    'Esta copia de seguridad se creó con una versión más reciente de la app (esquema {schema}).',
+  'backup.missingData': 'A esa copia de seguridad le faltan sus entrenamientos o sesiones.',
 };

@@ -280,6 +280,11 @@ export const en = {
   'stats.muscleBalanceCaption':
     'Most volume on {most}, least on {least}. A muscle you have not trained at all is simply absent from this list.',
   'stats.muscleBalanceSingle': 'Only one muscle group trained in this window.',
+
+  'backup.invalidJson': 'That file is not valid JSON.',
+  'backup.notABackup': 'That file is not an ander-gym backup.',
+  'backup.newerSchema': 'This backup was made by a newer version of the app (schema {schema}).',
+  'backup.missingData': 'That backup is missing its trainings or sessions.',
 };
 
 export type TranslationKey = keyof typeof en;
