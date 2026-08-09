@@ -622,7 +622,7 @@ export function TrainingsPage() {
           </div>
         ))}
 
-        <button className="tr-add-card" onClick={() => setAdding(true)}>
+        <button className="tr-add-card tr-add-card-compact" onClick={() => setAdding(true)}>
           <PlusIcon />
           {t('trainings.addTrainingDay')}
         </button>

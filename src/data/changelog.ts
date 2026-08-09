@@ -142,6 +142,12 @@ export const CHANGELOG: ChangelogEntry[] = [
       'Las sesiones de deporte aparecen en el calendario de Inicio y en Historial junto a tus sesiones de gimnasio, pero nunca cuentan para tu objetivo semanal ni tu racha.',
     ],
   },
+  {
+    version: '1.11.1',
+    date: '2026-08-09',
+    en: ['Fixed the oversized "Add training day" card crowding the new "Other activities" section.'],
+    es: ['Se corrigió la tarjeta "Añadir entrenamiento", que era demasiado grande y quedaba pegada a la nueva sección "Otras actividades".'],
+  },
 ];
 
 /** Keep in sync with the bootstrap-independent nature of theme/language: this

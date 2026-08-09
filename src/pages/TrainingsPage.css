@@ -18,6 +18,7 @@
   flex-direction: column;
   gap: var(--s3);
   padding: 0 var(--s4);
+  margin-bottom: var(--s5);
 }
 
 /* One row: a drag handle, the tappable body, and a rename button. */
@@ -253,6 +254,21 @@
 .tr-add-card svg {
   width: 24px;
   height: 24px;
+}
+
+/* A single row instead of the stacked icon-over-label default — the default
+   height matches ExerciseCard's taller rows in the training detail view;
+   here it sits under much shorter training rows, so the tall centred block
+   read as oversized. */
+.tr-add-card-compact {
+  min-height: 52px;
+  flex-direction: row;
+  gap: var(--s2);
+}
+
+.tr-add-card-compact svg {
+  width: 20px;
+  height: 20px;
 }
 
 /* --- picker rows --------------------------------------------------------- */
