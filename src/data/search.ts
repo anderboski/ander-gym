@@ -1,5 +1,7 @@
 /** Fuzzy name search + facet filtering for the exercise list. */
 import Fuse from 'fuse.js';
+import type { Language } from './i18n';
+import { translateExerciseName } from './exerciseI18n';
 import { FACET_KEYS, type Exercise, type FacetKey, type Facets } from './types';
 
 /** Distinct values per facet, alphabetically sorted, for rendering the chip rows. */
@@ -46,18 +48,22 @@ export function toggleFacet(facets: Facets, key: FacetKey, value: string): Facet
 /* -------------------------------------------------------------------------- */
 
 // Indexing 1324 names takes a few ms, so the index is cached and only rebuilt
-// when the exercise list itself changes (i.e. a custom exercise was added).
-let cache: { list: Exercise[]; fuse: Fuse<Exercise> } | null = null;
+// when the exercise list itself changes (i.e. a custom exercise was added) or
+// the app language flips (the Spanish index adds a translated-name key).
+let cache: { list: Exercise[]; language: Language; fuse: Fuse<Exercise> } | null = null;
 
-function fuseFor(list: Exercise[]): Fuse<Exercise> {
-  if (cache && cache.list === list) return cache.fuse;
+function fuseFor(list: Exercise[], language: Language): Fuse<Exercise> {
+  if (cache && cache.list === list && cache.language === language) return cache.fuse;
   const fuse = new Fuse(list, {
-    keys: ['name'],
+    keys:
+      language === 'es'
+        ? ['name', { name: 'nameEs', getFn: (ex) => translateExerciseName('es', ex.name) }]
+        : ['name'],
     threshold: 0.4,
     ignoreLocation: true,
     minMatchCharLength: 2,
   });
-  cache = { list, fuse };
+  cache = { list, language, fuse };
   return fuse;
 }
 
@@ -78,6 +84,7 @@ export function searchExercises(
   query: string,
   facets: Facets,
   doneIds?: ReadonlySet<string>,
+  language: Language = 'en',
 ): Exercise[] {
   const q = query.trim();
 
@@ -90,11 +97,14 @@ export function searchExercises(
           const db = doneIds.has(b.id) ? 0 : 1;
           if (da !== db) return da - db;
         }
-        return a.name.localeCompare(b.name);
+        return translateExerciseName(language, a.name).localeCompare(
+          translateExerciseName(language, b.name),
+          language,
+        );
       });
   }
 
-  return fuseFor(exercises)
+  return fuseFor(exercises, language)
     .search(q)
     .map((r) => r.item)
     .filter((ex) => matchesFacets(ex, facets));

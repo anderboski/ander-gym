@@ -21,6 +21,7 @@ import {
   type WeekStat,
 } from '../data/derive';
 import { formatCompact, titleCase } from '../data/parse';
+import { translateFacetValue } from '../data/exerciseI18n';
 import { BarList, BarStrip, ChartFigure, LineChart } from '../components/Chart';
 import { ChevronLeftIcon } from '../components/icons';
 import { navigate } from '../router';
@@ -37,7 +38,7 @@ const kg = (value: number) => `${formatCompact(value)} kg`;
 
 export function StatsPage() {
   const { status, sessions, exerciseById, settings } = useGym();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   // Captured once: it is a memo key, and a fresh Date per render would
   // invalidate both aggregates on every keystroke elsewhere in the tree.
@@ -89,7 +90,9 @@ export function StatsPage() {
               <MuscleBalance
                 rows={balance}
                 labelOf={(target) =>
-                  target === UNKNOWN_TARGET ? t('stats.removedExercises') : titleCase(target)
+                  target === UNKNOWN_TARGET
+                    ? t('stats.removedExercises')
+                    : titleCase(translateFacetValue(language, 'target', target))
                 }
               />
             </div>

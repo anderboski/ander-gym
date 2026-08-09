@@ -4,8 +4,11 @@
  * so adding a key here without adding it to every other dictionary is a
  * type error, not a silent fallback.
  *
- * Exercise names, categories, equipment and targets are NOT here — they come
- * from data/exercises.json and stay English regardless of app language.
+ * Exercise names, categories, equipment and targets are NOT here — they are
+ * translated through a separate dictionary layer (src/data/exerciseI18n.ts
+ * and src/data/translations/exercise{Names,Facets}.ts) keyed by the English
+ * value itself rather than by a fixed TranslationKey, since the vocabulary is
+ * data-driven (1324 exercise records) rather than fixed UI copy.
  */
 export const en = {
   'common.loading': 'Loading',
@@ -127,6 +130,9 @@ export const en = {
   'browser.exerciseOne': 'exercise',
   'browser.exerciseOther': 'exercises',
   'browser.noMatches': 'No exercises match those filters.',
+  'browser.facetCategory': 'Category',
+  'browser.facetEquipment': 'Equipment',
+  'browser.facetTarget': 'Target muscle',
 
   'exerciseCard.reps': 'Reps',
   'exerciseCard.weight': 'Weight',

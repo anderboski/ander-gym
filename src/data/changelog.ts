@@ -120,6 +120,16 @@ export const CHANGELOG: ChangelogEntry[] = [
       'Reordena los ejercicios de un entrenamiento arrastrando la manija de cada tarjeta — el nuevo orden también se aplica a tu próxima sesión.',
     ],
   },
+  {
+    version: '1.10.0',
+    date: '2026-08-09',
+    en: [
+      'The exercise catalogue — name, category, equipment and target muscle — is now translated when Spanish is selected.',
+    ],
+    es: [
+      'El catálogo de ejercicios — nombre, categoría, equipo y músculo objetivo — ahora se traduce cuando seleccionas español.',
+    ],
+  },
 ];
 
 /** Keep in sync with the bootstrap-independent nature of theme/language: this

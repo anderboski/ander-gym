@@ -257,9 +257,18 @@ the fixed bottom nav.
   bootstrap script in `index.html`). Defaults to the OS preference until the user picks explicitly.
 - **Language** — English or Spanish, chosen from a "Language" section in the Settings sheet: two chip
   buttons, a UK flag for English and a Spain flag for Spanish, with the active one visually selected.
-  Covers the app's own chrome — labels, buttons, empty states, toasts, dates — everywhere. **Exercise
-  names, categories, equipment and targets stay English always**, since they come verbatim from
-  `data/exercises.json`, not from the app's own copy. Persisted in `localStorage`
+  Covers the app's own chrome — labels, buttons, empty states, toasts, dates — everywhere, and also
+  the exercise catalogue's name, category, equipment and target, through a **separate dictionary
+  layer** (`src/data/exerciseI18n.ts` + `src/data/translations/exercise{Names,Facets}.ts`) keyed by
+  the English value itself rather than by a fixed `TranslationKey`. `Exercise.name/category/
+  equipment/target` themselves stay canonical English always — search, facet filtering, and what a
+  custom exercise persists to IndexedDB all key off the English value; translation only ever changes
+  what is rendered. A custom exercise's own name/category/equipment/target has no dictionary entry
+  and falls back to whatever the user typed, in either language. The 1324-name dictionary was
+  composed with a glossary/rule-based translator rather than reviewed name-by-name by a native
+  speaker — the vocabulary is systematic and common patterns read naturally, but an unusual or
+  compound name may read awkwardly; a wrong entry is a one-line dictionary fix, not a data migration.
+  Persisted in `localStorage`
   (`ander-gym-language`, not the `settings` IndexedDB store — same reasoning and the same inline
   bootstrap script in `index.html` as the theme toggle, so the app never flashes English before
   switching to a stored Spanish choice). Defaults to the browser's language if it starts with `es`,
