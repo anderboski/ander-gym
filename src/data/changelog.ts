@@ -148,6 +148,12 @@ export const CHANGELOG: ChangelogEntry[] = [
     en: ['Fixed the oversized "Add training day" card crowding the new "Other activities" section.'],
     es: ['Se corrigió la tarjeta "Añadir entrenamiento", que era demasiado grande y quedaba pegada a la nueva sección "Otras actividades".'],
   },
+  {
+    version: '1.11.2',
+    date: '2026-08-09',
+    en: ['Fixed the "Other activities" description text sitting flush against the training cards below it.'],
+    es: ['Se corrigió el texto de "Otras actividades", que quedaba pegado a las tarjetas de entrenamiento de abajo.'],
+  },
 ];
 
 /** Keep in sync with the bootstrap-independent nature of theme/language: this

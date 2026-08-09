@@ -631,7 +631,7 @@ export function TrainingsPage() {
       {sportTrainings.length > 0 && (
         <div className="section">
           <div className="section-title">{t('trainings.otherActivities')}</div>
-          <p className="tr-emoji-hint" style={{ marginTop: 0 }}>
+          <p className="tr-emoji-hint" style={{ marginTop: 0, marginBottom: 'var(--s5)' }}>
             {t('trainings.otherActivitiesHint')}
           </p>
           <div className="tr-list">
