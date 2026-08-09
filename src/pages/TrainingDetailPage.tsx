@@ -7,6 +7,7 @@ import { ChevronLeftIcon, GripIcon, PlusIcon } from '../components/icons';
 import { titleCase } from '../data/parse';
 import { useGym } from '../data/store';
 import { useLanguage } from '../data/i18n';
+import { translateExerciseName, translateFacetValue } from '../data/exerciseI18n';
 import { useDragReorder } from '../hooks/useDragReorder';
 import type { Exercise } from '../data/types';
 import { navigate } from '../router';
@@ -14,21 +15,23 @@ import './TrainingsPage.css';
 
 /** One row in the "add exercise" picker. */
 function PickerRow({ exercise, onAdd }: { exercise: Exercise; onAdd: () => void }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const name = translateExerciseName(language, exercise.name);
 
   return (
-    <button className="tr-pick" onClick={onAdd} aria-label={t('trainingDetail.addAria', { name: exercise.name })}>
+    <button className="tr-pick" onClick={onAdd} aria-label={t('trainingDetail.addAria', { name })}>
       <span className="tr-pick-thumb">
         {exercise.imageUrl ? (
           <img src={exercise.imageUrl} alt="" loading="lazy" decoding="async" />
         ) : (
-          exercise.name.charAt(0).toUpperCase()
+          name.charAt(0).toUpperCase()
         )}
       </span>
       <span className="tr-pick-main">
-        <span className="tr-pick-name">{exercise.name}</span>
+        <span className="tr-pick-name">{name}</span>
         <span className="tr-pick-meta">
-          {titleCase(exercise.equipment)} · {titleCase(exercise.target)}
+          {titleCase(translateFacetValue(language, 'equipment', exercise.equipment))} ·{' '}
+          {titleCase(translateFacetValue(language, 'target', exercise.target))}
         </span>
       </span>
       <span className="tr-pick-add" aria-hidden="true">
@@ -47,7 +50,7 @@ export function TrainingDetailPage({ trainingId }: { trainingId: string }) {
     reorderTrainingExercises,
     status,
   } = useGym();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [picking, setPicking] = useState(false);
   const [undo, setUndo] = useState<string | null>(null);
 
@@ -139,7 +142,7 @@ export function TrainingDetailPage({ trainingId }: { trainingId: string }) {
             <button
               type="button"
               className="tr-card-grip"
-              aria-label={t('trainings.reorderAria', { name: exercise.name })}
+              aria-label={t('trainings.reorderAria', { name: translateExerciseName(language, exercise.name) })}
               onPointerDown={(e) => drag.onGripDown(exercise.id, e)}
               onPointerMove={drag.onGripMove}
               onPointerUp={drag.onGripUp}

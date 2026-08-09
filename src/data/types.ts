@@ -160,12 +160,6 @@ export type WeightCheckin = {
 export const FACET_KEYS = ['category', 'equipment', 'target'] as const;
 export type FacetKey = (typeof FACET_KEYS)[number];
 
-export const FACET_LABELS: Record<FacetKey, string> = {
-  category: 'Category',
-  equipment: 'Equipment',
-  target: 'Target muscle',
-};
-
 export type Facets = Record<FacetKey, string[]>;
 
 export const EMPTY_FACETS: Facets = { category: [], equipment: [], target: [] };

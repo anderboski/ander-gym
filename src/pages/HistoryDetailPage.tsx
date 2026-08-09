@@ -16,6 +16,7 @@ import { SetMatrix } from '../components/ExerciseCard';
 import { ConfirmSheet } from '../components/Sheet';
 import { ChevronLeftIcon } from '../components/icons';
 import { useLanguage } from '../data/i18n';
+import { translateExerciseName } from '../data/exerciseI18n';
 import type { Exercise, Session, SessionEntry } from '../data/types';
 import './HistoryPage.css';
 
@@ -45,8 +46,8 @@ function Stat({ value, label }: { value: string; label: string }) {
  * import falls back to its raw id rather than rendering blank.
  */
 function EntryRow({ entry, exercise }: { entry: SessionEntry; exercise: Exercise | undefined }) {
-  const { t } = useLanguage();
-  const name = exercise?.name ?? entry.exerciseId;
+  const { t, language } = useLanguage();
+  const name = exercise ? translateExerciseName(language, exercise.name) : entry.exerciseId;
   const logged = entry.sets.length > 0;
 
   return (

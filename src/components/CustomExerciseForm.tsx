@@ -8,10 +8,11 @@
  */
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { titleCase } from '../data/parse';
+import { translateFacetValue } from '../data/exerciseI18n';
 import { facetOptions } from '../data/search';
 import { useGym } from '../data/store';
-import { useLanguage } from '../data/i18n';
-import { FACET_KEYS, FACET_LABELS, type Exercise, type FacetKey } from '../data/types';
+import { FACET_LABEL_KEYS, useLanguage } from '../data/i18n';
+import { FACET_KEYS, type Exercise, type FacetKey } from '../data/types';
 import { Sheet } from './Sheet';
 import './ExerciseBrowser.css';
 
@@ -25,7 +26,7 @@ export type CustomExerciseFormProps = {
 
 export function CustomExerciseForm({ onClose, onSaved }: CustomExerciseFormProps) {
   const { exercises, addCustomExercise } = useGym();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const options = useMemo(() => facetOptions(exercises), [exercises]);
 
   const [name, setName] = useState('');
@@ -127,7 +128,7 @@ export function CustomExerciseForm({ onClose, onSaved }: CustomExerciseFormProps
         {FACET_KEYS.map((key) => (
           <div className="cxf-field" key={key}>
             <label className="label" htmlFor={`cxf-${key}`}>
-              {FACET_LABELS[key]}
+              {t(FACET_LABEL_KEYS[key])}
             </label>
             <select
               id={`cxf-${key}`}
@@ -137,7 +138,7 @@ export function CustomExerciseForm({ onClose, onSaved }: CustomExerciseFormProps
             >
               {options[key].map((option) => (
                 <option key={option} value={option}>
-                  {titleCase(option)}
+                  {titleCase(translateFacetValue(language, key, option))}
                 </option>
               ))}
             </select>

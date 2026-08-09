@@ -11,6 +11,7 @@ import {
 } from '../data/derive';
 import { formatSet, formatWeight, titleCase } from '../data/parse';
 import { daysAgoLabel, useLanguage } from '../data/i18n';
+import { translateExerciseName, translateFacetValue } from '../data/exerciseI18n';
 import type { Exercise, SetEntry } from '../data/types';
 import { ChartFigure, LineChart } from './Chart';
 import { Sheet } from './Sheet';
@@ -41,9 +42,9 @@ export function SetMatrix({ sets }: { sets: SetEntry[] }) {
   );
 }
 
-function Thumb({ exercise }: { exercise: Exercise }) {
+function Thumb({ exercise, displayName }: { exercise: Exercise; displayName: string }) {
   if (!exercise.imageUrl) {
-    return <div className="ex-card-placeholder">{exercise.name.charAt(0).toUpperCase()}</div>;
+    return <div className="ex-card-placeholder">{displayName.charAt(0).toUpperCase()}</div>;
   }
   return (
     <img
@@ -178,11 +179,11 @@ export function ExerciseHistorySheet({
   onClose: () => void;
 }) {
   const { sessions } = useGym();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const records = useMemo(() => historyFor(exercise.id, sessions), [exercise.id, sessions]);
 
   return (
-    <Sheet title={exercise.name} onClose={onClose} full>
+    <Sheet title={translateExerciseName(language, exercise.name)} onClose={onClose} full>
       {records.length === 0 ? (
         <div className="empty">{t('exerciseCard.noHistorySheet')}</div>
       ) : (
@@ -217,11 +218,12 @@ export type ExerciseCardProps = {
  */
 export function ExerciseCard({ exercise, variant = 'carousel', onRemove }: ExerciseCardProps) {
   const { exerciseRecords, exerciseLatest, settings, toggleFavorite } = useGym();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [showHistory, setShowHistory] = useState(false);
   const latest = exerciseLatest.get(exercise.id) ?? null;
   const best = exerciseRecords.get(exercise.id)?.heaviest;
   const isFavorite = settings.favoriteExerciseIds.includes(exercise.id);
+  const displayName = translateExerciseName(language, exercise.name);
 
   return (
     <>
@@ -239,9 +241,9 @@ export function ExerciseCard({ exercise, variant = 'carousel', onRemove }: Exerc
         <button
           className="ex-card-media"
           onClick={() => setShowHistory(true)}
-          aria-label={t('exerciseCard.historyForAria', { name: exercise.name })}
+          aria-label={t('exerciseCard.historyForAria', { name: displayName })}
         >
-          <Thumb exercise={exercise} />
+          <Thumb exercise={exercise} displayName={displayName} />
         </button>
 
         <div className="ex-card-actions">
@@ -251,8 +253,8 @@ export function ExerciseCard({ exercise, variant = 'carousel', onRemove }: Exerc
             aria-pressed={isFavorite}
             aria-label={
               isFavorite
-                ? t('exerciseCard.removeFromFavoritesAria', { name: exercise.name })
-                : t('exerciseCard.addToFavoritesAria', { name: exercise.name })
+                ? t('exerciseCard.removeFromFavoritesAria', { name: displayName })
+                : t('exerciseCard.addToFavoritesAria', { name: displayName })
             }
             onClick={() => void toggleFavorite(exercise.id)}
           >
@@ -263,7 +265,7 @@ export function ExerciseCard({ exercise, variant = 'carousel', onRemove }: Exerc
             <button
               className="ex-card-remove"
               onClick={onRemove}
-              aria-label={t('exerciseCard.removeAria', { name: exercise.name })}
+              aria-label={t('exerciseCard.removeAria', { name: displayName })}
             >
               <TrashIcon />
             </button>
@@ -271,12 +273,12 @@ export function ExerciseCard({ exercise, variant = 'carousel', onRemove }: Exerc
         </div>
 
         <div className="ex-card-body">
-          <div className="ex-card-name">{exercise.name}</div>
+          <div className="ex-card-name">{displayName}</div>
 
           <div className="ex-card-meta">
             {exercise.isCustom && <span className="pill pill-accent">{t('exerciseCard.custom')}</span>}
-            <span className="pill">{titleCase(exercise.equipment)}</span>
-            <span className="pill">{titleCase(exercise.target)}</span>
+            <span className="pill">{titleCase(translateFacetValue(language, 'equipment', exercise.equipment))}</span>
+            <span className="pill">{titleCase(translateFacetValue(language, 'target', exercise.target))}</span>
           </div>
 
           {latest ? (

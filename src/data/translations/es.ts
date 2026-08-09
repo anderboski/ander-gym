@@ -125,6 +125,9 @@ export const es: Record<TranslationKey, string> = {
   'browser.exerciseOne': 'ejercicio',
   'browser.exerciseOther': 'ejercicios',
   'browser.noMatches': 'Ningún ejercicio coincide con esos filtros.',
+  'browser.facetCategory': 'Categoría',
+  'browser.facetEquipment': 'Equipo',
+  'browser.facetTarget': 'Músculo objetivo',
 
   'exerciseCard.reps': 'Repeticiones',
   'exerciseCard.weight': 'Peso',

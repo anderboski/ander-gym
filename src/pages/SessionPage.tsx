@@ -16,6 +16,7 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useGym } from '../data/store';
 import { useLanguage } from '../data/i18n';
+import { translateExerciseName, translateFacetValue } from '../data/exerciseI18n';
 import {
   adjustRest,
   beatsPersonalRecord,
@@ -60,7 +61,7 @@ type PendingTrainingSync = {
 
 export function SessionPage() {
   const { status, active, trainings, getExercise, syncTrainingExercises } = useGym();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const [pendingSync, setPendingSync] = useState<PendingTrainingSync | null>(null);
 
   if (status === 'loading') return <div className="page"><div className="spinner" /></div>;
@@ -84,7 +85,10 @@ export function SessionPage() {
   };
 
   const syncMessage = (sync: PendingTrainingSync): string => {
-    const nameOf = (id: string) => getExercise(id)?.name ?? id;
+    const nameOf = (id: string) => {
+      const name = getExercise(id)?.name;
+      return name ? translateExerciseName(language, name) : id;
+    };
     const parts: string[] = [];
     if (sync.addedIds.length > 0) parts.push(t('session.syncAdd', { names: sync.addedIds.map(nameOf).join(', ') }));
     if (sync.removedIds.length > 0) parts.push(t('session.syncRemove', { names: sync.removedIds.map(nameOf).join(', ') }));
@@ -363,7 +367,7 @@ function ActiveView({
     discardSession,
     setTrainingRest,
   } = useGym();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
   const now = useNow(30_000);
 
   const [addingTo, setAddingTo] = useState<string | null>(null);
@@ -414,7 +418,12 @@ function ActiveView({
   }, []);
 
   const addingExercise = addingTo === null ? null : getExercise(addingTo);
-  const addingName = addingTo === null ? '' : addingExercise?.name ?? addingTo;
+  const addingName =
+    addingTo === null
+      ? ''
+      : addingExercise
+        ? translateExerciseName(language, addingExercise.name)
+        : addingTo;
 
   return (
     <div className="page sess-page">
@@ -631,21 +640,23 @@ function RowThumb({ exercise, name }: { exercise: Exercise | undefined; name: st
 
 /** One row in the mid-session "add exercise" picker — appends to the session, not the training. */
 function SessPickRow({ exercise, onAdd }: { exercise: Exercise; onAdd: () => void }) {
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
+  const name = translateExerciseName(language, exercise.name);
 
   return (
-    <button className="sess-pick" onClick={onAdd} aria-label={t('trainingDetail.addAria', { name: exercise.name })}>
+    <button className="sess-pick" onClick={onAdd} aria-label={t('trainingDetail.addAria', { name })}>
       <span className="sess-pick-thumb">
         {exercise.imageUrl ? (
           <img src={exercise.imageUrl} alt="" loading="lazy" decoding="async" />
         ) : (
-          exercise.name.charAt(0).toUpperCase()
+          name.charAt(0).toUpperCase()
         )}
       </span>
       <span className="sess-pick-main">
-        <span className="sess-pick-name">{exercise.name}</span>
+        <span className="sess-pick-name">{name}</span>
         <span className="sess-pick-meta">
-          {titleCase(exercise.equipment)} · {titleCase(exercise.target)}
+          {titleCase(translateFacetValue(language, 'equipment', exercise.equipment))} ·{' '}
+          {titleCase(translateFacetValue(language, 'target', exercise.target))}
         </span>
       </span>
       <span className="sess-pick-add" aria-hidden="true">
@@ -670,9 +681,9 @@ function SessionRow({
   /** Exercise name, for the removal confirmation. */
   onRemove: (name: string) => void;
 }) {
+  const { t, language } = useLanguage();
   // An id with no catalogue entry can survive an import; show it rather than crash.
-  const name = exercise?.name ?? entry.exerciseId;
-  const { t } = useLanguage();
+  const name = exercise ? translateExerciseName(language, exercise.name) : entry.exerciseId;
   const [showHistory, setShowHistory] = useState(false);
 
   return (

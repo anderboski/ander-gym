@@ -11,16 +11,11 @@
  */
 import { useEffect, useMemo, useRef, useState, type ReactElement, type ReactNode } from 'react';
 import { titleCase } from '../data/parse';
+import { translateFacetValue } from '../data/exerciseI18n';
 import { countActiveFacets, facetOptions, searchExercises, toggleFacet } from '../data/search';
 import { useGym } from '../data/store';
-import { useLanguage } from '../data/i18n';
-import {
-  EMPTY_FACETS,
-  FACET_KEYS,
-  FACET_LABELS,
-  type Exercise,
-  type Facets,
-} from '../data/types';
+import { FACET_LABEL_KEYS, useLanguage } from '../data/i18n';
+import { EMPTY_FACETS, FACET_KEYS, type Exercise, type Facets } from '../data/types';
 import './ExerciseBrowser.css';
 
 /** Results rendered up-front, and added on each sentinel hit. */
@@ -47,7 +42,7 @@ export function ExerciseBrowser({
   sortDoneFirst,
 }: ExerciseBrowserProps): ReactElement {
   const { exercises, exerciseLatest, exerciseRecords, settings } = useGym();
-  const { t } = useLanguage();
+  const { t, language } = useLanguage();
 
   const [query, setQuery] = useState('');
   const [facets, setFacets] = useState<Facets>(EMPTY_FACETS);
@@ -72,7 +67,7 @@ export function ExerciseBrowser({
 
   const matches = useMemo(() => {
     const doneIds = sortDoneFirst ? new Set(exerciseLatest.keys()) : undefined;
-    let found = searchExercises(exercises, query, facets, doneIds);
+    let found = searchExercises(exercises, query, facets, doneIds, language);
     if (excluded.size > 0) found = found.filter((ex) => !excluded.has(ex.id));
     if (onlyPR) found = found.filter((ex) => exerciseRecords.has(ex.id));
     if (onlyFavorites) found = found.filter((ex) => favoriteIds.has(ex.id));
@@ -83,6 +78,7 @@ export function ExerciseBrowser({
     facets,
     excluded,
     sortDoneFirst,
+    language,
     exerciseLatest,
     onlyPR,
     exerciseRecords,
@@ -177,7 +173,7 @@ export function ExerciseBrowser({
 
         {FACET_KEYS.map((key) => (
           <div className="browser-facet" key={key}>
-            <div className="section-title">{FACET_LABELS[key]}</div>
+            <div className="section-title">{t(FACET_LABEL_KEYS[key])}</div>
             <div className="chip-row">
               {options[key].map((value) => (
                 <button
@@ -187,7 +183,7 @@ export function ExerciseBrowser({
                   aria-pressed={facets[key].includes(value)}
                   onClick={() => setFacets((f) => toggleFacet(f, key, value))}
                 >
-                  {titleCase(value)}
+                  {titleCase(translateFacetValue(language, key, value))}
                 </button>
               ))}
             </div>

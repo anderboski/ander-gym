@@ -135,4 +135,28 @@ describe('searchExercises', () => {
       searchExercises(catalogue, '', EMPTY_FACETS).map((e) => e.id),
     );
   });
+
+  it('sorts alphabetically by the Spanish name when the language is es', () => {
+    // '3/4 sit-up' -> 'abdominal 3/4', 'barbell curl' -> 'curl con barra',
+    // 'barbell/dumbbell bench press' -> 'press de banca con barra/mancuerna',
+    // 'cable crossover' has no dictionary entry and falls back to English.
+    expect(searchExercises(catalogue, '', EMPTY_FACETS, undefined, 'es').map((e) => e.id)).toEqual([
+      '4',
+      '5',
+      '3',
+      '1',
+      '2',
+    ]);
+  });
+
+  it('matches a Spanish query against the translated name when the language is es', () => {
+    // 'dumbbell bench press' -> 'press de banca con mancuerna'; 'mancuerna' has
+    // no fuzzy overlap with any English name, so this only matches via nameEs.
+    const ids = searchExercises(catalogue, 'mancuerna', EMPTY_FACETS, undefined, 'es').map((e) => e.id);
+    expect(ids).toEqual(['2']);
+  });
+
+  it('does not match a Spanish query in English mode', () => {
+    expect(searchExercises(catalogue, 'mancuerna', EMPTY_FACETS)).toEqual([]);
+  });
 });

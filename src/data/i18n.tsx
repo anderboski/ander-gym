@@ -1,7 +1,10 @@
 /**
  * UI language: English or Spanish. Exercise names, categories, equipment and
- * targets are excluded by design (SPEC §5.1) — they come from
- * data/exercises.json and stay English regardless of this setting.
+ * targets (SPEC §5.1) are translated too, but through a separate
+ * dictionary-layer (see exerciseI18n.ts) rather than this file's `t()`: the
+ * underlying `Exercise.name/category/equipment/target` values stay canonical
+ * English always, since they are what search, facet filtering and custom
+ * exercises persist to IndexedDB.
  *
  * Persisted in localStorage, not the `settings` IndexedDB store — same
  * reasoning as theme.ts: localStorage is synchronous, so the language can be
@@ -13,9 +16,17 @@
 import { createContext, useContext, useState, type ReactNode } from 'react';
 import { en, type TranslationKey } from './translations/en';
 import { es } from './translations/es';
+import type { FacetKey } from './types';
 
 export type { TranslationKey };
 export type Language = 'en' | 'es';
+
+/** Translation key for each facet's section title, shared by the Exercises filter and the custom-exercise form. */
+export const FACET_LABEL_KEYS: Record<FacetKey, TranslationKey> = {
+  category: 'browser.facetCategory',
+  equipment: 'browser.facetEquipment',
+  target: 'browser.facetTarget',
+};
 
 /** Keep this in sync with the inline bootstrap script in index.html. */
 export const LANGUAGE_STORAGE_KEY = 'ander-gym-language';
