@@ -316,6 +316,30 @@
   justify-content: center;
 }
 
+/* A day with more than one logged activity: the primary dot above stays
+   exactly as before, these small pips call out that there's more without
+   needing their own tap target — the whole day cell already opens the
+   primary one. */
+.home-cal-pips {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.home-cal-pip {
+  width: 4px;
+  height: 4px;
+  border-radius: var(--r-full);
+  background: var(--accent);
+}
+
+.home-cal-pip-more {
+  font-size: 8px;
+  font-weight: 700;
+  color: var(--text-faint);
+  line-height: 1;
+}
+
 /* --------------------------------------------------------------------------
    Backup banner
    -------------------------------------------------------------------------- */

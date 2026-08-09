@@ -31,12 +31,16 @@ import {
   CHECKIN_ID_PREFIX,
   DEFAULT_PROFILE,
   DEFAULT_SETTINGS,
+  SPORT_SESSION_ID_PREFIX,
   type ActiveSession,
   type Exercise,
+  type NewSportSession,
   type Profile,
   type Session,
   type Settings,
+  type SportSession,
   type Training,
+  type TrainingKind,
   type WeightCheckin,
 } from './types';
 
@@ -57,6 +61,8 @@ export type GymState = {
   profile: Profile;
   /** Weight check-ins, newest first — same convention as `sessions`. */
   checkins: WeightCheckin[];
+  /** Logged sport activities, newest first. Never counted in streak/week-goal maths. */
+  sportSessions: SportSession[];
 };
 
 export type NewCustomExercise = {
@@ -91,7 +97,8 @@ type Mutations = {
     removedIds: string[],
   ) => Promise<void>;
 
-  addTraining: (label: string) => Promise<Training>;
+  /** `kind` fixed at creation; omit (or pass `'gym'`) for the pre-existing default. */
+  addTraining: (label: string, kind?: TrainingKind) => Promise<Training>;
   renameTraining: (trainingId: string, label: string) => Promise<void>;
   /** Rest countdown default for this training day, in seconds. Clamped. */
   setTrainingRest: (trainingId: string, seconds: number) => Promise<void>;
@@ -135,6 +142,11 @@ type Mutations = {
   setProfile: (profile: Profile) => Promise<void>;
   addCheckin: (input: NewCheckin) => Promise<WeightCheckin>;
   deleteCheckin: (id: string) => Promise<void>;
+
+  /** Logs a completed sport activity in one shot — no active/in-progress state, unlike gym sessions. */
+  logSportSession: (trainingId: string, input: NewSportSession) => Promise<SportSession>;
+  /** Immutable, like `deleteSession` — no editing, only delete and re-log. */
+  deleteSportSession: (id: string) => Promise<void>;
 };
 
 type Lookups = {
@@ -164,6 +176,7 @@ const INITIAL: GymState = {
   settings: DEFAULT_SETTINGS,
   profile: DEFAULT_PROFILE,
   checkins: [],
+  sportSessions: [],
 };
 
 function byNewest(sessions: Session[]): Session[] {
@@ -177,6 +190,13 @@ function byNewestCheckin(checkins: WeightCheckin[]): WeightCheckin[] {
   return [...checkins].sort((a, b) => b.date.localeCompare(a.date));
 }
 
+/** Same `date`-string-sort idea as `byNewestCheckin`; `createdAt` breaks a same-day tie. */
+function byNewestSport(sportSessions: SportSession[]): SportSession[] {
+  return [...sportSessions].sort(
+    (a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt),
+  );
+}
+
 export function GymProvider({ children }: { children: React.ReactNode }) {
   const [state, setState] = useState<GymState>(INITIAL);
 
@@ -186,7 +206,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
 
   /** Full reload from disk. Used on boot and after an import. */
   const reload = useCallback(async () => {
-    const [rawExercises, trainings, custom, sessions, active, settings, profile, checkins] =
+    const [rawExercises, trainings, custom, sessions, active, settings, profile, checkins, sportSessions] =
       await Promise.all([
         fetchRawExercises(),
         db.getTrainings(),
@@ -196,6 +216,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
         db.getSettings(),
         db.getProfile(),
         db.getCheckins(),
+        db.getSportSessions(),
       ]);
 
     revokeCustomUrls(liveCustomExercises.current);
@@ -215,6 +236,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       settings,
       profile,
       checkins: byNewestCheckin(checkins),
+      sportSessions: byNewestSport(sportSessions),
     });
   }, []);
 
@@ -315,10 +337,10 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
         }));
       },
 
-      async addTraining(label) {
+      async addTraining(label, kind) {
         const trimmed = label.trim();
         if (!trimmed) throw new Error('Name is required.');
-        const training = await db.createTraining(trimmed);
+        const training = await db.createTraining(trimmed, kind);
         setState((s) => ({
           ...s,
           trainings: [...s.trainings, training].sort((a, b) => a.order - b.order),
@@ -527,6 +549,27 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       async deleteCheckin(id) {
         await db.deleteCheckin(id);
         setState((s) => ({ ...s, checkins: s.checkins.filter((c) => c.id !== id) }));
+      },
+
+      async logSportSession(trainingId, input) {
+        const training = (await db.getTrainings()).find((t) => t.id === trainingId);
+        if (!training) throw new Error(`Unknown training: ${trainingId}`);
+
+        const record = {
+          ...input,
+          id: `${SPORT_SESSION_ID_PREFIX}${crypto.randomUUID()}`,
+          trainingId,
+          trainingLabel: training.label,
+          createdAt: new Date().toISOString(),
+        } as SportSession;
+        await db.putSportSession(record);
+        setState((s) => ({ ...s, sportSessions: byNewestSport([...s.sportSessions, record]) }));
+        return record;
+      },
+
+      async deleteSportSession(id) {
+        await db.deleteSportSession(id);
+        setState((s) => ({ ...s, sportSessions: s.sportSessions.filter((x) => x.id !== id) }));
       },
     }),
     [mutateActive, reload],

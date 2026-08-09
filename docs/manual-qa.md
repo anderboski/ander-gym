@@ -107,6 +107,29 @@ Only a phone can tell you whether a 320-unit chart is legible in a hand.
       "image".
 - [ ] Settings → Display → larger text. Captions wrap; no chart card overflows.
 
+## 3e. Sport sessions (Snowboard / Cycling / Climbing)
+
+- [ ] Trainings → **+ Add training day** → set Type to **Cycling**, name it
+      **Morning ride** → Save. It appears under a new **Other activities**
+      section below the rotation list, with no grip handle (it cannot be
+      dragged into the rotation).
+- [ ] Open it → **Log a session** → the native date picker defaults to today
+      and cannot be pushed into the future. Fill in distance, elevation, and
+      heart rate → Save. The log appears in a list on this same page.
+- [ ] Home → today's calendar cell shows a dot for it, even though no gym
+      training exists yet — and the week counter still reads `0 trainings`
+      (a sport session never counts toward the goal or the streak).
+- [ ] History → the log appears in the same reverse-chronological list as gym
+      sessions, with a one-line summary (`10.0 km · 100 m · 142 bpm`).
+- [ ] Tap it → the detail view shows the same fields as stat tiles and a
+      **Delete log** button — no way to edit a saved value.
+- [ ] Repeat for a **Snowboard** training (Weather / Snow condition dropdowns
+      + a Comments field) and a **Climbing** one (a count per grade 3/4/5).
+- [ ] Log a gym session and a sport session on the same date. The calendar
+      cell shows the gym badge plus a small dot for the sport session
+      underneath, rather than only one or the other.
+- [ ] Confirm there is no way to change a training's Type after creation.
+
 ## 4. Keyboard behaviour
 
 - [ ] Focusing the Exercises search box does **not** zoom the viewport.
@@ -116,6 +139,9 @@ Only a phone can tell you whether a 320-unit chart is legible in a hand.
 - [ ] The reps field brings up the number pad; the weight field brings up the
       decimal pad.
 - [ ] Dismissing the keyboard restores the layout with no leftover gap.
+- [ ] The sport-log sheet's distance field brings up the decimal pad; elevation,
+      heart rate, and the climbing grade counts bring up the number pad —
+      none of them zoom the viewport on focus.
 
 ## 5. Crash safety
 

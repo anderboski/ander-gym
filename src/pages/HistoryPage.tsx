@@ -6,11 +6,12 @@
  */
 import { useMemo } from 'react';
 import { useGym } from '../data/store';
-import { formatDateTime, setCount, totalVolume } from '../data/derive';
+import { formatDateTime, formatShortLocalDate, mergedHistory, setCount, totalVolume, type HistoryItem } from '../data/derive';
 import { navigate } from '../router';
 import { ChevronRightIcon } from '../components/icons';
 import { useLanguage, type TFunc } from '../data/i18n';
-import type { Session } from '../data/types';
+import { sportSessionSummary } from '../data/sportLabels';
+import type { Session, SportSession } from '../data/types';
 import './HistoryPage.css';
 
 /** `12 sets · 1240 kg`, or just the sets for an all-bodyweight session. */
@@ -21,7 +22,7 @@ export function sessionSummary(session: Session, t: TFunc): string {
   return volume > 0 ? `${setsLabel} · ${volume} kg` : setsLabel;
 }
 
-type MonthGroup = { key: string; label: string; sessions: Session[] };
+type MonthGroup = { key: string; label: string; items: HistoryItem[] };
 
 /** `August 2026`, in the app's chosen locale. */
 function monthLabel(d: Date, locale: string): string {
@@ -29,19 +30,20 @@ function monthLabel(d: Date, locale: string): string {
 }
 
 /**
- * Split an already-sorted list into consecutive month runs. Because the input
- * is newest-first, a simple run-length pass is enough — no map, no re-sort.
+ * Split an already-sorted, merged list into consecutive month runs. Because
+ * the input is newest-first (`mergedHistory`), a simple run-length pass is
+ * enough — no map, no re-sort.
  */
-function groupByMonth(sessions: Session[], locale: string): MonthGroup[] {
+function groupByMonth(items: HistoryItem[], locale: string): MonthGroup[] {
   const groups: MonthGroup[] = [];
 
-  for (const session of sessions) {
-    const d = new Date(session.startedAt);
+  for (const item of items) {
+    const d = item.at;
     const key = `${d.getFullYear()}-${d.getMonth()}`;
     const last = groups[groups.length - 1];
 
-    if (last && last.key === key) last.sessions.push(session);
-    else groups.push({ key, label: monthLabel(d, locale), sessions: [session] });
+    if (last && last.key === key) last.items.push(item);
+    else groups.push({ key, label: monthLabel(d, locale), items: [item] });
   }
   return groups;
 }
@@ -67,25 +69,48 @@ function SessionRow({ session }: { session: Session }) {
   );
 }
 
+function SportHistoryRow({ session }: { session: SportSession }) {
+  const { t } = useLanguage();
+
+  return (
+    <button
+      className="card card-tappable history-row"
+      onClick={() => navigate(`/history/${session.id}`)}
+      aria-label={`${session.trainingLabel}, ${formatShortLocalDate(session.date)}, ${sportSessionSummary(t, session)}`}
+    >
+      <span className="history-row-main">
+        <span className="history-row-date num">{formatShortLocalDate(session.date)}</span>
+        <span className="history-row-training">{session.trainingLabel}</span>
+        <span className="history-row-summary">{sportSessionSummary(t, session)}</span>
+      </span>
+      <span className="history-row-chevron" aria-hidden="true">
+        <ChevronRightIcon />
+      </span>
+    </button>
+  );
+}
+
 export function HistoryPage() {
-  const { sessions, status } = useGym();
+  const { sessions, sportSessions, status } = useGym();
   const { t, locale } = useLanguage();
-  const groups = useMemo(() => groupByMonth(sessions, locale), [sessions, locale]);
+  const items = useMemo(() => mergedHistory(sessions, sportSessions), [sessions, sportSessions]);
+  const groups = useMemo(() => groupByMonth(items, locale), [items, locale]);
+  const total = items.length;
 
   return (
     <div className="page">
       <div className="page-header">
         <h1 className="page-title">{t('tabbar.history')}</h1>
-        {sessions.length > 0 && (
+        {total > 0 && (
           <div className="page-sub">
-            {sessions.length} {t(sessions.length === 1 ? 'common.sessionsOne' : 'common.sessionsOther')}
+            {total} {t(total === 1 ? 'common.sessionsOne' : 'common.sessionsOther')}
           </div>
         )}
       </div>
 
       {status === 'loading' && <div className="spinner" />}
 
-      {status !== 'loading' && sessions.length === 0 && (
+      {status !== 'loading' && total === 0 && (
         <div className="empty">{t('history.emptyState')}</div>
       )}
 
@@ -93,9 +118,13 @@ export function HistoryPage() {
         <section className="section" key={group.key}>
           <h2 className="section-title">{group.label}</h2>
           <div className="history-list">
-            {group.sessions.map((session) => (
-              <SessionRow session={session} key={session.id} />
-            ))}
+            {group.items.map((item) =>
+              item.kind === 'gym' ? (
+                <SessionRow session={item.session} key={item.session.id} />
+              ) : (
+                <SportHistoryRow session={item.sportSession} key={item.sportSession.id} />
+              ),
+            )}
           </div>
         </section>
       ))}

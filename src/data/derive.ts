@@ -4,7 +4,7 @@
  *
  * All date maths is local-timezone. Weeks are ISO weeks (Monday 00:00 start).
  */
-import type { Exercise, Session, SetEntry, Training } from './types';
+import type { Exercise, Session, SetEntry, SportSession, Training } from './types';
 
 /* -------------------------------------------------------------------------- */
 /* Dates                                                                       */
@@ -323,8 +323,13 @@ export function lifetimeStats(sessions: Session[]): LifetimeStats {
  * last *session's* training is looked up against the full list so an archived
  * training doesn't also break the "what comes after it" pivot.
  */
+/** Only a `'gym'` (or kind-absent) training takes part in Home's rotation. */
+function isRotationCandidate(t: Training): boolean {
+  return !t.archived && (t.kind ?? 'gym') === 'gym';
+}
+
 export function nextTraining(trainings: Training[], sessions: Session[]): Training | null {
-  const active = [...trainings].filter((t) => !t.archived).sort((a, b) => a.order - b.order);
+  const active = [...trainings].filter(isRotationCandidate).sort((a, b) => a.order - b.order);
   const first = active[0];
   if (!first) return null;
 
@@ -339,13 +344,23 @@ export function nextTraining(trainings: Training[], sessions: Session[]): Traini
   // until landing on an active training, wrapping at most once around.
   for (let step = 1; step <= allOrdered.length; step += 1) {
     const candidate = allOrdered[(lastIdx + step) % allOrdered.length];
-    if (candidate && !candidate.archived) return candidate;
+    if (candidate && isRotationCandidate(candidate)) return candidate;
   }
   return first;
 }
 
 export function lastSessionForTraining(trainingId: string, sessions: Session[]): Session | null {
   return mostRecentSession(sessions.filter((s) => s.trainingId === trainingId));
+}
+
+/** Same idea as `lastSessionForTraining`, over a sport training's logs — `date` is already a plain `YYYY-MM-DD` string, so the "most recent" comparison is a string sort, no `Date` needed. */
+export function lastSportSessionForTraining(
+  trainingId: string,
+  sportSessions: SportSession[],
+): SportSession | null {
+  const matches = sportSessions.filter((s) => s.trainingId === trainingId);
+  if (matches.length === 0) return null;
+  return matches.reduce((best, s) => (s.date > best.date ? s : best));
 }
 
 /**
@@ -376,6 +391,45 @@ export function sessionsByDay(sessions: Session[]): Map<string, Session> {
     if (!out.has(key)) out.set(key, s);
   }
   return out;
+}
+
+/**
+ * Every sport session on a given day, keyed by `SportSession.date` directly —
+ * that field is already local `YYYY-MM-DD`, the same shape `dayKey` produces,
+ * so no `Date` round-trip is needed the way `sessionsByDay` needs one for
+ * `Session.startedAt` (a full timestamp). Unlike `sessionsByDay`, a day here
+ * keeps every entry rather than picking one "later wins" winner: the whole
+ * point of showing sports on the calendar is seeing all of them.
+ */
+export function sportSessionsByDay(sportSessions: SportSession[]): Map<string, SportSession[]> {
+  const out = new Map<string, SportSession[]>();
+  for (const s of sportSessions) {
+    const list = out.get(s.date) ?? [];
+    list.push(s);
+    out.set(s.date, list);
+  }
+  return out;
+}
+
+/** One row in a merged, reverse-chronological view of everything logged. */
+export type HistoryItem =
+  | { at: Date; kind: 'gym'; session: Session }
+  | { at: Date; kind: SportSession['kind']; sportSession: SportSession };
+
+/**
+ * Gym sessions and sport sessions interleaved, newest first — History shows
+ * one list of everything rather than splitting by kind. A sport session's
+ * `at` is its `date` at local midnight (`parseLocalDate`); on a day that also
+ * has a gym session, the gym session's real time-of-day sorts after it.
+ */
+export function mergedHistory(sessions: Session[], sportSessions: SportSession[]): HistoryItem[] {
+  const items: HistoryItem[] = [
+    ...sessions.map((session): HistoryItem => ({ at: new Date(session.startedAt), kind: 'gym', session })),
+    ...sportSessions.map(
+      (sportSession): HistoryItem => ({ at: parseLocalDate(sportSession.date), kind: sportSession.kind, sportSession }),
+    ),
+  ];
+  return items.sort((a, b) => b.at.getTime() - a.at.getTime());
 }
 
 export type CalendarDay = { date: Date; inMonth: boolean };

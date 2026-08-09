@@ -262,6 +262,42 @@ describe('checkins', () => {
   });
 });
 
+describe('sport trainings and sessions', () => {
+  it('createTraining omits kind for gym (the pre-existing default)', async () => {
+    const training = await db.createTraining('Push day');
+    expect(training.kind).toBeUndefined();
+  });
+
+  it('createTraining stores a non-gym kind', async () => {
+    const training = await db.createTraining('Morning ride', 'cycling');
+    expect(training.kind).toBe('cycling');
+  });
+
+  it('is empty until something is logged', async () => {
+    expect(await db.getSportSessions()).toEqual([]);
+  });
+
+  it('persists and deletes', async () => {
+    const training = await db.createTraining('Morning ride', 'cycling');
+    const sportSession = {
+      id: 'ss-1',
+      trainingId: training.id,
+      trainingLabel: training.label,
+      kind: 'cycling' as const,
+      date: '2026-08-01',
+      distanceKm: 42.5,
+      elevationM: 320,
+      avgBpm: 142,
+      createdAt: '2026-08-01T18:00:00.000Z',
+    };
+    await db.putSportSession(sportSession);
+    expect(await db.getSportSessions()).toEqual([sportSession]);
+
+    await db.deleteSportSession('ss-1');
+    expect(await db.getSportSessions()).toEqual([]);
+  });
+});
+
 describe('DB_VERSION 1 -> 2 migration', () => {
   it('preserves existing data and adds the profile/checkins stores', async () => {
     // Simulate a real device still on the old schema: open at version 1 with
@@ -292,6 +328,46 @@ describe('DB_VERSION 1 -> 2 migration', () => {
     await db.putProfileField('name', 'Ander');
     expect((await db.getProfile()).name).toBe('Ander');
     expect(await db.getCheckins()).toEqual([]);
+  });
+});
+
+describe('DB_VERSION 2 -> 3 migration', () => {
+  it('preserves existing data and adds the sportSessions store', async () => {
+    // Simulate a real device on the pre-sport-sessions schema: version 2 with
+    // the six stores that existed before `sportSessions`.
+    const v2 = await openDB(db.DB_NAME, 2, {
+      upgrade(rawDb) {
+        rawDb.createObjectStore('trainings', { keyPath: 'id' });
+        const sessions = rawDb.createObjectStore('sessions', { keyPath: 'id' });
+        sessions.createIndex('startedAt', 'startedAt');
+        rawDb.createObjectStore('activeSession');
+        rawDb.createObjectStore('customExercises', { keyPath: 'id' });
+        rawDb.createObjectStore('settings');
+        rawDb.createObjectStore('profile');
+        const checkins = rawDb.createObjectStore('checkins', { keyPath: 'id' });
+        checkins.createIndex('date', 'date');
+      },
+    });
+    await v2.put('trainings', { id: 't-1', label: 'Push day', order: 0, exerciseIds: [] });
+    v2.close();
+
+    expect(await db.getTrainings()).toEqual([
+      { id: 't-1', label: 'Push day', order: 0, exerciseIds: [] },
+    ]);
+    expect(await db.getSportSessions()).toEqual([]);
+    const training = await db.createTraining('Morning ride', 'cycling');
+    await db.putSportSession({
+      id: 'ss-1',
+      trainingId: training.id,
+      trainingLabel: training.label,
+      kind: 'cycling',
+      date: '2026-08-01',
+      distanceKm: 10,
+      elevationM: 50,
+      avgBpm: null,
+      createdAt: '2026-08-01T00:00:00.000Z',
+    });
+    expect(await db.getSportSessions()).toHaveLength(1);
   });
 });
 
@@ -366,6 +442,37 @@ describe('backup round trip', () => {
     await applyBackup(restored, 'replace');
 
     expect((await db.getTrainings()).find((t) => t.id === 'leg-abs')?.archived).toBe(true);
+  });
+
+  it('round-trips a sport training and its logged sessions', async () => {
+    const training = await db.createTraining('Local crag', 'climbing');
+    await db.putSportSession({
+      id: 'ss-1',
+      trainingId: training.id,
+      trainingLabel: training.label,
+      kind: 'climbing',
+      date: '2026-08-01',
+      climbsByGrade: { '3': 2, '4': 5, '5': 1 },
+      createdAt: '2026-08-01T18:00:00.000Z',
+    });
+
+    const restored = parseBackup(JSON.stringify(await buildBackup()));
+    await db.clearAll();
+    await applyBackup(restored, 'replace');
+
+    expect((await db.getTrainings()).find((t) => t.id === training.id)?.kind).toBe('climbing');
+    expect(await db.getSportSessions()).toHaveLength(1);
+    expect((await db.getSportSessions())[0]?.trainingLabel).toBe('Local crag');
+  });
+
+  it('defaults sportSessions to [] for a backup written before the feature existed', () => {
+    const legacy = {
+      schemaVersion: 2,
+      exportedAt: '2026-08-01T00:00:00.000Z',
+      trainings: [],
+      sessions: [],
+    };
+    expect(parseBackup(JSON.stringify(legacy)).sportSessions).toEqual([]);
   });
 
   it('round-trips favorited exercises', async () => {

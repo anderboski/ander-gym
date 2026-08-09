@@ -11,11 +11,20 @@ import {
   putProfileField,
   putSession,
   putSetting,
+  putSportSession,
   putTraining,
   readAll,
 } from './db';
 import { firstGrapheme, parseRestSeconds } from './parse';
-import type { CustomExercise, Profile, Session, Settings, Training, WeightCheckin } from './types';
+import type {
+  CustomExercise,
+  Profile,
+  Session,
+  Settings,
+  SportSession,
+  Training,
+  WeightCheckin,
+} from './types';
 
 /** A custom exercise with its photo inlined, so a backup is a single file. */
 export type BackupCustomExercise = Omit<CustomExercise, 'imageBlob'> & {
@@ -37,6 +46,7 @@ export type BackupFile = {
   settings: Settings;
   profile: Profile;
   checkins: BackupWeightCheckin[];
+  sportSessions: SportSession[];
 };
 
 export type ImportMode = 'merge' | 'replace';
@@ -69,7 +79,8 @@ export function dataUrlToBlob(dataUrl: string): Blob {
 /* -------------------------------------------------------------------------- */
 
 export async function buildBackup(): Promise<BackupFile> {
-  const { trainings, sessions, customExercises, settings, profile, checkins } = await readAll();
+  const { trainings, sessions, customExercises, settings, profile, checkins, sportSessions } =
+    await readAll();
 
   const withImages: BackupCustomExercise[] = await Promise.all(
     customExercises.map(async ({ imageBlob, ...rest }) => ({
@@ -94,6 +105,7 @@ export async function buildBackup(): Promise<BackupFile> {
     settings,
     profile,
     checkins: withPhotos,
+    sportSessions,
   };
 }
 
@@ -218,6 +230,9 @@ export function parseBackup(text: string): BackupFile {
       heightCm: typeof b.profile?.heightCm === 'number' ? b.profile.heightCm : null,
     },
     checkins: Array.isArray(b.checkins) ? b.checkins : [],
+    // Absent entirely from a backup written before sport sessions existed —
+    // same "default rather than reject" handling as `checkins`/`profile`.
+    sportSessions: Array.isArray(b.sportSessions) ? b.sportSessions : [],
   };
 }
 
@@ -233,6 +248,7 @@ export async function applyBackup(backup: BackupFile, mode: ImportMode): Promise
 
   for (const t of backup.trainings) await putTraining(t);
   for (const s of backup.sessions) await putSession(s as Session);
+  for (const s of backup.sportSessions) await putSportSession(s);
 
   for (const c of backup.customExercises) {
     const { image, ...rest } = c;
