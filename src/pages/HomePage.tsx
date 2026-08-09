@@ -25,6 +25,7 @@ import {
   monthGrid,
   nextTraining,
   sessionsByDay,
+  sportSessionsByDay,
   startOfMonth,
   weeklyStreak,
 } from '../data/derive';
@@ -44,7 +45,7 @@ import { SettingsSheet } from '../components/SettingsSheet';
 import { Toast } from '../components/Sheet';
 import { getTheme, otherTheme, setTheme, type Theme } from '../data/theme';
 import { daysAgoLabel, useLanguage, type TranslationKey } from '../data/i18n';
-import type { Session, Training } from '../data/types';
+import type { Session, SportSession, Training } from '../data/types';
 import './HomePage.css';
 
 /** A backup older than this is stale enough to nag about. */
@@ -62,6 +63,7 @@ export function HomePage() {
     error,
     trainings,
     sessions,
+    sportSessions,
     active,
     settings,
     profile,
@@ -291,10 +293,16 @@ export function HomePage() {
           </section>
 
           {/* --- calendar --------------------------------------------------- */}
-          {sessions.length > 0 && (
+          {(sessions.length > 0 || sportSessions.length > 0) && (
             <section className="section">
               <div className="section-title">{t('home.calendarSection')}</div>
-              <HomeCalendar sessions={sessions} trainings={trainings} now={now} locale={locale} />
+              <HomeCalendar
+                sessions={sessions}
+                sportSessions={sportSessions}
+                trainings={trainings}
+                now={now}
+                locale={locale}
+              />
             </section>
           )}
 
@@ -379,13 +387,18 @@ function GoalRing({ count, goal }: { count: number; goal: number }) {
  * multi-session day, per `sessionsByDay`). Tapping a trained day opens that
  * session in History; the month in view is local state, independent of `now`.
  */
+/** One calendar-day badge: a resolvable id to open, an icon, and a label for the day's aria description. */
+type DayBadge = { id: string; emoji: string; label: string };
+
 function HomeCalendar({
   sessions,
+  sportSessions,
   trainings,
   now,
   locale,
 }: {
   sessions: Session[];
+  sportSessions: SportSession[];
   trainings: Training[];
   now: Date;
   locale: string;
@@ -393,6 +406,7 @@ function HomeCalendar({
   const { t } = useLanguage();
   const [month, setMonth] = useState<Date>(() => startOfMonth(now));
   const byDay = useMemo(() => sessionsByDay(sessions), [sessions]);
+  const sportByDay = useMemo(() => sportSessionsByDay(sportSessions), [sportSessions]);
   const trainingsById = useMemo(() => new Map(trainings.map((tr) => [tr.id, tr])), [trainings]);
   const grid = useMemo(() => monthGrid(month), [month]);
 
@@ -432,12 +446,34 @@ function HomeCalendar({
 
       <div className="home-cal-grid">
         {grid.map(({ date, inMonth }) => {
-          const session = byDay.get(dayKey(date));
+          const key = dayKey(date);
+          const session = byDay.get(key);
+          const sports = sportByDay.get(key) ?? [];
           const classes = ['home-cal-day'];
           if (!inMonth) classes.push('home-cal-day-out');
           if (isSameDay(date, now)) classes.push('home-cal-day-today');
 
-          if (!session) {
+          // Gym session first (preserves the pre-existing tap target on an
+          // ordinary day), sport sessions after — every activity gets a dot,
+          // not just a "later wins" winner, since seeing all of them is the
+          // whole point of showing sports on this calendar.
+          const badges: DayBadge[] = [];
+          if (session) {
+            badges.push({
+              id: session.id,
+              emoji: trainingsById.get(session.trainingId)?.emoji ?? session.trainingLabel.charAt(0).toUpperCase(),
+              label: session.trainingLabel,
+            });
+          }
+          for (const s of sports) {
+            badges.push({
+              id: s.id,
+              emoji: trainingsById.get(s.trainingId)?.emoji ?? s.trainingLabel.charAt(0).toUpperCase(),
+              label: s.trainingLabel,
+            });
+          }
+
+          if (badges.length === 0) {
             return (
               <div className={classes.join(' ')} key={date.toISOString()}>
                 <span className="home-cal-daynum">{date.getDate()}</span>
@@ -446,19 +482,32 @@ function HomeCalendar({
           }
 
           classes.push('home-cal-day-trained');
+          const primary = badges[0]!;
+          const extra = badges.slice(1);
+          const PIP_CAP = 3;
+
           return (
             <button
               type="button"
               className={classes.join(' ')}
               key={date.toISOString()}
-              onClick={() => navigate(`/history/${session.id}`)}
-              aria-label={`${date.toLocaleDateString(locale, { day: 'numeric', month: 'long' })}, ${session.trainingLabel}`}
+              onClick={() => navigate(`/history/${primary.id}`)}
+              aria-label={`${date.toLocaleDateString(locale, { day: 'numeric', month: 'long' })}, ${badges.map((b) => b.label).join(', ')}`}
             >
               <span className="home-cal-daynum">{date.getDate()}</span>
               <span className="home-cal-dot" aria-hidden="true">
-                {trainingsById.get(session.trainingId)?.emoji ??
-                  session.trainingLabel.charAt(0).toUpperCase()}
+                {primary.emoji}
               </span>
+              {extra.length > 0 && (
+                <span className="home-cal-pips" aria-hidden="true">
+                  {extra.slice(0, PIP_CAP).map((b) => (
+                    <span className="home-cal-pip" key={b.id} />
+                  ))}
+                  {extra.length > PIP_CAP && (
+                    <span className="home-cal-pip-more">+{extra.length - PIP_CAP}</span>
+                  )}
+                </span>
+              )}
             </button>
           );
         })}

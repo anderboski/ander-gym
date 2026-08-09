@@ -14,11 +14,18 @@
  */
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
-import { daysBetween, formatDate, lastSessionForTraining } from '../data/derive';
+import {
+  daysBetween,
+  formatDate,
+  formatShortLocalDate,
+  lastSessionForTraining,
+  lastSportSessionForTraining,
+  parseLocalDate,
+} from '../data/derive';
 import { useGym } from '../data/store';
 import { daysAgoLabel, useLanguage } from '../data/i18n';
 import { useDragReorder } from '../hooks/useDragReorder';
-import type { Session, Training } from '../data/types';
+import { SPORT_KINDS, type Session, type SportSession, type Training, type TrainingKind } from '../data/types';
 import { Sheet, Toast } from '../components/Sheet';
 import {
   ArchiveIcon,
@@ -34,8 +41,41 @@ import './TrainingsPage.css';
 /* Card body (shared between the real row and the drag ghost)                  */
 /* -------------------------------------------------------------------------- */
 
-function CardBody({ training, sessions, now }: { training: Training; sessions: Session[]; now: Date }) {
+function CardBody({
+  training,
+  sessions,
+  sportSessions,
+  now,
+}: {
+  training: Training;
+  sessions: Session[];
+  sportSessions: SportSession[];
+  now: Date;
+}) {
   const { t } = useLanguage();
+
+  if (training.kind && training.kind !== 'gym') {
+    const last = lastSportSessionForTraining(training.id, sportSessions);
+    const count = sportSessions.filter((s) => s.trainingId === training.id).length;
+
+    return (
+      <span className="tr-card-main-inner">
+        <span className="tr-card-label">{training.label}</span>
+        <span className="tr-card-sub">
+          <span>
+            {last
+              ? `${formatShortLocalDate(last.date)} · ${daysAgoLabel(t, daysBetween(parseLocalDate(last.date), now))}`
+              : t('home.neverDone')}
+          </span>
+          <span className="sep">·</span>
+          <span>
+            {count} {t(count === 1 ? 'trainings.logsCountOne' : 'trainings.logsCountOther')}
+          </span>
+        </span>
+      </span>
+    );
+  }
+
   const last = lastSessionForTraining(training.id, sessions);
   const count = training.exerciseIds.length;
 
@@ -72,10 +112,11 @@ function TrainingNameSheet({
   title: string;
   initialName?: string;
   onClose: () => void;
-  onSubmit: (name: string) => Promise<unknown>;
+  onSubmit: (name: string, kind: TrainingKind) => Promise<unknown>;
 }) {
   const { t } = useLanguage();
   const [name, setName] = useState(initialName);
+  const [kind, setKind] = useState<TrainingKind>('gym');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -87,7 +128,7 @@ function TrainingNameSheet({
     setSaving(true);
     setError(null);
     try {
-      await onSubmit(name.trim());
+      await onSubmit(name.trim(), kind);
       onClose();
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : t('trainings.couldNotSave'));
@@ -127,6 +168,25 @@ function TrainingNameSheet({
             placeholder={t('trainings.namePlaceholder')}
             onChange={(e) => setName(e.target.value)}
           />
+        </div>
+        <div className="tr-name-field">
+          <label className="label" htmlFor="training-kind">
+            {t('trainings.kindLabel')}
+          </label>
+          <select
+            id="training-kind"
+            className="input"
+            value={kind}
+            onChange={(e) => setKind(e.target.value as TrainingKind)}
+          >
+            <option value="gym">{t('trainingKind.gym')}</option>
+            {SPORT_KINDS.map((k) => (
+              <option key={k} value={k}>
+                {t(`trainingKind.${k}`)}
+              </option>
+            ))}
+          </select>
+          <p className="tr-emoji-hint">{t('trainings.kindHint')}</p>
         </div>
       </form>
     </Sheet>
@@ -335,12 +395,14 @@ function ArchiveOrDeleteSheet({
 function ArchivedTrainingsSheet({
   trainings,
   sessions,
+  sportSessions,
   now,
   onClose,
   onEdit,
 }: {
   trainings: Training[];
   sessions: Session[];
+  sportSessions: SportSession[];
   now: Date;
   onClose: () => void;
   onEdit: (training: Training) => void;
@@ -360,7 +422,7 @@ function ArchivedTrainingsSheet({
             </span>
 
             <button className="tr-card-main" onClick={() => navigate(`/trainings/${training.id}`)}>
-              <CardBody training={training} sessions={sessions} now={now} />
+              <CardBody training={training} sessions={sessions} sportSessions={sportSessions} now={now} />
               <ChevronRightIcon className="tr-card-chevron" />
             </button>
 
@@ -385,6 +447,7 @@ export function TrainingsPage() {
   const {
     trainings,
     sessions,
+    sportSessions,
     active,
     status,
     addTraining,
@@ -398,7 +461,14 @@ export function TrainingsPage() {
   const { t } = useLanguage();
   const now = new Date();
 
-  const activeTrainings = useMemo(() => trainings.filter((t) => !t.archived), [trainings]);
+  // Only 'gym' trainings take part in Home's rotation and this page's drag
+  // reorder — sport trainings are a separate, non-draggable list below.
+  const isGym = (t: Training) => (t.kind ?? 'gym') === 'gym';
+  const activeTrainings = useMemo(() => trainings.filter((t) => !t.archived && isGym(t)), [trainings]);
+  const sportTrainings = useMemo(
+    () => trainings.filter((t) => !t.archived && !isGym(t)),
+    [trainings],
+  );
   const archivedTrainings = useMemo(() => trainings.filter((t) => t.archived), [trainings]);
 
   const [order, setOrder] = useState<string[]>(() => activeTrainings.map((t) => t.id));
@@ -443,7 +513,9 @@ export function TrainingsPage() {
       return;
     }
 
-    const hasHistory = sessions.some((s) => s.trainingId === training.id);
+    const hasHistory = isGym(training)
+      ? sessions.some((s) => s.trainingId === training.id)
+      : sportSessions.some((s) => s.trainingId === training.id);
     const hasActiveSession = active?.trainingId === training.id;
     if (!hasHistory && !hasActiveSession) {
       setDeleteChoiceFor(training);
@@ -535,7 +607,7 @@ export function TrainingsPage() {
             </button>
 
             <button className="tr-card-main" onClick={() => navigate(`/trainings/${training.id}`)}>
-              <CardBody training={training} sessions={sessions} now={now} />
+              <CardBody training={training} sessions={sessions} sportSessions={sportSessions} now={now} />
               <ChevronRightIcon className="tr-card-chevron" />
             </button>
 
@@ -556,6 +628,43 @@ export function TrainingsPage() {
         </button>
       </div>
 
+      {sportTrainings.length > 0 && (
+        <div className="section">
+          <div className="section-title">{t('trainings.otherActivities')}</div>
+          <p className="tr-emoji-hint" style={{ marginTop: 0 }}>
+            {t('trainings.otherActivitiesHint')}
+          </p>
+          <div className="tr-list">
+            {sportTrainings.map((training) => (
+              <div key={training.id} className="tr-card">
+                <button
+                  type="button"
+                  className="tr-card-emoji"
+                  aria-label={t('trainings.changeIconAria', { name: training.label })}
+                  onClick={() => setPickingEmojiFor(training)}
+                >
+                  {training.emoji ?? training.label.charAt(0).toUpperCase()}
+                </button>
+
+                <button className="tr-card-main" onClick={() => navigate(`/trainings/${training.id}`)}>
+                  <CardBody training={training} sessions={sessions} sportSessions={sportSessions} now={now} />
+                  <ChevronRightIcon className="tr-card-chevron" />
+                </button>
+
+                <button
+                  type="button"
+                  className="tr-card-edit"
+                  aria-label={t('trainings.editAria', { name: training.label })}
+                  onClick={() => setEditing(training)}
+                >
+                  <PencilIcon />
+                </button>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {drag.ghost &&
         draggingTraining &&
         createPortal(
@@ -575,7 +684,7 @@ export function TrainingsPage() {
               {draggingTraining.emoji ?? draggingTraining.label.charAt(0).toUpperCase()}
             </span>
             <span className="tr-card-main">
-              <CardBody training={draggingTraining} sessions={sessions} now={now} />
+              <CardBody training={draggingTraining} sessions={sessions} sportSessions={sportSessions} now={now} />
               <ChevronRightIcon className="tr-card-chevron" />
             </span>
             <span className="tr-card-edit" aria-hidden="true">
@@ -589,7 +698,7 @@ export function TrainingsPage() {
         <TrainingNameSheet
           title={t('trainings.newTrainingDay')}
           onClose={() => setAdding(false)}
-          onSubmit={(name) => addTraining(name)}
+          onSubmit={(name, kind) => addTraining(name, kind)}
         />
       )}
 
@@ -623,6 +732,7 @@ export function TrainingsPage() {
         <ArchivedTrainingsSheet
           trainings={archivedTrainings}
           sessions={sessions}
+          sportSessions={sportSessions}
           now={now}
           onClose={() => setArchivedOpen(false)}
           onEdit={(training) => {

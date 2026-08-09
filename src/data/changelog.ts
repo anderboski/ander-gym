@@ -130,6 +130,18 @@ export const CHANGELOG: ChangelogEntry[] = [
       'El catálogo de ejercicios — nombre, categoría, equipo y músculo objetivo — ahora se traduce cuando seleccionas español.',
     ],
   },
+  {
+    version: '1.11.0',
+    date: '2026-08-09',
+    en: [
+      'Added other sports — Snowboard, Cycling and Climbing training days log a quick summary (weather/snow, distance/elevation/heart rate, or climbs per grade) instead of exercises and sets.',
+      'Sport sessions show up on Home’s calendar and in History alongside your gym sessions, but never count toward your weekly goal or streak.',
+    ],
+    es: [
+      'Se añadieron otros deportes — los entrenamientos de Snowboard, Ciclismo y Escalada registran un resumen rápido (tiempo/nieve, distancia/desnivel/pulsaciones, o vías por grado) en lugar de ejercicios y series.',
+      'Las sesiones de deporte aparecen en el calendario de Inicio y en Historial junto a tus sesiones de gimnasio, pero nunca cuentan para tu objetivo semanal ni tu racha.',
+    ],
+  },
 ];
 
 /** Keep in sync with the bootstrap-independent nature of theme/language: this

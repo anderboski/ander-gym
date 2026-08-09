@@ -12,13 +12,15 @@ import {
   type Profile,
   type Session,
   type Settings,
+  type SportSession,
   type Training,
+  type TrainingKind,
   type WeightCheckin,
 } from './types';
 
 export const DB_NAME = 'ander-gym';
-export const DB_VERSION = 2;
-export const SCHEMA_VERSION = 2;
+export const DB_VERSION = 3;
+export const SCHEMA_VERSION = 3;
 
 /** The single key used by the activeSession store. */
 const ACTIVE_KEY = 'current';
@@ -31,6 +33,7 @@ interface GymDB extends DBSchema {
   settings: { key: string; value: unknown };
   profile: { key: string; value: unknown };
   checkins: { key: string; value: WeightCheckin; indexes: { date: string } };
+  sportSessions: { key: string; value: SportSession; indexes: { date: string } };
 }
 
 let dbPromise: Promise<IDBPDatabase<GymDB>> | null = null;
@@ -55,6 +58,10 @@ export function getDB(): Promise<IDBPDatabase<GymDB>> {
         db.createObjectStore('profile');
         const checkins = db.createObjectStore('checkins', { keyPath: 'id' });
         checkins.createIndex('date', 'date');
+      }
+      if (oldVersion < 3) {
+        const sportSessions = db.createObjectStore('sportSessions', { keyPath: 'id' });
+        sportSessions.createIndex('date', 'date');
       }
     },
     // A second tab/instance holding an older connection open would otherwise
@@ -95,8 +102,12 @@ export async function putTraining(training: Training): Promise<void> {
   await (await getDB()).put('trainings', training);
 }
 
-/** Creates a training day with no exercises yet, appended to the end of the rotation. */
-export async function createTraining(label: string): Promise<Training> {
+/**
+ * Creates a training day with no exercises yet, appended to the end of the
+ * rotation. `kind` is omitted from the record for `'gym'` (or when absent) —
+ * same "absent means the pre-existing default" convention as `archived`.
+ */
+export async function createTraining(label: string, kind?: TrainingKind): Promise<Training> {
   const existing = await getTrainings();
   const order = existing.reduce((max, t) => Math.max(max, t.order + 1), 0);
   const training: Training = {
@@ -105,6 +116,7 @@ export async function createTraining(label: string): Promise<Training> {
     order,
     exerciseIds: [],
   };
+  if (kind && kind !== 'gym') training.kind = kind;
   await putTraining(training);
   return training;
 }
@@ -247,6 +259,22 @@ export async function clearActiveSession(): Promise<void> {
 }
 
 /* -------------------------------------------------------------------------- */
+/* Sport sessions                                                              */
+/* -------------------------------------------------------------------------- */
+
+export async function getSportSessions(): Promise<SportSession[]> {
+  return (await getDB()).getAll('sportSessions');
+}
+
+export async function putSportSession(session: SportSession): Promise<void> {
+  await (await getDB()).put('sportSessions', session);
+}
+
+export async function deleteSportSession(id: string): Promise<void> {
+  await (await getDB()).delete('sportSessions', id);
+}
+
+/* -------------------------------------------------------------------------- */
 /* Custom exercises                                                            */
 /* -------------------------------------------------------------------------- */
 
@@ -335,6 +363,7 @@ export async function readAll(): Promise<{
   settings: Settings;
   profile: Profile;
   checkins: WeightCheckin[];
+  sportSessions: SportSession[];
 }> {
   return {
     trainings: await getTrainings(),
@@ -343,6 +372,7 @@ export async function readAll(): Promise<{
     settings: await getSettings(),
     profile: await getProfile(),
     checkins: await getCheckins(),
+    sportSessions: await getSportSessions(),
   };
 }
 
@@ -350,7 +380,16 @@ export async function readAll(): Promise<{
 export async function clearAll(): Promise<void> {
   const db = await getDB();
   const tx = db.transaction(
-    ['trainings', 'sessions', 'activeSession', 'customExercises', 'settings', 'profile', 'checkins'],
+    [
+      'trainings',
+      'sessions',
+      'activeSession',
+      'customExercises',
+      'settings',
+      'profile',
+      'checkins',
+      'sportSessions',
+    ],
     'readwrite',
   );
   await Promise.all([
@@ -360,6 +399,7 @@ export async function clearAll(): Promise<void> {
     tx.objectStore('customExercises').clear(),
     tx.objectStore('profile').clear(),
     tx.objectStore('checkins').clear(),
+    tx.objectStore('sportSessions').clear(),
     tx.objectStore('settings').clear(),
     tx.done,
   ]);

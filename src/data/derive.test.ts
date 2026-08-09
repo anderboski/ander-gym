@@ -23,8 +23,10 @@ import {
   greetingBucket,
   historyFor,
   lastSessionForTraining,
+  lastSportSessionForTraining,
   latestFor,
   lifetimeStats,
+  mergedHistory,
   monthGrid,
   nextTraining,
   parseLocalDate,
@@ -36,6 +38,7 @@ import {
   sessionsByDay,
   setCount,
   sortSessions,
+  sportSessionsByDay,
   startOfMonth,
   startOfWeek,
   startRest,
@@ -45,7 +48,7 @@ import {
   weeklyStreak,
   weeklySummary,
 } from './derive';
-import type { Session, SessionEntry, Training } from './types';
+import type { Session, SessionEntry, SportSession, Training } from './types';
 
 /** Local-time ISO, so tests don't depend on the runner's timezone. */
 function at(y: number, m: number, d: number, h = 12, min = 0): string {
@@ -63,6 +66,23 @@ function session(startedAt: string, trainingId = 'a', entries: SessionEntry[] = 
     savedAt: startedAt,
     entries,
   };
+}
+
+let sportSeq = 0;
+function sportSession(
+  date: string,
+  trainingId = 'sport-a',
+  kind: SportSession['kind'] = 'cycling',
+): SportSession {
+  sportSeq += 1;
+  const base = { id: `ss${sportSeq}`, trainingId, trainingLabel: trainingId, date, createdAt: `${date}T00:00:00.000Z` };
+  if (kind === 'snowboard') {
+    return { ...base, kind, weather: 'sunny', snowCondition: 'powder', comments: '' };
+  }
+  if (kind === 'climbing') {
+    return { ...base, kind, climbsByGrade: { '3': 0, '4': 0, '5': 0 } };
+  }
+  return { ...base, kind, distanceKm: 10, elevationM: 100, avgBpm: null };
 }
 
 const trainings: Training[] = [
@@ -264,6 +284,17 @@ describe('nextTraining', () => {
   it('returns null when every training is archived', () => {
     const allArchived = trainings.map((t) => ({ ...t, archived: true }));
     expect(nextTraining(allArchived, [])).toBeNull();
+  });
+
+  it('skips a non-gym training in the rotation', () => {
+    const withSport = [trainings[0]!, { ...trainings[1]!, kind: 'cycling' as const }, trainings[2]!];
+    const sessions = [session(at(2026, 8, 1), 'shoulder-bicep-tricep')];
+    expect(nextTraining(withSport, sessions)?.id).toBe('pecs-back');
+  });
+
+  it('never returns a non-gym training as the fallback first', () => {
+    const withSport = [{ ...trainings[0]!, kind: 'snowboard' as const }, trainings[1]!, trainings[2]!];
+    expect(nextTraining(withSport, [])?.id).toBe('leg-abs');
   });
 });
 
@@ -824,6 +855,51 @@ describe('calendar', () => {
       const map = sessionsByDay([earlier, later]);
       expect(map.get('2026-08-01')).toBe(later);
     });
+  });
+
+  describe('sportSessionsByDay', () => {
+    it('keys sport sessions by their date field directly', () => {
+      const s = sportSession('2026-08-01');
+      const map = sportSessionsByDay([s]);
+      expect(map.get('2026-08-01')).toEqual([s]);
+    });
+
+    it('keeps every entry on a day with more than one, unlike sessionsByDay', () => {
+      const a = sportSession('2026-08-01', 'a', 'cycling');
+      const b = sportSession('2026-08-01', 'b', 'climbing');
+      const map = sportSessionsByDay([a, b]);
+      expect(map.get('2026-08-01')).toEqual([a, b]);
+    });
+  });
+});
+
+describe('lastSportSessionForTraining', () => {
+  it('returns the most recent log for that training', () => {
+    const older = sportSession('2026-07-20', 'x');
+    const newer = sportSession('2026-08-01', 'x');
+    const other = sportSession('2026-08-05', 'y');
+    expect(lastSportSessionForTraining('x', [older, newer, other])).toBe(newer);
+  });
+
+  it('returns null with no logs for that training', () => {
+    expect(lastSportSessionForTraining('x', [sportSession('2026-08-01', 'y')])).toBeNull();
+  });
+});
+
+describe('mergedHistory', () => {
+  it('interleaves gym and sport sessions, newest first', () => {
+    const gym = session(at(2026, 8, 1));
+    const sport = sportSession('2026-08-03');
+    const items = mergedHistory([gym], [sport]);
+    expect(items).toHaveLength(2);
+    expect(items[0]).toMatchObject({ kind: sport.kind, sportSession: sport });
+    expect(items[1]).toMatchObject({ kind: 'gym', session: gym });
+  });
+
+  it("reads a sport session's date as local midnight", () => {
+    const sport = sportSession('2026-08-03');
+    const [item] = mergedHistory([], [sport]);
+    expect(item?.at).toEqual(new Date(2026, 7, 3));
   });
 });
 

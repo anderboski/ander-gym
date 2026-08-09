@@ -75,9 +75,27 @@ export type Training = {
    * no migration; absent means active, same as `false`.
    */
   archived?: boolean;
+  /** Absent means `'gym'` — see `TrainingKind`. */
+  kind?: TrainingKind;
 };
 
 export const TRAINING_ID_PREFIX = 't-';
+
+/**
+ * What a training day is for. Absent means `'gym'` — the only kind that
+ * existed before sport sessions — so every training written before this
+ * field existed stays valid with no migration. A `'gym'` training is the
+ * existing shape: `exerciseIds`, rotation, live sessions with sets. A sport
+ * kind never populates `exerciseIds`, is skipped by `nextTraining()`'s
+ * rotation entirely, and logs to the separate `sportSessions` store instead
+ * of `sessions` — summary stats filled in after the activity, not sets
+ * tracked live. Fixed at creation; there is no UI to change a training's
+ * kind afterward.
+ */
+export type TrainingKind = 'gym' | 'snowboard' | 'cycling' | 'climbing';
+
+export const SPORT_KINDS = ['snowboard', 'cycling', 'climbing'] as const;
+export type SportKind = (typeof SPORT_KINDS)[number];
 
 /** Rest lengths offered inline in the session header, in seconds. */
 export const REST_PRESETS = [60, 90, 120] as const;
@@ -113,6 +131,70 @@ export type Session = ActiveSession & {
   id: string;
   savedAt: string;
 };
+
+export const SPORT_SESSION_ID_PREFIX = 'ss-';
+
+export type WeatherCondition = 'sunny' | 'cloudy' | 'snowing' | 'foggy' | 'windy';
+export const WEATHER_CONDITIONS: readonly WeatherCondition[] = [
+  'sunny',
+  'cloudy',
+  'snowing',
+  'foggy',
+  'windy',
+];
+
+export type SnowCondition = 'powder' | 'packed' | 'icy' | 'slushy' | 'spring' | 'groomed';
+export const SNOW_CONDITIONS: readonly SnowCondition[] = [
+  'powder',
+  'packed',
+  'icy',
+  'slushy',
+  'spring',
+  'groomed',
+];
+
+/** Whole grade buckets only — no French/Spanish a/b/c subgrades. */
+export type ClimbGrade = '3' | '4' | '5';
+export const CLIMB_GRADES: readonly ClimbGrade[] = ['3', '4', '5'];
+
+type SportSessionBase = {
+  id: string;
+  trainingId: string;
+  /** Snapshotted at log time, same reasoning as `Session.trainingLabel`. */
+  trainingLabel: string;
+  /** `YYYY-MM-DD`, local — logged after the fact, so a day, not a timestamp (same convention as `WeightCheckin.date`). */
+  date: string;
+  createdAt: string;
+};
+
+export type SnowboardSession = SportSessionBase & {
+  kind: 'snowboard';
+  weather: WeatherCondition;
+  snowCondition: SnowCondition;
+  comments: string;
+};
+
+export type CyclingSession = SportSessionBase & {
+  kind: 'cycling';
+  distanceKm: number;
+  /** Total elevation gain, metres ("desnivel"). */
+  elevationM: number;
+  avgBpm: number | null;
+};
+
+export type ClimbingSession = SportSessionBase & {
+  kind: 'climbing';
+  climbsByGrade: Record<ClimbGrade, number>;
+};
+
+/** A logged, immutable sport activity — the non-gym equivalent of `Session`. No editing: delete and re-log to correct. */
+export type SportSession = SnowboardSession | CyclingSession | ClimbingSession;
+
+/** What a log form collects, before the store stamps identity fields on. */
+export type NewSnowboardSession = Omit<SnowboardSession, 'id' | 'trainingId' | 'trainingLabel' | 'createdAt'>;
+export type NewCyclingSession = Omit<CyclingSession, 'id' | 'trainingId' | 'trainingLabel' | 'createdAt'>;
+export type NewClimbingSession = Omit<ClimbingSession, 'id' | 'trainingId' | 'trainingLabel' | 'createdAt'>;
+export type NewSportSession = NewSnowboardSession | NewCyclingSession | NewClimbingSession;
 
 export type Settings = {
   weeklyGoal: number;

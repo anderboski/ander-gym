@@ -20,6 +20,7 @@ anything written here.
 | D6 | Custom exercise image | Optional photo from camera/library, downscaled, stored as a blob; lettered placeholder otherwise |
 | D7 | Session history | Read-only; whole sessions may be deleted with confirmation |
 | D8 | Units | Kilograms only in v1 |
+| D9 | Sport sessions | A training's `kind` (`gym` default, or `snowboard`/`cycling`/`climbing`) fixed at creation. A non-`gym` training has no exercises, never joins Home's rotation, and logs to the separate `sportSessions` store — one-shot summary stats entered after the fact, not a live in-progress session — instead of `sessions`. Never counted toward the weekly goal or streak. Shown on Home's calendar (every activity gets a dot, not just one per day) and interleaved into History; immutable like a gym session, delete and re-log to correct |
 
 **Non-goals for v1:** cross-device sync, accounts, plate calculators,
 video/GIF playback, notifications, unit switching, editing past sets.
@@ -71,29 +72,43 @@ URLs are built as `` `${import.meta.env.BASE_URL}data/…` `` so they survive th
 
 ## 3. Persistence
 
-IndexedDB via `idb`. Database `ander-gym`, version 2.
+IndexedDB via `idb`. Database `ander-gym`, version 3.
 
 | Store | Key | Value |
 |---|---|---|
-| `trainings` | `id` (slug) | `{ id, label, order, exerciseIds: string[], restSeconds?, archived? }` |
+| `trainings` | `id` (slug) | `{ id, label, order, exerciseIds: string[], restSeconds?, archived?, kind? }` — `kind` absent means `'gym'` |
 | `sessions` | `id` (uuid) | `{ id, trainingId, trainingLabel, startedAt, savedAt, entries }` — index on `startedAt` |
 | `activeSession` | literal `'current'` | `{ trainingId, trainingLabel, startedAt, entries }` |
 | `customExercises` | `id` (`c-<uuid>`) | Exercise fields + `isCustom: true`, `imageBlob?: Blob` |
 | `settings` | key string | `weeklyGoal` (default `3`), `lastExportAt`, `favoriteExerciseIds` (default `[]`), `schemaVersion` |
 | `profile` | key string | `name` (default `''`), `birthdate` (default `null`), `heightCm` (default `null`) — see §5.7 |
 | `checkins` | `id` (`ck-<uuid>`) | `{ id, date, weightKg, photoBlobs: Blob[] }` — index on `date`, see §5.7 |
+| `sportSessions` | `id` (`ss-<uuid>`) | one of the `SportSession` shapes below — index on `date`, see §5.8 |
 
-**Migrations.** `DB_VERSION` went from `1` to `2` when `profile`/`checkins` were added — the first migration
-this app has ever needed. `upgrade()` is keyed on `oldVersion` (`if (oldVersion < 1) …`, `if (oldVersion < 2)
+**Migrations.** `DB_VERSION` went `1` → `2` for `profile`/`checkins`, then `2` → `3` for `sportSessions`.
+`upgrade()` is keyed on `oldVersion` (`if (oldVersion < 1) …`, `if (oldVersion < 2) …`, `if (oldVersion < 3)
 …`), so it only ever creates a store once; existing stores and their data are untouched by a later bump. Any
 future store addition follows the same shape: a new `if (oldVersion < N)` block, never rewriting the ones
 before it. `getDB()` also sets `blocked`/`blocking` handlers (a second open tab holding an old connection
-would otherwise stall the upgrade with no feedback) — first exercised for this bump, worth keeping for the
-next one.
+would otherwise stall the upgrade with no feedback).
 
 ```ts
 type SetEntry   = { reps: number; weight: number; at: string };      // weight in kg, 0 allowed
 type SessionEntry = { exerciseId: string; sets: SetEntry[] };
+```
+
+**`SportSession`** — a non-gym training's logged activity. No `activeSession` equivalent: every field is a
+summary stat entered after the fact, so logging is a single write, not a live session.
+
+```ts
+type SportSessionBase = { id: string; trainingId: string; trainingLabel: string; date: string /* YYYY-MM-DD, local */; createdAt: string };
+
+type SnowboardSession = SportSessionBase & { kind: 'snowboard'; weather: WeatherCondition; snowCondition: SnowCondition; comments: string };
+type CyclingSession   = SportSessionBase & { kind: 'cycling'; distanceKm: number; elevationM: number /* "desnivel" */; avgBpm: number | null };
+type ClimbingSession  = SportSessionBase & { kind: 'climbing'; climbsByGrade: Record<'3' | '4' | '5', number> };
+
+type WeatherCondition = 'sunny' | 'cloudy' | 'snowing' | 'foggy' | 'windy';
+type SnowCondition = 'powder' | 'packed' | 'icy' | 'slushy' | 'spring' | 'groomed';
 ```
 
 Rules:
@@ -106,6 +121,9 @@ Rules:
   resolve. A training with zero sessions and no active session has nothing to protect, so it's the one
   exception that can be deleted outright.
 - **One active session.** Starting a session while one exists must prompt: resume, or discard and start new.
+- **`Training.kind`** is fixed at creation, no UI to change it afterward. A non-`gym` training has no
+  exercises, is skipped entirely by `nextTraining()`'s rotation, and its "delete only if zero sessions"
+  eligibility check (§5.3) looks at `sportSessions`, not `sessions`.
 - `Training.restSeconds` is the rest-timer default for that training day (§5.4), in seconds. It is
   **optional**: absent means the app default of 90 s, so trainings written before the field existed
   stay valid and the store keeps schema version 1. Clamped to 15–600 s on every write.
@@ -124,6 +142,9 @@ Reachable from a gear icon on Home (Settings sheet).
 - `profile`/`checkins` are absent entirely from a `schemaVersion: 1` backup (written before they existed) —
   a missing `profile` defaults to `{ name: '', birthdate: null, heightCm: null }` and a missing `checkins`
   defaults to `[]`, same "default rather than reject" handling as an old backup missing `favoriteExerciseIds`.
+- `sportSessions` is likewise absent from a backup older than schema `3` and defaults to `[]`. Sport records
+  are trusted as written on import — nothing in them feeds a countdown deadline or renders as a raw UI glyph
+  the way `restSeconds`/`emoji` do, so unlike those two fields there is no validate-or-drop pass.
 - `restSeconds` travels inside the trainings array, so it needs no format change. On import a value
   that could not run a countdown (non-numeric, zero, negative, `NaN`) is dropped rather than
   corrected — the training falls back to the default, which is what an absent field already means.
@@ -141,12 +162,24 @@ All dates are handled in the device's local timezone.
 **`currentWeekCount(sessions, now)`** — number of saved sessions whose `startedAt` falls in the current
 ISO week (Monday 00:00 → Sunday 23:59:59).
 
-**`nextTraining(trainings, sessions)`** — strict rotation over `order` (the drag-reordered sequence):
-- No saved sessions → `trainings[0]`.
+**`nextTraining(trainings, sessions)`** — strict rotation over `order` (the drag-reordered sequence), among
+`'gym'`-kind (or kind-absent) trainings only — a non-`'gym'` training is skipped exactly like an archived
+one, both when picking the no-history fallback and when walking forward from the last session's slot:
+- No saved sessions → the first eligible training.
 - Otherwise take the most recent session by `startedAt`, find its `trainingId` in the ordered list, return
-  the next one, wrapping to index 0.
-- A session's `trainingId` that isn't in `trainings` (e.g. after a partial import) → fall back to
-  `trainings[0]`.
+  the next eligible one, wrapping to index 0.
+- A session's `trainingId` that isn't in `trainings` (e.g. after a partial import) → fall back to the first
+  eligible training.
+
+**`sportSessionsByDay(sportSessions)`** — every sport session on a given day, keyed by the `date` field
+directly (already local `YYYY-MM-DD`). Unlike `sessionsByDay`, keeps every entry rather than picking a
+"later wins" winner — the whole point of the calendar showing sports is seeing all of them (§5.1).
+
+**`lastSportSessionForTraining(trainingId, sportSessions)`** — the most recent log for one sport training,
+same idea as `lastSessionForTraining` but comparing `date` strings instead of `Date`s.
+
+**`mergedHistory(sessions, sportSessions)`** — gym and sport sessions interleaved into one reverse-
+chronological list for History (§5.5); a sport session's sort key is its `date` at local midnight.
 
 **`weeklyStreak(sessions, goal, now)`** — count of consecutive ISO weeks, walking backwards from last week,
 where the session count ≥ `goal`. The current week is included only if it already meets the goal (so a
@@ -238,12 +271,15 @@ the fixed bottom nav.
   least one session exists, so a fresh install keeps its empty state.
 - **Calendar** — below Today, a month grid (Monday-start, six fixed rows so paging never changes the card's
   height). Prev/next chevrons above the grid step one month at a time, unbounded in either direction. A day
-  with a saved session shows a small circular badge with that training's icon, or its initial if no icon
-  has been set; today's cell is outlined.
-  At most one training is shown per day — if two sessions were saved on the same date, the later one wins
-  (same rule as the "Completed today" badge). Tapping a trained day opens that session in History
-  (`#/history/<id>`); untrained days are inert. Hidden until at least one session exists, matching "See all
-  stats".
+  with a saved gym session or a logged sport session shows a small circular badge with that training's icon,
+  or its initial if no icon has been set; today's cell is outlined.
+  A day's badge picks one "primary" activity to show as that circle and to open on tap — the saved gym
+  session if there is one that day, otherwise the first sport session — same "later wins" rule as before
+  for two gym sessions on one day. Unlike a gym-only day, every *other* activity logged that same day still
+  gets a small dot underneath (capped at 3, then `+N`): the point of putting sports on this calendar is
+  seeing all of them, not collapsing the day to one winner. Tapping a day opens its primary entry in History
+  (`#/history/<id>`); untrained days are inert. Hidden until at least one gym or sport session exists,
+  matching "See all stats".
 - **Backup banner** — shown when `lastExportAt` is unset (and ≥1 session exists) or older than 30 days.
   Tapping it runs an export immediately.
 - **Lifetime stats footer** — below the backup banner, a single centred line: total sessions ever saved,
@@ -344,6 +380,10 @@ Vertical order, exactly as briefed:
 ### 5.3 Trainings
 Training days are fully user-managed — there is no fixed list and nothing is seeded.
 
+- **Type.** The "Add training day" sheet has a Type selector — Gym (default), Snowboard, Cycling, or
+  Climbing — fixed for that training's lifetime, no UI to change it later. A non-Gym training has no
+  exercises and lives in its own **"Other activities"** section below the rotation list, undraggable and
+  excluded from `nextTraining()` (§5.8 covers what its detail view looks like instead of an exercise list).
 - One card per training day, in rotation order: an icon, the label as typed, last session datetime +
   days-back for that training, and the exercise count.
 - **Icon.** A tappable icon button sits before each card's body, showing the training's chosen icon or its
@@ -448,11 +488,15 @@ Bottom of the page, above the nav:
 - **"Discard session"** — small, red, text-style. Confirmation dialog, then clears `activeSession`.
 
 ### 5.5 History
-- Reverse-chronological list of saved sessions: date + time, training label, and a summary line
-  (set count · total volume in kg).
-- Tapping a record opens the same detail layout as an active session, **read-only** — no "+", no editing.
-- The detail view has a destructive "Delete session" action with confirmation. Deleting recomputes
-  everything downstream (Home counter, latest-training data on cards) reactively.
+- Reverse-chronological list of **everything logged** (`mergedHistory`, §4) — saved gym sessions and logged
+  sport sessions interleaved into one list, not split by kind. A gym row shows date + time, training label,
+  and a summary line (set count · total volume in kg); a sport row shows date, training label, and a
+  kind-specific one-line summary (§5.8).
+- Tapping a gym record opens the same detail layout as an active session, **read-only** — no "+", no
+  editing. Tapping a sport record opens its own read-only detail (§5.8).
+- The detail view has a destructive "Delete session" (or, for a sport record, "Delete log") action with
+  confirmation. Deleting recomputes everything downstream (Home counter, latest-training data on cards)
+  reactively.
 - Empty state: "No sessions yet — start one from Home."
 
 ### 5.6 Stats
@@ -509,6 +553,28 @@ Reached by tapping the greeting in Home's header (see below); a back control ret
   yet → one line saying so; one check-in → a figure, not a line (one point is not a trend); two or more → an
   actual `LineChart` (`components/Chart.tsx`, reused as-is) with the latest value as the headline and
   `n check-ins · first → last · ±Δ` as the caption.
+
+### 5.8 Sport sessions (Snowboard / Cycling / Climbing)
+A non-Gym training's detail view (`#/trainings/<id>`), reached the same way as a Gym training's — reusing
+the route, branching on `Training.kind` rather than adding a new one.
+
+- No exercise list, no drag-reorder. Just a **"Log a session"** button and a reverse-chronological list of
+  past logs for that training, each a row opening its own detail in History (§5.5).
+- **Logging is one shot**, not a live in-progress session: a sheet collects a date (defaults to today,
+  native `<input type="date">`, capped at today — no logging into the future) plus fields specific to the
+  training's kind, and Save writes the record immediately. There is no `activeSession` equivalent and
+  nothing to resume.
+  - **Snowboard** — a Weather dropdown (sunny / cloudy / snowing / foggy / windy), a Snow condition dropdown
+    (powder / packed / icy / slushy / spring snow / groomed), and a free-text Comments field.
+  - **Cycling** — Distance in km (required, decimal), Elevation gain in m ("desnivel"), and an optional
+    average heart rate in bpm.
+  - **Climbing** — a count per grade, whole buckets 3 / 4 / 5 only (no French/Spanish a/b/c subgrades).
+- **Immutable**, same rule as a gym session (D7) — no editing, only delete-and-re-log to correct a mistake.
+- **Never affects Home's rotation, weekly goal, or streak** — those all read `sessions` only; sport sessions
+  live in the separate `sportSessions` store precisely so they fall out of that maths for free rather than
+  needing a filter.
+- Shown on Home's calendar (§5.1) and interleaved into History (§5.5); a training's chosen icon (§5.3) is
+  reused as the calendar/History badge — no separate icon set for sport kinds.
 
 ---
 

@@ -9,7 +9,7 @@
  */
 import { useState } from 'react';
 import { useGym } from '../data/store';
-import { formatDateTime, formatElapsed, setCount, totalVolume } from '../data/derive';
+import { formatDateTime, formatElapsed, formatShortLocalDate, setCount, totalVolume } from '../data/derive';
 import { formatWeight } from '../data/parse';
 import { navigate } from '../router';
 import { SetMatrix } from '../components/ExerciseCard';
@@ -17,7 +17,8 @@ import { ConfirmSheet } from '../components/Sheet';
 import { ChevronLeftIcon } from '../components/icons';
 import { useLanguage } from '../data/i18n';
 import { translateExerciseName } from '../data/exerciseI18n';
-import type { Exercise, Session, SessionEntry } from '../data/types';
+import { snowConditionLabel, trainingKindLabel, weatherLabel } from '../data/sportLabels';
+import { CLIMB_GRADES, type Exercise, type Session, type SessionEntry, type SportSession } from '../data/types';
 import './HistoryPage.css';
 
 function BackButton() {
@@ -175,8 +176,84 @@ function SessionDetail({ session, onDeleted }: { session: Session; onDeleted: ()
   );
 }
 
+/**
+ * A logged sport session, read-only — same "no editing, only delete" rule as
+ * a gym session (D7), plus each kind's summary stats as the tile row a gym
+ * session shows sets/volume/duration in.
+ */
+function SportSessionDetail({ session, onDeleted }: { session: SportSession; onDeleted: () => void }) {
+  const { deleteSportSession } = useGym();
+  const { t } = useLanguage();
+  const [confirming, setConfirming] = useState(false);
+
+  async function onDelete() {
+    setConfirming(false);
+    onDeleted();
+    await deleteSportSession(session.id);
+    navigate('/history');
+  }
+
+  return (
+    <div className="page">
+      <div className="page-header history-detail-header">
+        <BackButton />
+        <h1 className="page-title num">{formatShortLocalDate(session.date)}</h1>
+        <div className="page-sub">
+          {session.trainingLabel} · {trainingKindLabel(t, session.kind)}
+        </div>
+
+        <div className="history-stats">
+          {session.kind === 'snowboard' && (
+            <>
+              <Stat value={weatherLabel(t, session.weather)} label={t('sportLog.weatherLabel')} />
+              <Stat value={snowConditionLabel(t, session.snowCondition)} label={t('sportLog.snowLabel')} />
+            </>
+          )}
+          {session.kind === 'cycling' && (
+            <>
+              <Stat value={`${session.distanceKm.toFixed(1)} km`} label={t('sportLog.distanceLabel')} />
+              <Stat value={`${Math.round(session.elevationM)} m`} label={t('sportLog.elevationLabel')} />
+              {session.avgBpm !== null && (
+                <Stat value={`${Math.round(session.avgBpm)}`} label={t('sportLog.bpmLabel')} />
+              )}
+            </>
+          )}
+          {session.kind === 'climbing' &&
+            CLIMB_GRADES.map((grade) => (
+              <Stat key={grade} value={String(session.climbsByGrade[grade])} label={grade} />
+            ))}
+        </div>
+      </div>
+
+      {session.kind === 'snowboard' && session.comments && (
+        <section className="section">
+          <h2 className="section-title">{t('sportLog.commentsLabel')}</h2>
+          <p className="card card-pad">{session.comments}</p>
+        </section>
+      )}
+
+      <section className="section history-detail-danger">
+        <button className="btn btn-danger btn-block" onClick={() => setConfirming(true)}>
+          {t('sportLog.deleteLogButton')}
+        </button>
+      </section>
+
+      {confirming && (
+        <ConfirmSheet
+          title={t('sportLog.deleteLogTitle')}
+          message={t('sportLog.deleteLogMessage', { date: formatShortLocalDate(session.date) })}
+          confirmLabel={t('common.delete')}
+          danger
+          onConfirm={() => void onDelete()}
+          onCancel={() => setConfirming(false)}
+        />
+      )}
+    </div>
+  );
+}
+
 export function HistoryDetailPage({ sessionId }: { sessionId: string }) {
-  const { sessions, status } = useGym();
+  const { sessions, sportSessions, status } = useGym();
   const [deleting, setDeleting] = useState(false);
 
   // While the catalogue is still loading `sessions` is empty — that is not the
@@ -190,7 +267,10 @@ export function HistoryDetailPage({ sessionId }: { sessionId: string }) {
   }
 
   const session = sessions.find((s) => s.id === sessionId);
-  if (!session) return <NotFound />;
+  if (session) return <SessionDetail session={session} onDeleted={() => setDeleting(true)} />;
 
-  return <SessionDetail session={session} onDeleted={() => setDeleting(true)} />;
+  const sportSession = sportSessions.find((s) => s.id === sessionId);
+  if (sportSession) return <SportSessionDetail session={sportSession} onDeleted={() => setDeleting(true)} />;
+
+  return <NotFound />;
 }
