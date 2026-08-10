@@ -1,0 +1,50 @@
+/* Help push view. Screenshots are portrait (phone aspect), so the ratio here
+   is taller than ExerciseCard's 4/3 photos. */
+
+.help-back {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s1);
+  height: 44px;
+  padding: 0 var(--s3) 0 var(--s2);
+  margin-left: calc(-1 * var(--s2));
+  border-radius: var(--r-md);
+  color: var(--text-dim);
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.help-back:active {
+  background: var(--bg-raised-2);
+}
+
+.help-back svg {
+  width: 20px;
+  height: 20px;
+}
+
+.help-card {
+  display: flex;
+  flex-direction: column;
+}
+
+.help-shot {
+  display: block;
+  width: 100%;
+  aspect-ratio: 461 / 600;
+  object-fit: cover;
+  object-position: top;
+  background: var(--bg-raised-2);
+}
+
+.help-card-title {
+  font-size: 17px;
+  font-weight: 700;
+  margin-bottom: var(--s1);
+}
+
+.help-card-body {
+  font-size: 14px;
+  color: var(--text-dim);
+  line-height: 1.5;
+}

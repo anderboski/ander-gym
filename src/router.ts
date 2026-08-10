@@ -11,6 +11,7 @@ export type Route =
   | { name: 'home' }
   | { name: 'stats' }
   | { name: 'profile' }
+  | { name: 'help' }
   | { name: 'exercises' }
   | { name: 'trainings' }
   | { name: 'training'; id: string }
@@ -41,6 +42,8 @@ export function parseRoute(path: string): Route {
       return { name: 'stats' };
     case 'profile':
       return { name: 'profile' };
+    case 'help':
+      return { name: 'help' };
     case 'exercises':
       return { name: 'exercises' };
     case 'trainings':
@@ -66,6 +69,7 @@ export function tabOf(route: Route): TabName {
       return 'history';
     case 'stats':
     case 'profile':
+    case 'help':
       return 'home';
     default:
       return route.name;

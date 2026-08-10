@@ -11,8 +11,9 @@ import { formatDate } from '../data/derive';
 import { useLanguage, type Language, type TranslationKey } from '../data/i18n';
 import { ChangelogSheet } from './Changelog';
 import { ConfirmSheet, Sheet } from './Sheet';
-import { CheckIcon, DownloadIcon, GiftIcon, GitHubIcon, UploadIcon } from './icons';
+import { CheckIcon, DownloadIcon, GiftIcon, GitHubIcon, HelpIcon, UploadIcon } from './icons';
 import packageJson from '../../package.json';
+import { navigate } from '../router';
 import '../pages/HomePage.css';
 
 /** Language names are shown as endonyms — always in their own language, never translated. */
@@ -302,6 +303,17 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
           aria-label={t('changelog.viewAria')}
         >
           <GiftIcon />
+        </button>
+        <button
+          type="button"
+          className="icon-btn"
+          onClick={() => {
+            onClose();
+            navigate('/help');
+          }}
+          aria-label={t('settings.howToUse')}
+        >
+          <HelpIcon />
         </button>
         <a
           className="icon-btn"

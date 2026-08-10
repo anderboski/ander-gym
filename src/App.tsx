@@ -4,6 +4,7 @@ import { useRoute } from './router';
 import { HomePage } from './pages/HomePage';
 import { StatsPage } from './pages/StatsPage';
 import { ProfilePage } from './pages/ProfilePage';
+import { HelpPage } from './pages/HelpPage';
 import { ExercisesPage } from './pages/ExercisesPage';
 import { TrainingsPage } from './pages/TrainingsPage';
 import { TrainingDetailPage } from './pages/TrainingDetailPage';
@@ -19,6 +20,7 @@ export function App() {
       {route.name === 'home' && <HomePage />}
       {route.name === 'stats' && <StatsPage />}
       {route.name === 'profile' && <ProfilePage />}
+      {route.name === 'help' && <HelpPage />}
       {route.name === 'exercises' && <ExercisesPage />}
       {route.name === 'trainings' && <TrainingsPage />}
       {route.name === 'training' && <TrainingDetailPage trainingId={route.id} />}

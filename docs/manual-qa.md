@@ -162,6 +162,8 @@ Only a phone can tell you whether a 320-unit chart is legible in a hand.
 - [ ] Scroll to exercises you have never opened: their images are missing, but
       nothing crashes and the cards still show names and history.
 - [ ] Log a full session offline and save it. It appears in History.
+- [ ] Home → gear → **How to use**. All five screenshots render offline — they are
+      bundled build assets, precached the same way as the app icons.
 - [ ] Re-enable networking. Nothing needs to sync — the data never left the phone.
 
 ## 7. Backup
