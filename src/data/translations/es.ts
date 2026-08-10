@@ -106,6 +106,7 @@ export const es: Record<TranslationKey, string> = {
     'El almacenamiento no está persistido — el navegador podría eliminarlo. Sigue exportando.',
   'settings.storageUnavailable': 'El uso de almacenamiento no está disponible en este dispositivo.',
   'settings.version': 'ander-gym v{version}',
+  'settings.howToUse': 'Cómo usar la app',
   'settings.viewSource': 'Ver el código fuente en GitHub',
   'settings.confirmReplaceTitle': '¿Reemplazar todos los datos?',
   'settings.confirmReplaceMessage':
@@ -375,4 +376,23 @@ export const es: Record<TranslationKey, string> = {
   'checkin.photosLabel': 'Fotos (opcional)',
   'checkin.addPhotos': 'Añadir fotos',
   'checkin.saveCheckin': 'Guardar registro',
+
+  'help.backToHomeAria': 'Volver a inicio',
+  'help.title': 'Cómo usar la app',
+  'help.subtitle': 'Un recorrido rápido por las cinco pestañas, en el orden en que las usarías.',
+  'help.home.title': 'Inicio — empieza el entrenamiento de hoy',
+  'help.home.body':
+    'Inicio muestra el próximo entrenamiento en tu rotación, tu progreso semanal y un calendario de sesiones pasadas. Toca la tarjeta para empezar una sesión ese día.',
+  'help.exercises.title': 'Ejercicios — explora el catálogo',
+  'help.exercises.body':
+    'Busca o filtra por categoría, equipamiento y músculo objetivo entre más de 1300 ejercicios. Toca la imagen de una tarjeta para ver su historial completo y el gráfico de progreso.',
+  'help.trainings.title': 'Entrenamientos — arma tu rutina',
+  'help.trainings.body':
+    'Crea tantos días de entrenamiento como quieras, añade ejercicios a cada uno, y arrastra para reordenar tanto los días como los ejercicios dentro de ellos.',
+  'help.session.title': 'Sesión — registra tus series',
+  'help.session.body':
+    'Toca + en un ejercicio para registrar repeticiones y peso. Un temporizador de descanso arranca automáticamente después de cada serie guardada.',
+  'help.history.title': 'Historial — revisa lo que has hecho',
+  'help.history.body':
+    'Cada sesión guardada, de más reciente a más antigua. Toca una para ver el desglose completo serie a serie — es de solo lectura, así que tu registro sigue siendo fiable.',
 };

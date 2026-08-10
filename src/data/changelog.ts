@@ -154,6 +154,12 @@ export const CHANGELOG: ChangelogEntry[] = [
     en: ['Fixed the "Other activities" description text sitting flush against the training cards below it.'],
     es: ['Se corrigió el texto de "Otras actividades", que quedaba pegado a las tarjetas de entrenamiento de abajo.'],
   },
+  {
+    version: '1.12.0',
+    date: '2026-08-10',
+    en: ['Added a "How to use" page, reachable from Settings, with a screenshot-illustrated tour of the five tabs.'],
+    es: ['Se añadió una página "Cómo usar la app", accesible desde Ajustes, con un recorrido ilustrado con capturas de las cinco pestañas.'],
+  },
 ];
 
 /** Keep in sync with the bootstrap-independent nature of theme/language: this

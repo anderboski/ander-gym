@@ -286,7 +286,8 @@ the fixed bottom nav.
   total kg lifted (`formatCompact`, matching Stats' chart figures), and "since `<date of the first saved
   session>`". Hidden until at least one session exists, matching "See all stats" and the calendar.
 - **Gear icon** (top right) — Settings sheet: weekly goal, language, export, import, storage usage
-  (`navigator.storage.estimate()`), app version, a changelog link, and a link to the GitHub repo.
+  (`navigator.storage.estimate()`), app version, a changelog link, a "How to use" link (§5.9), and a
+  link to the GitHub repo.
 - **Theme toggle** (top right, beside the gear icon) — sun/moon icon button that flips between light
   and dark, overriding the OS `prefers-color-scheme`. Persisted in `localStorage` (not the `settings`
   IndexedDB store, so it can be read and applied synchronously before first paint — see the inline
@@ -575,6 +576,22 @@ the route, branching on `Training.kind` rather than adding a new one.
   needing a filter.
 - Shown on Home's calendar (§5.1) and interleaved into History (§5.5); a training's chosen icon (§5.3) is
   reused as the calendar/History badge — no separate icon set for sport kinds.
+
+### 5.9 Help
+A push view off Home (`#/help`), same arrangement as Stats and Profile — not a sixth tab: D1 locks the
+navigation at five, so `tabOf()` maps this route to `home` and the tab bar stays lit on Home while it is
+open. Reached from a "How to use" row in the Settings sheet (§5.1), between the changelog link and the
+GitHub link; a back control returns to Home.
+
+A static, scrollable walkthrough — nothing here reads from `useGym()` beyond `t()`/language, and nothing
+is stored. One section per core flow, each pairing a real screenshot of the app (taken on-device-sized
+viewport, bundled as a build asset under `src/assets/help/`, not fetched at runtime) with a short caption
+explaining what it shows and how to do it: starting a training day from Home, browsing and filtering the
+Exercises catalogue, building a training's exercise list, logging sets during an active Session, and
+reading past sessions in History. Sections run in that order — the order someone would actually hit them
+tapping through the tab bar left to right. Screenshots are plain build assets like any other imported
+image (not under `data/`, which is reserved for the read-only exercise catalogue), so they ride the normal
+precache the same way app-shell icons do.
 
 ---
 

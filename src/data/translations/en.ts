@@ -111,6 +111,7 @@ export const en = {
   'settings.notPersisted': 'Storage is not persisted — the browser may evict it. Keep exporting.',
   'settings.storageUnavailable': 'Storage usage is not available on this device.',
   'settings.version': 'ander-gym v{version}',
+  'settings.howToUse': 'How to use',
   'settings.viewSource': 'View source on GitHub',
   'settings.confirmReplaceTitle': 'Replace all data?',
   'settings.confirmReplaceMessage':
@@ -374,6 +375,25 @@ export const en = {
   'checkin.photosLabel': 'Photos (optional)',
   'checkin.addPhotos': 'Add photos',
   'checkin.saveCheckin': 'Save check-in',
+
+  'help.backToHomeAria': 'Back to home',
+  'help.title': 'How to use',
+  'help.subtitle': 'A quick tour of the five tabs, in the order you’d naturally hit them.',
+  'help.home.title': 'Home — start today’s training',
+  'help.home.body':
+    'Home shows the training day next up in your rotation, your weekly progress, and a calendar of past sessions. Tap the card to start a session for that day.',
+  'help.exercises.title': 'Exercises — browse the catalogue',
+  'help.exercises.body':
+    'Search or filter by category, equipment and target muscle across more than 1,300 exercises. Tap a card’s image to see its full history and progress chart.',
+  'help.trainings.title': 'Trainings — build your routine',
+  'help.trainings.body':
+    'Create as many training days as you like, add exercises to each one, and drag to reorder both the days and the exercises inside them.',
+  'help.session.title': 'Session — log your sets',
+  'help.session.body':
+    'Tap + on an exercise to log reps and weight. A rest timer starts automatically after every set you save.',
+  'help.history.title': 'History — review what you’ve done',
+  'help.history.body':
+    'Every saved session, newest first. Tap one to see the full set-by-set breakdown — it’s read-only, so your record stays trustworthy.',
 };
 
 export type TranslationKey = keyof typeof en;
