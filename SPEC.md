@@ -498,7 +498,9 @@ Bottom of the page, above the nav:
 - Reverse-chronological list of **everything logged** (`mergedHistory`, §4) — saved gym sessions and logged
   sport sessions interleaved into one list, not split by kind. A gym row shows date + time, training label,
   and a summary line (set count · total volume in kg); a sport row shows date, training label, and a
-  kind-specific one-line summary (§5.8).
+  kind-specific one-line summary (§5.8). Every row is prefixed on the left with the training's chosen icon
+  (§5.3) — same fallback as the Home calendar dot and the Trainings row: the label's first letter if no
+  icon was ever set — so long lists stay scannable at a glance.
 - Tapping a gym record opens the same detail layout as an active session, **read-only** — no "+", no
   editing. Tapping a sport record opens its own read-only detail (§5.8).
 - The detail view has a destructive "Delete session" (or, for a sport record, "Delete log") action with
