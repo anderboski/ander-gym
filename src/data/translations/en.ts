@@ -251,6 +251,7 @@ export const en = {
   'session.newSession': 'New Session',
   'session.pickTrainingDay': 'Pick a training day to start.',
   'session.noTrainingDaysFound': 'No training days found.',
+  'session.gymOnlyHint': 'Snowboard, cycling and climbing are logged from the Trainings tab instead.',
   'session.restDone': 'Rest done',
   'session.restMinus30Aria': 'Take 30 seconds off this rest',
   'session.restPlus30Aria': 'Add 30 seconds to this rest',

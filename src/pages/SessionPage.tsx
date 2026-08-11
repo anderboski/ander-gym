@@ -134,6 +134,13 @@ function NewSessionView({ trainings }: { trainings: Training[] }) {
   const { t } = useLanguage();
   const [starting, setStarting] = useState(false);
 
+  // A session here is the live, set-by-set gym flow — it has no shape for a
+  // sport day's after-the-fact summary (weather/snow, distance, climbs per
+  // grade). Those are logged from the training's own detail page instead
+  // (TrainingDetailPage's sportLog form), never started from here.
+  const gymTrainings = trainings.filter((tr) => (tr.kind ?? 'gym') === 'gym');
+  const sportOnly = gymTrainings.length === 0 && trainings.length > 0;
+
   const start = (id: string) => {
     if (starting) return;
     setStarting(true);
@@ -155,10 +162,12 @@ function NewSessionView({ trainings }: { trainings: Training[] }) {
             <div className="sess-new-sub">{t('session.pickTrainingDay')}</div>
           </div>
 
-          {trainings.length === 0 ? (
-            <div className="empty">{t('session.noTrainingDaysFound')}</div>
+          {gymTrainings.length === 0 ? (
+            <div className="empty">
+              {sportOnly ? t('session.gymOnlyHint') : t('session.noTrainingDaysFound')}
+            </div>
           ) : (
-            trainings.map((tr) => (
+            gymTrainings.map((tr) => (
               <button
                 key={tr.id}
                 className="sess-new-row card-tappable"
