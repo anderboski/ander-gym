@@ -12,6 +12,7 @@ import {
   currentWeekCount,
   dayKey,
   daysBetween,
+  defaultStatsView,
   epley1RM,
   exerciseProgress,
   formatCountdown,
@@ -35,20 +36,24 @@ import {
   REST_DONE_MS,
   restPhase,
   restProgress,
+  seasonOf,
   sessionsByDay,
   setCount,
+  snowboardSeasons,
   sortSessions,
   sportSessionsByDay,
   startOfMonth,
   startOfWeek,
   startRest,
+  statsBuckets,
+  topExercises,
   totalVolume,
   UNKNOWN_TARGET,
   volumeByTarget,
   weeklyStreak,
   weeklySummary,
 } from './derive';
-import type { Session, SessionEntry, SportSession, Training } from './types';
+import type { Session, SessionEntry, SnowCondition, SportSession, Training, WeatherCondition } from './types';
 
 /** Local-time ISO, so tests don't depend on the runner's timezone. */
 function at(y: number, m: number, d: number, h = 12, min = 0): string {
@@ -723,6 +728,203 @@ describe('volumeByTarget', () => {
   it('ignores exercises that were listed but never logged', () => {
     const sessions = [session(at(2026, 7, 30), 'a', [{ exerciseId: '0001', sets: [] }])];
     expect(volumeByTarget(sessions, catalogue, 30, now)).toEqual([]);
+  });
+});
+
+describe('defaultStatsView', () => {
+  it('picks daily for a week, weekly for a month and for three months', () => {
+    expect(defaultStatsView('week')).toBe('daily');
+    expect(defaultStatsView('month')).toBe('weekly');
+    expect(defaultStatsView('threeMonths')).toBe('weekly');
+  });
+});
+
+describe('statsBuckets', () => {
+  const now = new Date(2026, 7, 2, 10); // Sunday of the week starting Mon 2026-07-27
+
+  /** One session with a single 10 x `weight` kg set, saved `minutesLater` after it started. */
+  function lifted(startedAt: string, weight: number, minutesLater = 0): Session {
+    const started = new Date(startedAt);
+    const saved = new Date(started.getTime() + minutesLater * 60_000);
+    seq += 1;
+    return {
+      id: `s${seq}`,
+      trainingId: 'a',
+      trainingLabel: 'a',
+      startedAt,
+      savedAt: saved.toISOString(),
+      entries: [{ exerciseId: '0001', sets: [{ reps: 10, weight, at: startedAt }] }],
+    };
+  }
+
+  it('returns 7 daily buckets ending today for week/daily', () => {
+    const buckets = statsBuckets([], 'week', 'daily', now);
+    expect(buckets).toHaveLength(7);
+    expect(buckets[0]?.start).toBe(new Date(2026, 6, 27).toISOString());
+    expect(buckets[6]?.start).toBe(new Date(2026, 7, 2).toISOString());
+    expect(buckets.every((b) => b.sessions === 0 && b.volume === 0 && b.avgMinutes === null)).toBe(true);
+  });
+
+  it('buckets sessions into the matching day', () => {
+    const buckets = statsBuckets([lifted(at(2026, 8, 1, 9), 25)], 'week', 'daily', now);
+    expect(buckets.map((b) => b.sessions)).toEqual([0, 0, 0, 0, 0, 1, 0]);
+    expect(buckets[5]?.volume).toBe(250);
+  });
+
+  it('returns 5 weekly buckets for month/weekly, matching weeklySummary boundaries', () => {
+    const buckets = statsBuckets([lifted(at(2026, 7, 28), 10)], 'month', 'weekly', now);
+    expect(buckets).toHaveLength(5);
+    expect(buckets[4]?.sessions).toBe(1);
+  });
+
+  it('returns 3 monthly buckets for threeMonths/monthly', () => {
+    const buckets = statsBuckets(
+      [lifted(at(2026, 6, 15), 10), lifted(at(2026, 8, 1), 20)],
+      'threeMonths',
+      'monthly',
+      now,
+    );
+    expect(buckets).toHaveLength(3);
+    expect(buckets.map((b) => b.start)).toEqual([
+      new Date(2026, 5, 1).toISOString(),
+      new Date(2026, 6, 1).toISOString(),
+      new Date(2026, 7, 1).toISOString(),
+    ]);
+    expect(buckets[0]?.sessions).toBe(1);
+    expect(buckets[2]?.sessions).toBe(1);
+  });
+
+  it('averages minutes among sessions with a positive duration, null with none', () => {
+    const buckets = statsBuckets(
+      [lifted(at(2026, 8, 1, 8), 10, 30), lifted(at(2026, 8, 1, 18), 10, 60)],
+      'week',
+      'daily',
+      now,
+    );
+    expect(buckets[5]?.avgMinutes).toBe(45);
+  });
+
+  it('ignores a non-positive savedAt - startedAt when averaging duration', () => {
+    const buckets = statsBuckets([lifted(at(2026, 8, 1, 8), 10, 0)], 'week', 'daily', now);
+    expect(buckets[5]?.avgMinutes).toBeNull();
+  });
+});
+
+describe('topExercises', () => {
+  const now = new Date(2026, 7, 1, 12);
+
+  /** One session covering the given exercise ids, each with one set. */
+  function withExercises(date: string, exerciseIds: string[]): Session {
+    seq += 1;
+    return {
+      id: `s${seq}`,
+      trainingId: 'a',
+      trainingLabel: 'a',
+      startedAt: date,
+      savedAt: date,
+      entries: exerciseIds.map((exerciseId) => ({ exerciseId, sets: [{ reps: 10, weight: 20, at: date }] })),
+    };
+  }
+
+  it('counts sessions per exercise, most first', () => {
+    const sessions = [
+      withExercises(at(2026, 7, 30), ['0001', '0002']),
+      withExercises(at(2026, 7, 28), ['0001']),
+    ];
+    expect(topExercises(sessions, 30, now, 10)).toEqual([
+      { exerciseId: '0001', count: 2 },
+      { exerciseId: '0002', count: 1 },
+    ]);
+  });
+
+  it('excludes sessions outside the window', () => {
+    const sessions = [withExercises(at(2026, 6, 1), ['0001'])];
+    expect(topExercises(sessions, 30, now, 10)).toEqual([]);
+  });
+
+  it('ignores an entry with no sets', () => {
+    const sessions = [session(at(2026, 7, 30), 'a', [{ exerciseId: '0001', sets: [] }])];
+    expect(topExercises(sessions, 30, now, 10)).toEqual([]);
+  });
+
+  it('respects the limit', () => {
+    const sessions = [withExercises(at(2026, 7, 30), ['0001', '0002', '0003'])];
+    expect(topExercises(sessions, 30, now, 2)).toHaveLength(2);
+  });
+
+  it('breaks ties by exercise id', () => {
+    const sessions = [withExercises(at(2026, 7, 30), ['0002', '0001'])];
+    expect(topExercises(sessions, 30, now, 10).map((r) => r.exerciseId)).toEqual(['0001', '0002']);
+  });
+});
+
+describe('seasonOf', () => {
+  it('a July date starts the season named after it', () => {
+    expect(seasonOf(new Date(2024, 6, 1))).toBe('24/25');
+  });
+
+  it('a June date belongs to the season that started the previous July', () => {
+    expect(seasonOf(new Date(2025, 5, 30))).toBe('24/25');
+  });
+
+  it('a December date belongs to the season that started that July', () => {
+    expect(seasonOf(new Date(2025, 11, 20))).toBe('25/26');
+  });
+});
+
+describe('snowboardSeasons', () => {
+  let snowSeq = 0;
+  function snowboardLog(
+    date: string,
+    weather: WeatherCondition = 'sunny',
+    snowCondition: SnowCondition = 'powder',
+  ): SportSession {
+    snowSeq += 1;
+    return {
+      id: `sb${snowSeq}`,
+      trainingId: 'sb',
+      trainingLabel: 'Snowboard',
+      date,
+      createdAt: `${date}T00:00:00.000Z`,
+      kind: 'snowboard',
+      weather,
+      snowCondition,
+      comments: '',
+    };
+  }
+
+  it('is empty with no snowboard logs', () => {
+    expect(snowboardSeasons([], 'snow')).toEqual([]);
+  });
+
+  it('groups by season, oldest first', () => {
+    const logs = [snowboardLog('2025-01-10'), snowboardLog('2024-08-01'), snowboardLog('2025-08-01')];
+    expect(snowboardSeasons(logs, 'snow').map((b) => b.season)).toEqual(['24/25', '25/26']);
+  });
+
+  it('stacks by snow condition with zero-count keys kept for a stable segment order', () => {
+    const logs = [snowboardLog('2024-12-01', 'sunny', 'powder'), snowboardLog('2024-12-05', 'cloudy', 'icy')];
+    const bar = snowboardSeasons(logs, 'snow')[0];
+    expect(bar?.total).toBe(2);
+    expect(bar?.segments).toEqual([
+      { key: 'powder', count: 1 },
+      { key: 'packed', count: 0 },
+      { key: 'icy', count: 1 },
+      { key: 'slushy', count: 0 },
+      { key: 'spring', count: 0 },
+      { key: 'groomed', count: 0 },
+    ]);
+  });
+
+  it('stacks by weather instead when asked', () => {
+    const logs = [snowboardLog('2024-12-01', 'sunny'), snowboardLog('2024-12-05', 'sunny')];
+    const bar = snowboardSeasons(logs, 'weather')[0];
+    expect(bar?.segments.find((s) => s.key === 'sunny')).toEqual({ key: 'sunny', count: 2 });
+  });
+
+  it('ignores non-snowboard sport sessions', () => {
+    const logs = [sportSession('2024-12-01', 'x', 'cycling'), snowboardLog('2024-12-05')];
+    expect(snowboardSeasons(logs, 'snow')).toHaveLength(1);
   });
 });
 

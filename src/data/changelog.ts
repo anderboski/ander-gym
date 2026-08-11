@@ -176,6 +176,22 @@ export const CHANGELOG: ChangelogEntry[] = [
       'Se corrigió un error por el que tocar un campo justo al abrir un formulario (como el registro de Snowboard o Escalada) podía abrir el selector de otro campo.',
     ],
   },
+  {
+    version: '1.14.0',
+    date: '2026-08-11',
+    en: [
+      'Stats got a rework: switch between Gym, Cycling, Snowboard and Climbing with the emoji tabs at the top.',
+      'Gym stats now let you pick a time range (last week/month/3 months) and a daily/weekly/monthly view, and add a session-duration chart and a top-10 exercises list alongside sessions-per-period and muscle balance.',
+      'Snowboard stats show a season-by-season comparison, split by snow type or weather.',
+      'Cycling and Climbing stats are coming soon.',
+    ],
+    es: [
+      'Se rediseñaron las Estadísticas: cambia entre Gimnasio, Ciclismo, Snowboard y Escalada con las pestañas de emojis de arriba.',
+      'Las estadísticas de Gimnasio ahora permiten elegir un intervalo de tiempo (última semana/mes/3 meses) y una vista diaria/semanal/mensual, y añaden un gráfico de duración de la sesión y un top 10 de ejercicios junto a las sesiones por periodo y el equilibrio muscular.',
+      'Las estadísticas de Snowboard muestran una comparación temporada a temporada, dividida por tipo de nieve o por tiempo.',
+      'Las estadísticas de Ciclismo y Escalada llegarán pronto.',
+    ],
+  },
 ];
 
 /** Keep in sync with the bootstrap-independent nature of theme/language: this

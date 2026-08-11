@@ -27,6 +27,20 @@
   --warn: #f59e0b;
   --warn-soft: rgba(245, 158, 11, 0.13);
 
+  /* Categorical chart palette — the one exception to "every chart is a single
+     --accent series" (SPEC §5.6): the ski season-comparison chart stacks by
+     snow condition or weather, which is inherently multi-series. Six
+     colourblind-safe hues, validated with the dataviz skill's
+     validate_palette.js against this app's actual card surfaces
+     (--bg-raised, light #ffffff / dark #171b21), adjacent-pair mode (stacked
+     segments only ever neighbour each other). Never used for anything else. */
+  --chart-cat-1: #3987e5;
+  --chart-cat-2: #d95926;
+  --chart-cat-3: #199e70;
+  --chart-cat-4: #c98500;
+  --chart-cat-5: #d55181;
+  --chart-cat-6: #008300;
+
   /* Inline tappable text (e.g. the Home greeting) — distinct from --accent,
      which marks state (selected/primary), not "this text is a link". iOS
      system blue, so it reads as a native affordance. */
@@ -95,6 +109,14 @@
 
     --link: #007aff;
 
+    /* Same six hues, light-surface steps (validated against #ffffff). */
+    --chart-cat-1: #2a78d6;
+    --chart-cat-2: #eb6834;
+    --chart-cat-3: #1baf7a;
+    --chart-cat-4: #eda100;
+    --chart-cat-5: #e87ba4;
+    --chart-cat-6: #008300;
+
     --shadow: 0 6px 24px rgba(16, 24, 40, 0.12);
     --shadow-sheet: 0 -10px 40px rgba(16, 24, 40, 0.18);
   }
@@ -121,6 +143,13 @@
   --danger-soft: rgba(217, 45, 32, 0.1);
   --warn: #b45309;
   --warn-soft: rgba(180, 83, 9, 0.12);
+
+  --chart-cat-1: #2a78d6;
+  --chart-cat-2: #eb6834;
+  --chart-cat-3: #1baf7a;
+  --chart-cat-4: #eda100;
+  --chart-cat-5: #e87ba4;
+  --chart-cat-6: #008300;
 
   --shadow: 0 6px 24px rgba(16, 24, 40, 0.12);
   --shadow-sheet: 0 -10px 40px rgba(16, 24, 40, 0.18);

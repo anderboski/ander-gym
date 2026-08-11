@@ -505,26 +505,62 @@ A push view off Home (`#/stats`), **not** a sixth tab: D1 locks the navigation a
 this route to `home` and the tab bar stays lit on Home while it is open — the same arrangement as a training
 or a session detail. Reached from the "See all stats" row in §5.1; a back control returns to Home.
 
-Three views, all derived from `sessions`, nothing stored:
-- **Weekly volume** — a line over the last 12 weeks (`weeklySummary`), headlined with this week's kg and
-  captioned with the 12-week average and the best week.
-- **Sessions per week** — a bar strip over the same 12 weeks, with the weekly goal as a reference line.
-  Weeks that met the goal wear the accent; the rest go recessive, so "did I hit it?" is answered by the
-  picture. A week with nothing logged is drawn as a flat stub, not a gap.
-- **Muscle balance** — `volumeByTarget` over the last 30 days as a ranked bar list, labels and values as
-  real text. A muscle never trained in the window is absent from the list rather than shown at zero; the
-  caption says so, since "what is missing" is the question this view exists to answer.
+**Training-kind switcher.** Top right of the header, four emoji tabs — gym 🏋️, cycling 🚴, snowboard 🏂,
+climbing 🧗 — picking which stats show below. Local component state only (no route change); gym is the
+default. Everything is derived from `sessions`/`sportSessions`, nothing new is stored.
 
-Both aggregates walk every session, so both are memoised on the `sessions` identity and on a `now` captured
-once per mount.
+**Gym.** Two controls above the charts, both segmented groups (same visual language as the exercise-card
+metric toggle): a **period** (last week / last month / last 3 months) and a **view** — the bucket size the
+two time-series charts use. Only the views that make sense for a period are offered, from
+`STATS_VIEWS_FOR_PERIOD` in `derive.ts`:
+
+| Period | Offered views | Default |
+|---|---|---|
+| Last week (7 days) | Daily | Daily |
+| Last month (30 days) | Daily, Weekly | Weekly |
+| Last 3 months (90 days) | Weekly, Monthly | Weekly |
+
+Switching period resets the view only when the current one is no longer offered. Four visuals:
+- **Sessions per bucket** (`statsBuckets`) — a bar strip. On the weekly view only, the weekly goal is drawn
+  as a reference line and bars that met it wear the accent, the rest go recessive — the daily and monthly
+  views aren't the unit the goal is set in, so they get a plain count instead. A bucket with nothing logged
+  is a flat stub, not a gap.
+- **Session duration** (`statsBuckets`) — average minutes per bucket, also a bar strip (not a line: a bucket
+  with no saved session has no duration to plot, and the bar strip's empty-stub treatment already says "no
+  data" without a misleading zero-minute point).
+- **Muscle balance** (`volumeByTarget`) — ranked bar list over the selected period's day count (7/30/90), not
+  the view. A muscle never trained in the window is absent from the list rather than shown at zero.
+- **Top exercises** (`topExercises`) — the 10 exercises done most often over the period, ranked by how many
+  separate sessions included at least one set, not by set count.
+
+Every gym aggregate walks the session list once and is memoised on its inputs and on a `now` captured once
+per mount.
+
+**Snowboard.** A season-comparison chart: snowboard days per season (`snowboardSeasons`), stacked by snow
+condition or weather — a segmented toggle switches the split. A season runs **July → June** (season "24/25"
+is 1 Jul 2024 – 30 Jun 2025, `seasonOf` in `derive.ts`); seasons with no logs don't appear. This is the one
+chart in the app that is not a single `--accent` series — see the categorical-palette exception below.
+
+**Cycling and climbing.** Placeholders — a short "stats coming soon" empty state. No charts yet.
 
 **Charts** are hand-rolled inline SVG in `components/Chart.tsx` — `Plot` owns the box, the scales, the
-gridlines and the axis labels; `LineChart` and `BarStrip` are marks-only layers on top of it; `BarList` is
-the HTML ranked list, where the category labels must wrap and stay selectable. No charting dependency: one
-would cost more bundle than the three charts are worth against the Lighthouse target in §8. Every chart is
-a single series in `--accent` — no categorical palette to keep colourblind-safe — carries `role="img"` with
-an `aria-label` stating the trend in words, and scrolls inside its own container rather than widening the
-page. Colours and spacing come only from the tokens in `styles.css`, so both themes follow automatically.
+gridlines and the axis labels (per-band labels for a handful of discrete categories like seasons, edge
+labels for a continuous timeline); `LineChart`, `BarStrip` and `StackedBarStrip` are marks-only layers on
+top of it; `BarList` is the HTML ranked list, where the category labels must wrap and stay selectable. No
+charting dependency: one would cost more bundle than the four chart types are worth against the Lighthouse
+target in §8. Every chart carries `role="img"` with an `aria-label` stating the trend in words, and scrolls
+inside its own container rather than widening the page. Colours and spacing come only from the tokens in
+`styles.css`, so both themes follow automatically.
+
+**Categorical palette (exception).** Every chart except the ski season-comparison chart is a single series in
+`--accent` — no categorical palette needed, and none to keep colourblind-safe. The season chart is inherently
+multi-series (snow condition or weather), so it draws from six `--chart-cat-*` tokens in `styles.css` instead,
+validated with the dataviz skill's `validate_palette.js` against this app's actual card surfaces
+(adjacent-pair mode, since stacked segments only ever neighbour each other). A `ChartLegend` beneath the
+chart pairs every swatch with its label and count as real text — required both because a ≥2-series chart
+needs a legend and because three of the six hues sit under 3:1 contrast on the light surface (the validator's
+documented relief rule: visible labels satisfy it, so the sub-contrast hues stay legal). These tokens are not
+used anywhere else in the app.
 
 ### 5.7 Profile
 A push view off Home (`#/profile`), same arrangement as Stats — not a sixth tab, `tabOf()` maps it to `home`.

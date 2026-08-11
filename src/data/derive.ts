@@ -4,7 +4,15 @@
  *
  * All date maths is local-timezone. Weeks are ISO weeks (Monday 00:00 start).
  */
-import type { Exercise, Session, SetEntry, SportSession, Training } from './types';
+import {
+  SNOW_CONDITIONS,
+  WEATHER_CONDITIONS,
+  type Exercise,
+  type Session,
+  type SetEntry,
+  type SportSession,
+  type Training,
+} from './types';
 
 /* -------------------------------------------------------------------------- */
 /* Dates                                                                       */
@@ -779,4 +787,186 @@ export function volumeByTarget(
   return [...totals]
     .map(([target, total]) => ({ target, ...total }))
     .sort((a, b) => b.volume - a.volume || b.sets - a.sets || a.target.localeCompare(b.target));
+}
+
+/* -------------------------------------------------------------------------- */
+/* Stats page timeline (gym)                                                   */
+/* -------------------------------------------------------------------------- */
+
+export const STATS_PERIODS = ['week', 'month', 'threeMonths'] as const;
+export type StatsPeriod = (typeof STATS_PERIODS)[number];
+
+export const STATS_VIEWS = ['daily', 'weekly', 'monthly'] as const;
+export type StatsView = (typeof STATS_VIEWS)[number];
+
+/** Trailing calendar days each period covers — what `topExercises` and the muscle-balance breakdown scope to. */
+export const STATS_PERIOD_DAYS: Record<StatsPeriod, number> = {
+  week: 7,
+  month: 30,
+  threeMonths: 90,
+};
+
+/**
+ * Which bucket sizes make sense for each period, offered in this order. A
+ * week is 7 days, so only a daily bucket says anything; three months of
+ * daily bars would be 90 slivers on a phone width, so that period only
+ * offers weekly/monthly. The Stats page reads this to build its view chip
+ * row and to fall back to a sane view when the period changes underneath it.
+ */
+export const STATS_VIEWS_FOR_PERIOD: Record<StatsPeriod, readonly StatsView[]> = {
+  week: ['daily'],
+  month: ['daily', 'weekly'],
+  threeMonths: ['weekly', 'monthly'],
+};
+
+const STATS_DEFAULT_VIEW: Record<StatsPeriod, StatsView> = {
+  week: 'daily',
+  month: 'weekly',
+  threeMonths: 'weekly',
+};
+
+/** The view to fall back to when switching period leaves the current one unavailable. */
+export function defaultStatsView(period: StatsPeriod): StatsView {
+  return STATS_DEFAULT_VIEW[period];
+}
+
+const STATS_BUCKET_COUNT: Record<StatsPeriod, Partial<Record<StatsView, number>>> = {
+  week: { daily: 7 },
+  month: { daily: 30, weekly: 5 },
+  threeMonths: { weekly: 13, monthly: 3 },
+};
+
+/** One time-series bucket for the sessions-count and duration charts. */
+export type PeriodStat = {
+  start: string;
+  sessions: number;
+  volume: number;
+  /** Average minutes across sessions in the bucket with a positive `savedAt - startedAt`, or null with none to average — same "positive only" rule as `averageSessionMinutes`. */
+  avgMinutes: number | null;
+};
+
+function bucketStartOf(view: StatsView, d: Date): Date {
+  return view === 'daily' ? startOfDay(d) : view === 'weekly' ? startOfWeek(d) : startOfMonth(d);
+}
+
+function stepBucket(view: StatsView, d: Date, n: number): Date {
+  if (view === 'daily') {
+    const x = new Date(d);
+    x.setDate(x.getDate() + n);
+    return x;
+  }
+  return view === 'weekly' ? addWeeks(d, n) : addMonths(d, n);
+}
+
+/**
+ * Sessions bucketed by day/week/month, oldest first, trailing back from
+ * `now`. Bucket count comes from `STATS_BUCKET_COUNT`, always exactly what
+ * `STATS_VIEWS_FOR_PERIOD` offers for `period` — callers pass a period/view
+ * pair straight from the Stats page controls. Empty buckets are present with
+ * zeros, same reasoning as `weeklySummary`: a gap in training is the point.
+ */
+export function statsBuckets(sessions: Session[], period: StatsPeriod, view: StatsView, now: Date): PeriodStat[] {
+  const count = STATS_BUCKET_COUNT[period][view] ?? 1;
+
+  const buckets = new Map<number, { sessions: number; volume: number; minutes: number[] }>();
+  for (const s of sessions) {
+    const key = bucketStartOf(view, new Date(s.startedAt)).getTime();
+    const bucket = buckets.get(key) ?? { sessions: 0, volume: 0, minutes: [] };
+    bucket.sessions += 1;
+    bucket.volume += totalVolume(s);
+    const minutes = (new Date(s.savedAt).getTime() - new Date(s.startedAt).getTime()) / 60_000;
+    if (minutes > 0) bucket.minutes.push(minutes);
+    buckets.set(key, bucket);
+  }
+
+  const anchor = bucketStartOf(view, now);
+  const out: PeriodStat[] = [];
+  for (let i = count - 1; i >= 0; i -= 1) {
+    const start = stepBucket(view, anchor, -i);
+    const bucket = buckets.get(start.getTime());
+    out.push({
+      start: start.toISOString(),
+      sessions: bucket?.sessions ?? 0,
+      volume: bucket?.volume ?? 0,
+      avgMinutes:
+        bucket && bucket.minutes.length > 0
+          ? bucket.minutes.reduce((a, b) => a + b, 0) / bucket.minutes.length
+          : null,
+    });
+  }
+  return out;
+}
+
+export type ExerciseCount = { exerciseId: string; count: number };
+
+/**
+ * The exercises done most often in the last `days` days, ranked by how many
+ * separate sessions included at least one set for it — "how many times
+ * you've done it", not how many individual sets. Ties break by id for a
+ * stable order.
+ */
+export function topExercises(sessions: Session[], days: number, now: Date, limit: number): ExerciseCount[] {
+  const counts = new Map<string, number>();
+  for (const s of sessions) {
+    const age = daysBetween(new Date(s.startedAt), now);
+    if (age < 0 || age >= days) continue;
+    for (const entry of s.entries) {
+      if (entry.sets.length === 0) continue;
+      counts.set(entry.exerciseId, (counts.get(entry.exerciseId) ?? 0) + 1);
+    }
+  }
+  return [...counts]
+    .map(([exerciseId, count]) => ({ exerciseId, count }))
+    .sort((a, b) => b.count - a.count || a.exerciseId.localeCompare(b.exerciseId))
+    .slice(0, limit);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Ski seasons                                                                 */
+/* -------------------------------------------------------------------------- */
+
+/**
+ * A ski season runs July → June, so "24/25" covers 1 Jul 2024 – 30 Jun 2025.
+ * A date before July counts toward the season that started the previous July.
+ */
+export function seasonOf(date: Date): string {
+  const startYear = date.getMonth() >= 6 ? date.getFullYear() : date.getFullYear() - 1;
+  const two = (y: number) => String(((y % 100) + 100) % 100).padStart(2, '0');
+  return `${two(startYear)}/${two(startYear + 1)}`;
+}
+
+export type SeasonSplit = 'snow' | 'weather';
+
+export type SeasonBar = {
+  season: string;
+  total: number;
+  /** One entry per possible key, in `SNOW_CONDITIONS`/`WEATHER_CONDITIONS` order, zero-count keys included — every bar shares the same segment order so the legend lines up across seasons. */
+  segments: { key: string; count: number }[];
+};
+
+/**
+ * Snowboard days per season, stacked by snow condition or weather. Seasons
+ * oldest first, so the chart reads left-to-right by time. A season with no
+ * logs never appears — there is nothing to stack.
+ */
+export function snowboardSeasons(sportSessions: SportSession[], splitBy: SeasonSplit): SeasonBar[] {
+  const keys: readonly string[] = splitBy === 'snow' ? SNOW_CONDITIONS : WEATHER_CONDITIONS;
+  const bySeason = new Map<string, Map<string, number>>();
+
+  for (const s of sportSessions) {
+    if (s.kind !== 'snowboard') continue;
+    const season = seasonOf(parseLocalDate(s.date));
+    const perKey = bySeason.get(season) ?? new Map<string, number>();
+    const key = splitBy === 'snow' ? s.snowCondition : s.weather;
+    perKey.set(key, (perKey.get(key) ?? 0) + 1);
+    bySeason.set(season, perKey);
+  }
+
+  return [...bySeason]
+    .sort(([a], [b]) => a.localeCompare(b))
+    .map(([season, perKey]) => ({
+      season,
+      total: [...perKey.values()].reduce((a, b) => a + b, 0),
+      segments: keys.map((key) => ({ key, count: perKey.get(key) ?? 0 })),
+    }));
 }
