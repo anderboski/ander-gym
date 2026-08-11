@@ -435,7 +435,10 @@ Training days are fully user-managed — there is no fixed list and nothing is s
 
 ### 5.4 Session
 **No active session:** a single "New Session" box listing the training days; picking one creates the active
-session (`startedAt` = now) with an empty `sets` array per exercise in that training.
+session (`startedAt` = now) with an empty `sets` array per exercise in that training. The list is `gym`-kind
+trainings only (D9) — a sport day has no live, set-by-set flow to start, only the after-the-fact summary
+form on its own Trainings detail page (§5.8), so it never appears here. With trainings but none of them
+`gym`, the box explains sport logging lives on Trainings instead of repeating "no training days found".
 
 **Active session:** header shows training label and a running elapsed time. Then a table, one row per
 exercise:

@@ -249,6 +249,7 @@ export const es: Record<TranslationKey, string> = {
   'session.newSession': 'Nueva sesión',
   'session.pickTrainingDay': 'Elige un entrenamiento para empezar.',
   'session.noTrainingDaysFound': 'No se encontraron entrenamientos.',
+  'session.gymOnlyHint': 'El snowboard, el ciclismo y la escalada se registran desde la pestaña Entrenamientos.',
   'session.restDone': 'Descanso terminado',
   'session.restMinus30Aria': 'Quitar 30 segundos a este descanso',
   'session.restPlus30Aria': 'Añadir 30 segundos a este descanso',
