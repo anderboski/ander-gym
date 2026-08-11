@@ -142,6 +142,10 @@ Only a phone can tell you whether a 320-unit chart is legible in a hand.
 - [ ] The sport-log sheet's distance field brings up the decimal pad; elevation,
       heart rate, and the climbing grade counts bring up the number pad —
       none of them zoom the viewport on focus.
+- [ ] Open the Snowboard log sheet and tap the **Weather** field the instant it
+      appears (don't wait for the slide-up to settle). The Weather picker opens
+      — not the date picker one field above. Repeat tapping **Snow condition**
+      immediately on open.
 
 ## 5. Crash safety
 
