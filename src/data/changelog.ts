@@ -160,6 +160,22 @@ export const CHANGELOG: ChangelogEntry[] = [
     en: ['Added a "How to use" page, reachable from Settings, with a screenshot-illustrated tour of the five tabs.'],
     es: ['Se añadió una página "Cómo usar la app", accesible desde Ajustes, con un recorrido ilustrado con capturas de las cinco pestañas.'],
   },
+  {
+    version: '1.13.0',
+    date: '2026-08-11',
+    en: ['The exercise history sheet now shows the exercise photo full-size at the top.'],
+    es: ['La ficha de historial del ejercicio ahora muestra la foto del ejercicio a tamaño completo en la parte superior.'],
+  },
+  {
+    version: '1.13.1',
+    date: '2026-08-11',
+    en: [
+      'Fixed a bug where tapping a field right after opening a form (like the Snowboard or Climbing log) could open the wrong field’s picker.',
+    ],
+    es: [
+      'Se corrigió un error por el que tocar un campo justo al abrir un formulario (como el registro de Snowboard o Escalada) podía abrir el selector de otro campo.',
+    ],
+  },
 ];
 
 /** Keep in sync with the bootstrap-independent nature of theme/language: this

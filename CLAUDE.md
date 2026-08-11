@@ -162,100 +162,37 @@ fixed chrome · `overscroll-behavior: contain` in sheets · numeric keypads via 
 checklist must be updated when a feature changes install, offline, keyboard, or crash-safety behaviour.
 State plainly in the PR that on-device verification hasn't been done — don't imply it has.
 
-## Working on a new feature
+## Shipping a change
 
-1. **Update `SPEC.md` first, if the change is user-visible.** New behaviour, changed behaviour, a new
-   locked decision, or a changed acceptance criterion all belong in the spec *in the same PR* as the
-   code. The spec is the source of truth; code that contradicts it is a bug in one of the two.
-   Pure refactors, build tweaks and doc fixes don't need a spec change.
-2. **Branch off the latest `main`** — always a brand-new branch, never work directly on `main`:
+Full rationale, commands, and edge cases for each step live in
+[`docs/workflow.md`](docs/workflow.md) — this is the checklist version. Every step below is
+mandatory; none are optional extras.
 
-   ```bash
-   git fetch origin
-   git checkout -b <type>/<short-description> origin/main
-   ```
-
-   `<type>` is one of:
-
-   | Prefix | For |
-   |---|---|
-   | `feature/` | new user-facing capability |
-   | `bug/` | fixing broken behaviour |
-   | `docs/` | README, SPEC, CLAUDE.md, manual-qa |
-   | `refactor/` | restructuring with no behaviour change |
-   | `chore/` | deps, tooling, CI, config |
-   | `test/` | tests only |
-   | `perf/` | performance work only |
-
-   `<short-description>` is 2–4 kebab-case words: `docs/create-claude-md`, `feature/rest-timer`,
-   `bug/streak-off-by-one`.
-3. **Verify before committing:** `npm run typecheck && npm test`. Add tests for anything in
-   `src/data/`. If it touches the service worker, manifest, or caching, also
-   `npm run build && npm run preview`.
-4. **Bump the version in `package.json`** — every PR does this, keyed off the branch prefix from
-   step 2:
-
-   | Prefix | Bump | Example |
-   |---|---|---|
-   | `bug/` | patch | `1.0.0` → `1.0.1` |
-   | `feature/` | minor (patch resets to 0) | `1.0.0` → `1.1.0` |
-   | `docs/` | none | — |
-   | `refactor/`, `chore/`, `test/`, `perf/` | none | — |
-
-   Only `bug/` and `feature/` touch the version — nothing else changes runtime behaviour, so nothing
-   else earns a bump. Use `npm version patch --no-git-tag-version` or
-   `npm version minor --no-git-tag-version` (the `--no-git-tag-version` flag stops `npm` from
-   creating its own commit and tag; the version change rides along in the commit from step 5
-   instead). **Major bumps (`1.x.x` → `2.0.0`) are never automatic** — Ander does those by hand.
-5. **Commit.** Imperative subject line, blank line, then a body explaining *why* and calling out the
-   decisions a reviewer should push back on. End with:
-
+1. **Spec.** If the change is user-visible, update `SPEC.md` in the same PR — new/changed behaviour,
+   a new locked decision, a changed acceptance criterion. Skip only for pure refactors, build tweaks,
+   or doc fixes.
+2. **Branch.** New branch off latest `main`, never work on `main` directly. Name it
+   `<type>/<short-description>` (`feature/`, `bug/`, `docs/`, `refactor/`, `chore/`, `test/`, `perf/`)
+   when you're choosing the name. **If the session already has a branch assigned** (Claude Code web /
+   a task runner — typically `claude/<slug>`), keep that name as instructed; still classify the
+   change as bug/feature/other by what it actually does, for step 4 below.
+3. **Verify.** `npm run typecheck && npm test` before every commit; add tests for anything in
+   `src/data/`. Touches the service worker, manifest, or caching → also `npm run build && npm run preview`.
+4. **Version + changelog, together, same commit:**
+   - Bug fix → patch (`npm version patch --no-git-tag-version`). New feature → minor
+     (`npm version minor --no-git-tag-version`). Docs/refactor/chore/test/perf → no bump.
+   - **Every patch or minor bump adds an entry to `src/data/changelog.ts`** (both `en` and `es`).
+     This drives the in-app "What's new" popup and the Settings changelog sheet — a version bump
+     with no entry is a real gap users see, not a formality. Do this now, don't defer it.
+5. **Commit.** Imperative subject, body explains *why*, ends with:
    ```
    Co-Authored-By: Claude Opus 5 <noreply@anthropic.com>
    ```
-6. **Push and open a PR against `main`. Every task ends here — push the branch and raise the PR
-   without waiting to be asked, so it's sitting ready for Ander to review the moment the task is
-   done:**
+6. **Push and open a PR against `main` — every task ends here, unprompted.** Title:
+   `<branch-name> - <short imperative description>`. Body: fill in every section of
+   [`.github/pull_request_template.md`](.github/pull_request_template.md); `gh pr create` attaches it
+   automatically. End the body with `🤖 Generated with [Claude Code](https://claude.com/claude-code)`.
 
-   ```bash
-   git push -u origin <branch>
-   gh pr create --base main --title "<branch-name> - <short description>" --body "..."
-   ```
-
-   The title always starts with the branch name, then ` - `, then a short imperative description:
-   `feature/rest-timer - Add an inline rest countdown to the session view`.
-
-   The body follows [`.github/pull_request_template.md`](.github/pull_request_template.md) —
-   modelled on [PR #1](https://github.com/anderboski/ander-gym/pull/1) and
-   [PR #13](https://github.com/anderboski/ander-gym/pull/13): what ships (a table when there are
-   several surfaces), how it fits together, **decisions worth reviewing** — including anything you'd
-   flag as debatable or as a deviation from the spec — a **verification** section listing exactly
-   what was run and what was *not* verified, and anything needed before merge. `gh pr create` picks
-   the template up automatically; fill in every section rather than leaving its placeholders. End the
-   body with:
-
-   ```
-   🤖 Generated with [Claude Code](https://claude.com/claude-code)
-   ```
-
-### Never merge to main
-
-**Your work ends at the open PR.** Do not merge, do not squash-merge, do not push to `main`, do not
-enable auto-merge. Ander reviews and merges. Pushing to `main` also publishes to production
-immediately (see below), which is exactly why the gate exists.
-
-## Deployment
-
-`.github/workflows/deploy.yml` — **every push to `main` publishes to production.** The workflow runs
-`npm ci`, `npm run typecheck`, `npm test`, `npm run build`, then uploads `dist/` to Pages. A failing
-typecheck or test blocks the deploy. Live at <https://anderboski.github.io/ander-gym/>.
-
-Pages must be enabled as **Settings → Pages → Source = GitHub Actions** before the first deploy;
-otherwise `actions/configure-pages` fails with `Get Pages site failed … Not Found`, which reads like
-a build failure but isn't. Re-run the failed workflow after enabling — no new commit needed.
-
-```bash
-gh run list --limit 5
-gh run watch
-gh run view <run-id> --log-failed
-```
+**Never merge to `main` yourself** — no merge, squash-merge, or auto-merge. Ander reviews and merges;
+a push to `main` deploys to production immediately via `.github/workflows/deploy.yml`, which is the
+whole reason the gate exists. Deployment troubleshooting: [`docs/workflow.md`](docs/workflow.md).
