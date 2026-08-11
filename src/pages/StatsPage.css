@@ -29,3 +29,77 @@
   color: var(--text-faint);
   padding: var(--s4) 0;
 }
+
+/* Title + the training-kind switcher, top right of the header. */
+.stats-title-row {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+
+.stats-kind-switcher {
+  flex: none;
+  display: flex;
+  gap: var(--s1);
+  padding-top: 2px;
+}
+
+.stats-kind-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--r-md);
+  font-size: 20px;
+  line-height: 1;
+  background: transparent;
+  opacity: 0.5;
+  transition: background 0.12s, opacity 0.12s;
+}
+
+.stats-kind-btn[aria-selected='true'] {
+  background: var(--bg-raised-2);
+  opacity: 1;
+}
+
+.stats-kind-btn:active {
+  transform: scale(0.94);
+}
+
+/* Period + view segmented controls above the gym charts. Same visual language
+   as the exercise-card metric toggle (ex-progress-toggle/-metric). */
+.stats-controls {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
+}
+
+.stats-segment {
+  display: flex;
+  gap: var(--s1);
+  padding: var(--s1);
+  border-radius: var(--r-md);
+  background: var(--bg-raised-2);
+}
+
+.stats-segment-btn {
+  flex: 1;
+  min-height: 40px;
+  padding: 0 var(--s2);
+  border-radius: var(--r-sm);
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--text-dim);
+  white-space: nowrap;
+}
+
+.stats-segment-btn[aria-pressed='true'] {
+  background: var(--bg-raised);
+  color: var(--text);
+}
+
+.stats-segment-btn:active {
+  opacity: 0.7;
+}

@@ -313,20 +313,60 @@ export const en = {
   'stats.title': 'Stats',
   'stats.subtitle': 'Everything below is derived from your saved sessions.',
   'stats.removedExercises': 'Removed exercises',
-  'stats.weeklyVolume': 'Weekly volume',
-  'stats.volumeCaption': 'This week · {weeks}-week average {average} · best week {best}',
-  'stats.volumeAria':
-    'Weekly training volume over the last {weeks} weeks, in kilograms: {current} this week against a {weeks}-week average of {average} and a best week of {best}.',
+  'stats.kindSwitcherAria': 'Choose stats category',
+
+  'stats.periodAria': 'Choose a time range',
+  'stats.periodWeek': 'Last week',
+  'stats.periodMonth': 'Last month',
+  'stats.periodThreeMonths': 'Last 3 months',
+  'stats.viewAria': 'Choose a bucket size',
+  'stats.viewDaily': 'Daily',
+  'stats.viewWeekly': 'Weekly',
+  'stats.viewMonthly': 'Monthly',
+  'stats.unitDay': 'day',
+  'stats.unitWeek': 'week',
+  'stats.unitMonth': 'month',
+
+  'stats.sessionsPerDay': 'Sessions per day',
   'stats.sessionsPerWeek': 'Sessions per week',
-  'stats.currentThisWeek': '{count} this week',
+  'stats.sessionsPerMonth': 'Sessions per month',
+  'stats.currentThisUnit': '{count} this {unit}',
+  'stats.sessionsCaption': '{total} sessions in this window',
+  'stats.sessionsAriaPlain': '{title}: {total} sessions in total, {current} in the most recent {unit}.',
   'stats.consistencyCaption': '{total} sessions over {weeks} weeks · goal of {goal} met in {met} of them',
   'stats.consistencyAria':
     'Sessions per week over the last {weeks} weeks: {total} in total, {current} this week, and the weekly goal of {goal} met in {met} of the {weeks} weeks.',
+
+  'stats.durationTitle': 'Session duration',
+  'stats.durationCaption': 'Average {average} · longest {best}',
+  'stats.durationNoData': 'Not enough saved sessions with a start and end time yet.',
+  'stats.durationAria':
+    'Average session duration per bucket in this window: {current} most recently, against an average of {average} and a longest of {best}.',
+
   'stats.muscleBalanceTitle': 'Muscle balance · {days} days',
   'stats.muscleBalanceEmpty': 'Nothing logged in the last {days} days.',
   'stats.muscleBalanceCaption':
     'Most volume on {most}, least on {least}. A muscle you have not trained at all is simply absent from this list.',
   'stats.muscleBalanceSingle': 'Only one muscle group trained in this window.',
+
+  'stats.topExercisesTitle': 'Top exercises · {days} days',
+  'stats.topExercisesEmpty': 'Nothing logged in the last {days} days.',
+  'stats.timesOne': '1 time',
+  'stats.timesOther': '{count} times',
+
+  'stats.seasonTitle': 'Season comparison',
+  'stats.seasonEmpty': 'No snowboard sessions logged yet.',
+  'stats.seasonSplitAria': 'Split the chart by',
+  'stats.seasonSplitBySnow': 'By snow type',
+  'stats.seasonSplitByWeather': 'By weather',
+  'stats.seasonSplitNounSnow': 'snow type',
+  'stats.seasonSplitNounWeather': 'weather',
+  'stats.seasonAria': 'Snowboard days per season, split by {split}.',
+  'stats.seasonDaysOne': '1 day',
+  'stats.seasonDaysOther': '{count} days',
+
+  'stats.cyclingComingSoon': 'Cycling stats are coming soon.',
+  'stats.climbingComingSoon': 'Climbing stats are coming soon.',
 
   'backup.invalidJson': 'That file is not valid JSON.',
   'backup.notABackup': 'That file is not an ander-gym backup.',

@@ -312,21 +312,61 @@ export const es: Record<TranslationKey, string> = {
   'stats.title': 'Estadísticas',
   'stats.subtitle': 'Todo lo de abajo se calcula a partir de tus sesiones guardadas.',
   'stats.removedExercises': 'Ejercicios eliminados',
-  'stats.weeklyVolume': 'Volumen semanal',
-  'stats.volumeCaption': 'Esta semana · promedio de {weeks} semanas {average} · mejor semana {best}',
-  'stats.volumeAria':
-    'Volumen de entrenamiento semanal en las últimas {weeks} semanas, en kilogramos: {current} esta semana frente a un promedio de {weeks} semanas de {average} y una mejor semana de {best}.',
+  'stats.kindSwitcherAria': 'Elegir categoría de estadísticas',
+
+  'stats.periodAria': 'Elegir un intervalo de tiempo',
+  'stats.periodWeek': 'Última semana',
+  'stats.periodMonth': 'Último mes',
+  'stats.periodThreeMonths': 'Últimos 3 meses',
+  'stats.viewAria': 'Elegir el tamaño de los bloques',
+  'stats.viewDaily': 'Diario',
+  'stats.viewWeekly': 'Semanal',
+  'stats.viewMonthly': 'Mensual',
+  'stats.unitDay': 'día',
+  'stats.unitWeek': 'semana',
+  'stats.unitMonth': 'mes',
+
+  'stats.sessionsPerDay': 'Sesiones por día',
   'stats.sessionsPerWeek': 'Sesiones por semana',
-  'stats.currentThisWeek': '{count} esta semana',
+  'stats.sessionsPerMonth': 'Sesiones por mes',
+  'stats.currentThisUnit': '{count} este/a {unit}',
+  'stats.sessionsCaption': '{total} sesiones en esta ventana',
+  'stats.sessionsAriaPlain': '{title}: {total} sesiones en total, {current} en el/la último/a {unit}.',
   'stats.consistencyCaption':
     '{total} sesiones en {weeks} semanas · objetivo de {goal} cumplido en {met} de ellas',
   'stats.consistencyAria':
     'Sesiones por semana en las últimas {weeks} semanas: {total} en total, {current} esta semana, y el objetivo semanal de {goal} cumplido en {met} de las {weeks} semanas.',
+
+  'stats.durationTitle': 'Duración de la sesión',
+  'stats.durationCaption': 'Media {average} · máxima {best}',
+  'stats.durationNoData': 'Aún no hay suficientes sesiones guardadas con hora de inicio y fin.',
+  'stats.durationAria':
+    'Duración media de la sesión por bloque en esta ventana: {current} la más reciente, frente a una media de {average} y una máxima de {best}.',
+
   'stats.muscleBalanceTitle': 'Equilibrio muscular · {days} días',
   'stats.muscleBalanceEmpty': 'No se ha registrado nada en los últimos {days} días.',
   'stats.muscleBalanceCaption':
     'Más volumen en {most}, menos en {least}. Un músculo que no hayas entrenado en absoluto simplemente no aparece en esta lista.',
   'stats.muscleBalanceSingle': 'Solo se entrenó un grupo muscular en esta ventana.',
+
+  'stats.topExercisesTitle': 'Ejercicios más frecuentes · {days} días',
+  'stats.topExercisesEmpty': 'No se ha registrado nada en los últimos {days} días.',
+  'stats.timesOne': '1 vez',
+  'stats.timesOther': '{count} veces',
+
+  'stats.seasonTitle': 'Comparación de temporadas',
+  'stats.seasonEmpty': 'Aún no hay sesiones de snowboard registradas.',
+  'stats.seasonSplitAria': 'Dividir el gráfico por',
+  'stats.seasonSplitBySnow': 'Por tipo de nieve',
+  'stats.seasonSplitByWeather': 'Por tiempo',
+  'stats.seasonSplitNounSnow': 'tipo de nieve',
+  'stats.seasonSplitNounWeather': 'tiempo',
+  'stats.seasonAria': 'Días de snowboard por temporada, divididos por {split}.',
+  'stats.seasonDaysOne': '1 día',
+  'stats.seasonDaysOther': '{count} días',
+
+  'stats.cyclingComingSoon': 'Las estadísticas de ciclismo llegarán pronto.',
+  'stats.climbingComingSoon': 'Las estadísticas de escalada llegarán pronto.',
 
   'backup.invalidJson': 'Ese archivo no es JSON válido.',
   'backup.notABackup': 'Ese archivo no es una copia de seguridad de ander-gym.',

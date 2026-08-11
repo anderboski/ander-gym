@@ -92,6 +92,11 @@ function barPath(x: number, top: number, w: number, base: number, r: number): st
   ].join(' ');
 }
 
+/** A plain rect, square corners — the non-topmost segments of a stacked bar. */
+function rectPath(x: number, top: number, w: number, base: number): string {
+  return `M${x} ${base} V${top} h${w} V${base} Z`;
+}
+
 /* -------------------------------------------------------------------------- */
 /* Plot                                                                        */
 /* -------------------------------------------------------------------------- */
@@ -106,8 +111,14 @@ type PlotProps = {
    */
   spread: 'edge' | 'band';
   formatTick: (value: number) => string;
-  /** Leading and trailing x labels. The middle is left to the summary. */
+  /** Leading and trailing x labels. The middle is left to the summary. Ignored when `bandLabels` is given. */
   xLabels?: [string, string];
+  /**
+   * One label per band slot (e.g. a season), centred under its bar — for a
+   * handful of discrete categories rather than a continuous timeline, where
+   * only the two edges (`xLabels`) are worth labelling.
+   */
+  bandLabels?: string[];
   /**
    * What a screen reader hears instead of the picture: the trend in words, not
    * "chart". An SVG is invisible without it.
@@ -116,7 +127,7 @@ type PlotProps = {
   children: (frame: Frame) => ReactNode;
 };
 
-function Plot({ count, domain, spread, formatTick, xLabels, ariaLabel, children }: PlotProps) {
+function Plot({ count, domain, spread, formatTick, xLabels, bandLabels, ariaLabel, children }: PlotProps) {
   const left = PAD.left;
   const right = BOX.w - PAD.right;
   const top = PAD.top;
@@ -167,15 +178,23 @@ function Plot({ count, domain, spread, formatTick, xLabels, ariaLabel, children 
 
       {children(frame)}
 
-      {xLabels && (
-        <>
-          <text className="chart-tick" x={left} y={BOX.h - 4} textAnchor="start">
-            {xLabels[0]}
+      {bandLabels ? (
+        bandLabels.map((label, i) => (
+          <text key={i} className="chart-tick" x={frame.x(i)} y={BOX.h - 4} textAnchor="middle">
+            {label}
           </text>
-          <text className="chart-tick" x={right} y={BOX.h - 4} textAnchor="end">
-            {xLabels[1]}
-          </text>
-        </>
+        ))
+      ) : (
+        xLabels && (
+          <>
+            <text className="chart-tick" x={left} y={BOX.h - 4} textAnchor="start">
+              {xLabels[0]}
+            </text>
+            <text className="chart-tick" x={right} y={BOX.h - 4} textAnchor="end">
+              {xLabels[1]}
+            </text>
+          </>
+        )
       )}
     </svg>
   );
@@ -332,6 +351,93 @@ export function BarStrip({
         );
       }}
     </Plot>
+  );
+}
+
+export type StackedSeriesDef = { key: string; label: string; color: string };
+
+type StackedBarStripProps = {
+  /** One entry per x-axis slot (e.g. a season), oldest first. */
+  buckets: { label: string; segments: { key: string; value: number }[] }[];
+  /** Fixed stacking order (bottom to top) and colour per series key — also the legend order. */
+  series: StackedSeriesDef[];
+  formatTick: (value: number) => string;
+  ariaLabel: string;
+};
+
+/**
+ * The one chart in the app that is not a single `--accent` series (SPEC
+ * §5.6's ski-season exception): each bucket's total is stacked by category,
+ * coloured from the `--chart-cat-*` tokens. Zero-value segments are skipped
+ * entirely — nothing to stack — and a 1px inset on each internal boundary
+ * reads as the 2px gap the dataviz mark spec asks for between stacked fills.
+ * Only the topmost segment in a stack gets the rounded data-end; the rest
+ * stay square, same as every other bar in this file.
+ */
+export function StackedBarStrip({ buckets, series, formatTick, ariaLabel }: StackedBarStripProps) {
+  const totals = buckets.map((b) => b.segments.reduce((sum, s) => sum + s.value, 0));
+  const domain = zeroDomain(totals);
+
+  return (
+    <Plot
+      count={buckets.length}
+      domain={domain}
+      spread="band"
+      formatTick={formatTick}
+      bandLabels={buckets.map((b) => b.label)}
+      ariaLabel={ariaLabel}
+    >
+      {(frame) => {
+        const width = Math.min(40, Math.max(10, frame.band - 8));
+        return (
+          <>
+            {buckets.map((bucket, i) => {
+              const x = frame.x(i) - width / 2;
+              const present = series
+                .map((def) => ({ def, value: bucket.segments.find((s) => s.key === def.key)?.value ?? 0 }))
+                .filter((s) => s.value > 0);
+
+              let cumulative = 0;
+              return present.map(({ def, value }, si) => {
+                const bottomValue = cumulative;
+                cumulative += value;
+                const isBottom = si === 0;
+                const isTop = si === present.length - 1;
+                const top = frame.y(cumulative) + (isTop ? 0 : 1);
+                const base = frame.y(bottomValue) - (isBottom ? 0 : 1);
+                return (
+                  <path
+                    key={`${i}-${def.key}`}
+                    style={{ fill: def.color }}
+                    d={isTop ? barPath(x, top, width, base, 4) : rectPath(x, top, width, base)}
+                  />
+                );
+              });
+            })}
+          </>
+        );
+      }}
+    </Plot>
+  );
+}
+
+/**
+ * Legend for a multi-series chart — required whenever a chart has more than
+ * one series (dataviz identity-never-color-alone rule), and doubles as the
+ * "relief" numeric read-out for the categorical palette's sub-3:1 light-mode
+ * slots: every swatch carries its value as real text, not just a colour.
+ */
+export function ChartLegend({ items }: { items: { key: string; label: string; color: string; value: string }[] }) {
+  return (
+    <ul className="chart-legend">
+      {items.map((item) => (
+        <li className="chart-legend-item" key={item.key}>
+          <span className="chart-legend-swatch" style={{ background: item.color }} aria-hidden="true" />
+          <span className="chart-legend-label">{item.label}</span>
+          <span className="chart-legend-value num">{item.value}</span>
+        </li>
+      ))}
+    </ul>
   );
 }
 
