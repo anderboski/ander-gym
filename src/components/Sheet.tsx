@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useLanguage } from '../data/i18n';
 import { CloseIcon } from './icons';
@@ -35,6 +35,16 @@ export function Sheet({ title, full, onClose, children, footer, headerAction }: 
   useScrollLock();
   const { t } = useLanguage();
 
+  // WebKit hit-tests touches against the sheet's still-animating transform, so a tap
+  // thrown during the 0.24s slide-up can land on a different field than the one under
+  // the finger (iOS Safari, reproducible: tap a form control right after the sheet
+  // opens). Block pointer events on the sheet until its own enter animation finishes;
+  // skip the lock when the animation itself is disabled (prefers-reduced-motion), since
+  // no `animationend` would ever fire to lift it.
+  const [entering, setEntering] = useState(
+    () => !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
+  );
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === 'Escape') onClose();
@@ -48,6 +58,10 @@ export function Sheet({ title, full, onClose, children, footer, headerAction }: 
       <div className="sheet-backdrop" onClick={onClose} />
       <div
         className={full ? 'sheet sheet-full' : 'sheet'}
+        style={entering ? { pointerEvents: 'none' } : undefined}
+        onAnimationEnd={(e) => {
+          if (e.target === e.currentTarget) setEntering(false);
+        }}
         role="dialog"
         aria-modal="true"
         aria-label={title}
