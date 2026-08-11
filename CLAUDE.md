@@ -173,9 +173,12 @@ mandatory; none are optional extras.
    or doc fixes.
 2. **Branch.** New branch off latest `main`, never work on `main` directly. Name it
    `<type>/<short-description>` (`feature/`, `bug/`, `docs/`, `refactor/`, `chore/`, `test/`, `perf/`)
-   when you're choosing the name. **If the session already has a branch assigned** (Claude Code web /
-   a task runner — typically `claude/<slug>`), keep that name as instructed; still classify the
-   change as bug/feature/other by what it actually does, for step 4 below.
+   by what the change actually does — no PR in this repo ships from a `claude/<slug>` branch.
+   **If the session already has a branch assigned** (Claude Code web / a task runner — typically
+   `claude/<slug>`), that's a starting point only: once you know the type, create the correctly
+   prefixed branch from the current work and push there instead, then open the PR from that branch.
+   See [`docs/workflow.md`](docs/workflow.md#branching) for the exact commands and why doing this
+   without asking first is safe.
 3. **Verify.** `npm run typecheck && npm test` before every commit; add tests for anything in
    `src/data/`. Touches the service worker, manifest, or caching → also `npm run build && npm run preview`.
 4. **Version + changelog, together, same commit:**
