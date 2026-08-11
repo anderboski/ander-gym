@@ -8,6 +8,7 @@ import {
   averageSessionMinutes,
   beatsPersonalRecord,
   bmi,
+  climbGradePyramid,
   completedToday,
   currentWeekCount,
   dayKey,
@@ -53,7 +54,7 @@ import {
   weeklyStreak,
   weeklySummary,
 } from './derive';
-import type { Session, SessionEntry, SnowCondition, SportSession, Training, WeatherCondition } from './types';
+import type { ClimbGrade, Session, SessionEntry, SnowCondition, SportSession, Training, WeatherCondition } from './types';
 
 /** Local-time ISO, so tests don't depend on the runner's timezone. */
 function at(y: number, m: number, d: number, h = 12, min = 0): string {
@@ -78,6 +79,7 @@ function sportSession(
   date: string,
   trainingId = 'sport-a',
   kind: SportSession['kind'] = 'cycling',
+  climbsByGrade: Record<ClimbGrade, number> = { '3': 0, '4': 0, '5': 0 },
 ): SportSession {
   sportSeq += 1;
   const base = { id: `ss${sportSeq}`, trainingId, trainingLabel: trainingId, date, createdAt: `${date}T00:00:00.000Z` };
@@ -85,7 +87,7 @@ function sportSession(
     return { ...base, kind, weather: 'sunny', snowCondition: 'powder', comments: '' };
   }
   if (kind === 'climbing') {
-    return { ...base, kind, climbsByGrade: { '3': 0, '4': 0, '5': 0 } };
+    return { ...base, kind, climbsByGrade };
   }
   return { ...base, kind, distanceKm: 10, elevationM: 100, avgBpm: null };
 }
@@ -925,6 +927,57 @@ describe('snowboardSeasons', () => {
   it('ignores non-snowboard sport sessions', () => {
     const logs = [sportSession('2024-12-01', 'x', 'cycling'), snowboardLog('2024-12-05')];
     expect(snowboardSeasons(logs, 'snow')).toHaveLength(1);
+  });
+});
+
+describe('climbGradePyramid', () => {
+  const now = new Date(2026, 7, 1, 12); // 1 Aug 2026
+
+  it('sums climbs per grade across sessions, hardest first', () => {
+    const logs = [
+      sportSession('2026-07-30', 'c', 'climbing', { '3': 2, '4': 1, '5': 0 }),
+      sportSession('2026-07-28', 'c', 'climbing', { '3': 1, '4': 0, '5': 3 }),
+    ];
+    expect(climbGradePyramid(logs, 30, now)).toEqual([
+      { grade: '5', count: 3 },
+      { grade: '4', count: 1 },
+      { grade: '3', count: 3 },
+    ]);
+  });
+
+  it('keeps a grade with no climbs at zero rather than dropping it', () => {
+    const logs = [sportSession('2026-07-30', 'c', 'climbing', { '3': 0, '4': 0, '5': 1 })];
+    expect(climbGradePyramid(logs, 30, now)).toEqual([
+      { grade: '5', count: 1 },
+      { grade: '4', count: 0 },
+      { grade: '3', count: 0 },
+    ]);
+  });
+
+  it('is all zero with no climbing logs', () => {
+    expect(climbGradePyramid([], 30, now)).toEqual([
+      { grade: '5', count: 0 },
+      { grade: '4', count: 0 },
+      { grade: '3', count: 0 },
+    ]);
+  });
+
+  it('excludes logs outside the window', () => {
+    const logs = [sportSession('2026-06-01', 'c', 'climbing', { '3': 5, '4': 0, '5': 0 })];
+    expect(climbGradePyramid(logs, 30, now)).toEqual([
+      { grade: '5', count: 0 },
+      { grade: '4', count: 0 },
+      { grade: '3', count: 0 },
+    ]);
+  });
+
+  it('ignores non-climbing sport sessions', () => {
+    const logs = [sportSession('2026-07-30', 'x', 'cycling')];
+    expect(climbGradePyramid(logs, 30, now)).toEqual([
+      { grade: '5', count: 0 },
+      { grade: '4', count: 0 },
+      { grade: '3', count: 0 },
+    ]);
   });
 });
 

@@ -5,8 +5,10 @@
  * All date maths is local-timezone. Weeks are ISO weeks (Monday 00:00 start).
  */
 import {
+  CLIMB_GRADES,
   SNOW_CONDITIONS,
   WEATHER_CONDITIONS,
+  type ClimbGrade,
   type Exercise,
   type Session,
   type SetEntry,
@@ -969,4 +971,33 @@ export function snowboardSeasons(sportSessions: SportSession[], splitBy: SeasonS
       total: [...perKey.values()].reduce((a, b) => a + b, 0),
       segments: keys.map((key) => ({ key, count: perKey.get(key) ?? 0 })),
     }));
+}
+
+/* -------------------------------------------------------------------------- */
+/* Climbing                                                                    */
+/* -------------------------------------------------------------------------- */
+
+export type ClimbGradeCount = { grade: ClimbGrade; count: number };
+
+/**
+ * Climbs per grade over the last `days` calendar days, hardest grade first —
+ * the shape a "pyramid" is expected to have, tapering from a short bar at the
+ * hard end to a longer one at the easy end. Unlike `volumeByTarget`'s
+ * open-ended muscle targets, `CLIMB_GRADES` is small and fixed, so every
+ * grade is always present, zero-count included — dropping an untouched grade
+ * would leave a hole in the pyramid rather than just shorten a list.
+ */
+export function climbGradePyramid(sportSessions: SportSession[], days: number, now: Date): ClimbGradeCount[] {
+  const totals = new Map<ClimbGrade, number>(CLIMB_GRADES.map((grade) => [grade, 0]));
+
+  for (const s of sportSessions) {
+    if (s.kind !== 'climbing') continue;
+    const age = daysBetween(parseLocalDate(s.date), now);
+    if (age < 0 || age >= days) continue;
+    for (const grade of CLIMB_GRADES) {
+      totals.set(grade, (totals.get(grade) ?? 0) + s.climbsByGrade[grade]);
+    }
+  }
+
+  return [...CLIMB_GRADES].reverse().map((grade) => ({ grade, count: totals.get(grade) ?? 0 }));
 }

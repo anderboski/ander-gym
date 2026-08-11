@@ -549,7 +549,15 @@ condition or weather — a segmented toggle switches the split. A season runs **
 is 1 Jul 2024 – 30 Jun 2025, `seasonOf` in `derive.ts`); seasons with no logs don't appear. This is the one
 chart in the app that is not a single `--accent` series — see the categorical-palette exception below.
 
-**Cycling and climbing.** Placeholders — a short "stats coming soon" empty state. No charts yet.
+**Climbing.** Same period control as Gym (last week/month/3 months, `STATS_PERIOD_DAYS`) above a **grade
+pyramid** — a `BarList` of climbs per grade (`climbGradePyramid` in `derive.ts`), hardest grade first so the
+bars taper the way a climbing pyramid is expected to: short at the hard end, long at the easy end. Unlike
+the muscle-balance and top-exercises lists, every grade in `CLIMB_GRADES` is always shown, zero-count
+included — the set is small and fixed, so dropping an untouched grade would leave a hole in the pyramid
+rather than just shorten a list. The caption states the total logged and the hardest grade sent in the
+window. No climbing sessions ever logged shows a plain empty state instead of the period control.
+
+**Cycling.** Placeholder — a short "stats coming soon" empty state. No charts yet.
 
 **Charts** are hand-rolled inline SVG in `components/Chart.tsx` — `Plot` owns the box, the scales, the
 gridlines and the axis labels (per-band labels for a handful of discrete categories like seasons, edge
