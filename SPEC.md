@@ -367,9 +367,11 @@ Vertical order, exactly as briefed:
   `settings.favoriteExerciseIds`. Tapping toggles it immediately (`toggleFavorite`, no confirmation — same
   spirit as everywhere else favoriting is one tap, one undo tap). Feeds the "Favorites" toggle in §5.2's
   finder; has no relationship to the personal-record badge on the opposite corner.
-- **Tap the image** → full-screen sheet with the complete history: a progress chart, then each session as a
-  datetime heading plus its set matrix, newest first.
-- **Progress chart** (top of that sheet) — a line over `exerciseProgress()`, toggling between top-set weight
+- **Tap the image** → full-screen sheet with the complete history: the exercise image full-width at the top,
+  then a progress chart, then each session as a datetime heading plus its set matrix, newest first. The same
+  sheet opens from the Session view when tapping an exercise there, so the image renders identically in both
+  places.
+- **Progress chart** (below the image) — a line over `exerciseProgress()`, toggling between top-set weight
   and estimated 1RM. Three states, because one data point is not a chart:
   - never logged with weight → no chart, one line saying so;
   - one session → the reading as a figure, not a line, and what it takes to start a trend;

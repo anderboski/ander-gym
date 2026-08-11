@@ -181,9 +181,13 @@ export function ExerciseHistorySheet({
   const { sessions } = useGym();
   const { t, language } = useLanguage();
   const records = useMemo(() => historyFor(exercise.id, sessions), [exercise.id, sessions]);
+  const displayName = translateExerciseName(language, exercise.name);
 
   return (
-    <Sheet title={translateExerciseName(language, exercise.name)} onClose={onClose} full>
+    <Sheet title={displayName} onClose={onClose} full>
+      <div className="ex-history-media">
+        <Thumb exercise={exercise} displayName={displayName} />
+      </div>
       {records.length === 0 ? (
         <div className="empty">{t('exerciseCard.noHistorySheet')}</div>
       ) : (
