@@ -188,37 +188,38 @@ export function HomePage() {
         <>
           {/* --- week counter + streak ------------------------------------ */}
           <section className="section">
-            <div className="card card-pad home-week">
-              <GoalRing count={weekCount} goal={goal} />
-              <div className="home-week-text">
-                <div className="home-week-count">
-                  {t(weekCount === 1 ? 'home.weekCountOne' : 'home.weekCountOther', { count: weekCount })}
-                </div>
-                <div className="home-week-goal">
-                  {t('home.goalPrefix')} <span className="num">{goal}</span> {t('home.goalSuffix')}
-                </div>
-                {streak > 0 && (
-                  <div className="home-streak">
-                    🔥 {t(streak === 1 ? 'home.streakWeekOne' : 'home.streakWeekOther', { count: streak })}
+            <div className="home-top-row">
+              <div className="card card-pad home-week">
+                <GoalRing count={weekCount} goal={goal} />
+                <div className="home-week-text">
+                  <div className="home-week-count">
+                    {t(weekCount === 1 ? 'home.weekCountOne' : 'home.weekCountOther', { count: weekCount })}
                   </div>
-                )}
+                  <div className="home-week-goal">
+                    {t('home.goalPrefix')} <span className="num">{goal}</span> {t('home.goalSuffix')}
+                  </div>
+                  {streak > 0 && (
+                    <div className="home-streak">
+                      🔥 {t(streak === 1 ? 'home.streakWeekOne' : 'home.streakWeekOther', { count: streak })}
+                    </div>
+                  )}
+                </div>
               </div>
-            </div>
 
-            {/* The week counter's push view (§5.6). Hidden until there is
-                history, so a fresh install keeps its empty state. */}
-            {sessions.length > 0 && (
-              <button
-                className="card card-pad card-tappable home-stats"
-                onClick={() => navigate('/stats')}
-              >
-                <span className="home-stats-text">
-                  <span className="home-stats-title">{t('home.seeAllStats')}</span>
-                  <span className="home-stats-sub">{t('home.seeAllStatsSub')}</span>
-                </span>
-                <ChevronRightIcon className="home-card-chevron" />
-              </button>
-            )}
+              {/* The week counter's push view (§5.6). Hidden until there is
+                  history, so a fresh install keeps its empty state. */}
+              {sessions.length > 0 && (
+                <button
+                  type="button"
+                  className="card card-pad card-tappable home-stats-box"
+                  onClick={() => navigate('/stats')}
+                  aria-label={t('home.seeAllStats')}
+                >
+                  <span className="home-stats-box-label">{t('home.statsBoxLabel')}</span>
+                  <span className="home-stats-box-emoji" aria-hidden="true">📊</span>
+                </button>
+              )}
+            </div>
           </section>
 
           {/* --- today's training ----------------------------------------- */}

@@ -192,6 +192,18 @@ export const CHANGELOG: ChangelogEntry[] = [
       'Las estadísticas de Ciclismo y Escalada llegarán pronto.',
     ],
   },
+  {
+    version: '1.15.0',
+    date: '2026-08-11',
+    en: [
+      'Tap any bar in a Stats chart to see its exact number.',
+      'Home’s weekly counter is now a compact card with a "Stats" shortcut beside it, so today’s training and the calendar sit higher on the screen.',
+    ],
+    es: [
+      'Toca cualquier barra de un gráfico de Estadísticas para ver su número exacto.',
+      'El contador semanal de Inicio ahora es una tarjeta más compacta con un acceso directo a "Stats" al lado, así el entrenamiento de hoy y el calendario quedan más arriba en la pantalla.',
+    ],
+  },
 ];
 
 /** Keep in sync with the bootstrap-independent nature of theme/language: this

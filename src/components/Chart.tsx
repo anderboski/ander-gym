@@ -12,7 +12,7 @@
  * tokens via Chart.css; a single series wears the accent, so there is no
  * categorical palette to keep colourblind-safe.
  */
-import type { ReactNode } from 'react';
+import { useState, type ReactNode } from 'react';
 import './Chart.css';
 
 /* -------------------------------------------------------------------------- */
@@ -284,6 +284,73 @@ export function LineChart({ values, formatTick, xLabels, ariaLabel }: LineChartP
   );
 }
 
+/**
+ * The value flag shown above a tapped/focused bar — clamped inside the plot
+ * box on both axes so it never gets clipped at an edge bar or a near-max
+ * value. Sizing is a rough character-count heuristic rather than measured
+ * text: every value here is a short number, never a paragraph.
+ */
+function BarTooltip({ x, y, left, right, text }: { x: number; y: number; left: number; right: number; text: string }) {
+  const w = Math.max(18, text.length * 5.6 + 8);
+  const h = 14;
+  const boxX = Math.min(right - w / 2, Math.max(left + w / 2, x)) - w / 2;
+  const boxY = Math.max(2, y - h - 4);
+  return (
+    <g className="chart-tooltip">
+      <rect className="chart-tooltip-bg" x={boxX} y={boxY} width={w} height={h} rx={4} />
+      <text className="chart-tooltip-text" x={boxX + w / 2} y={boxY + h / 2} textAnchor="middle" dominantBaseline="central">
+        {text}
+      </text>
+    </g>
+  );
+}
+
+/**
+ * A transparent tap/focus target for one bar, sized to the full band and
+ * plot height — the mark itself (down to 2px wide) is far smaller than a
+ * comfortable touch target, so the hit area is the band, not the bar.
+ */
+function BarHitTarget({
+  x,
+  band,
+  top,
+  bottom,
+  label,
+  active,
+  onActivate,
+  onDeactivate,
+}: {
+  x: number;
+  band: number;
+  top: number;
+  bottom: number;
+  label: string;
+  active: boolean;
+  onActivate: () => void;
+  onDeactivate: () => void;
+}) {
+  return (
+    <rect
+      className="chart-hit"
+      x={x - band / 2}
+      y={top}
+      width={band}
+      height={Math.max(0, bottom - top)}
+      tabIndex={0}
+      role="button"
+      aria-label={label}
+      aria-pressed={active}
+      // A pointer click fires `focus` before `click` — if `onClick` toggled
+      // off an already-active bar, the focus this same tap just triggered
+      // would make it look like nothing happened. Both handlers just
+      // activate; only losing focus to something else (`onBlur`) clears it.
+      onClick={onActivate}
+      onFocus={onActivate}
+      onBlur={onDeactivate}
+    />
+  );
+}
+
 type BarStripProps = {
   values: number[];
   /**
@@ -307,6 +374,7 @@ export function BarStrip({
   ariaLabel,
 }: BarStripProps) {
   const domain = zeroDomain(values);
+  const [active, setActive] = useState<number | null>(null);
 
   return (
     <Plot
@@ -328,14 +396,26 @@ export function BarStrip({
               const empty = value <= 0;
               const top = empty ? frame.base - 2 : frame.y(value);
               const dim = emphasisFrom !== undefined && value < emphasisFrom;
+              const base = empty ? 'chart-bar chart-bar-empty' : dim ? 'chart-bar chart-bar-dim' : 'chart-bar';
               return (
-                <path
-                  key={i}
-                  // An empty week is drawn as a stub rather than nothing at all,
-                  // so a gap in training reads as zero and not as missing data.
-                  className={empty ? 'chart-bar chart-bar-empty' : dim ? 'chart-bar chart-bar-dim' : 'chart-bar'}
-                  d={barPath(x, top, width, frame.base, 4)}
-                />
+                <g key={i}>
+                  <path
+                    // An empty week is drawn as a stub rather than nothing at all,
+                    // so a gap in training reads as zero and not as missing data.
+                    className={active === i ? `${base} chart-bar-active` : base}
+                    d={barPath(x, top, width, frame.base, 4)}
+                  />
+                  <BarHitTarget
+                    x={frame.x(i)}
+                    band={frame.band}
+                    top={frame.y(domain[1])}
+                    bottom={frame.base}
+                    label={formatTick(value)}
+                    active={active === i}
+                    onActivate={() => setActive(i)}
+                    onDeactivate={() => setActive((a) => (a === i ? null : a))}
+                  />
+                </g>
               );
             })}
             {reference !== undefined && reference > domain[0] && reference <= domain[1] && (
@@ -345,6 +425,15 @@ export function BarStrip({
                 x2={frame.right}
                 y1={frame.y(reference)}
                 y2={frame.y(reference)}
+              />
+            )}
+            {active !== null && values[active] !== undefined && (
+              <BarTooltip
+                x={frame.x(active)}
+                y={values[active] <= 0 ? frame.base - 2 : frame.y(values[active])}
+                left={frame.left}
+                right={frame.right}
+                text={formatTick(values[active])}
               />
             )}
           </>
@@ -377,6 +466,7 @@ type StackedBarStripProps = {
 export function StackedBarStrip({ buckets, series, formatTick, ariaLabel }: StackedBarStripProps) {
   const totals = buckets.map((b) => b.segments.reduce((sum, s) => sum + s.value, 0));
   const domain = zeroDomain(totals);
+  const [active, setActive] = useState<number | null>(null);
 
   return (
     <Plot
@@ -398,22 +488,46 @@ export function StackedBarStrip({ buckets, series, formatTick, ariaLabel }: Stac
                 .filter((s) => s.value > 0);
 
               let cumulative = 0;
-              return present.map(({ def, value }, si) => {
-                const bottomValue = cumulative;
-                cumulative += value;
-                const isBottom = si === 0;
-                const isTop = si === present.length - 1;
-                const top = frame.y(cumulative) + (isTop ? 0 : 1);
-                const base = frame.y(bottomValue) - (isBottom ? 0 : 1);
-                return (
-                  <path
-                    key={`${i}-${def.key}`}
-                    style={{ fill: def.color }}
-                    d={isTop ? barPath(x, top, width, base, 4) : rectPath(x, top, width, base)}
+              return (
+                <g key={i}>
+                  {present.map(({ def, value }, si) => {
+                    const bottomValue = cumulative;
+                    cumulative += value;
+                    const isBottom = si === 0;
+                    const isTop = si === present.length - 1;
+                    const top = frame.y(cumulative) + (isTop ? 0 : 1);
+                    const base = frame.y(bottomValue) - (isBottom ? 0 : 1);
+                    return (
+                      <path
+                        key={def.key}
+                        className={active === i ? 'chart-bar-active' : undefined}
+                        style={{ fill: def.color }}
+                        d={isTop ? barPath(x, top, width, base, 4) : rectPath(x, top, width, base)}
+                      />
+                    );
+                  })}
+                  <BarHitTarget
+                    x={frame.x(i)}
+                    band={frame.band}
+                    top={frame.y(domain[1])}
+                    bottom={frame.base}
+                    label={formatTick(totals[i] ?? 0)}
+                    active={active === i}
+                    onActivate={() => setActive(i)}
+                    onDeactivate={() => setActive((a) => (a === i ? null : a))}
                   />
-                );
-              });
+                </g>
+              );
             })}
+            {active !== null && totals[active] !== undefined && (
+              <BarTooltip
+                x={frame.x(active)}
+                y={frame.y(totals[active])}
+                left={frame.left}
+                right={frame.right}
+                text={formatTick(totals[active])}
+              />
+            )}
           </>
         );
       }}

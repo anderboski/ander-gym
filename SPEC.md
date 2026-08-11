@@ -257,7 +257,9 @@ the fixed bottom nav.
 ### 5.1 Home
 - **Greeting / profile entry point** — the page's `<h1>` is a time-bucketed greeting ("Good morning,
   `<name>`" etc.) doubling as a tappable link into Profile (§5.7), rather than a static "Home" title.
-- **Week counter** — "N trainings this week", with a progress ring against `weeklyGoal`.
+- **Week counter** — "N trainings this week", with a progress ring against `weeklyGoal`. Sits in a
+  compact card sharing a row with the Stats shortcut below, rather than full-width, so the row costs
+  less vertical space and Today/Calendar sit higher on the screen.
 - **Streak** — "🔥 3 weeks" when `weeklyStreak ≥ 1`; hidden at 0.
 - **Today's training card** — the result of `nextTraining()`: label, body parts, and last-done date +
   days-back. Tapping it starts a new session for that training and navigates to Session.
@@ -267,8 +269,9 @@ the fixed bottom nav.
   - **Duration estimate** — "usually ~45m", the average of `savedAt − startedAt` across every past saved
     session for that training (`averageSessionMinutes`). Omitted when the training has no saved sessions
     yet, since there is nothing to average.
-- **"See all stats"** — a row under the week counter, pushing to the Stats view (§5.6). Hidden until at
-  least one session exists, so a fresh install keeps its empty state.
+- **Stats shortcut** — a compact card beside the week counter (same row), just "STATS" and 📊, pushing to
+  the Stats view (§5.6). Hidden until at least one session exists, so a fresh install keeps its empty
+  state — the week counter alone then fills the full row.
 - **Calendar** — below Today, a month grid (Monday-start, six fixed rows so paging never changes the card's
   height). Prev/next chevrons above the grid step one month at a time, unbounded in either direction. A day
   with a saved gym session or a logged sport session shows a small circular badge with that training's icon,
@@ -279,12 +282,12 @@ the fixed bottom nav.
   gets a small dot underneath (capped at 3, then `+N`): the point of putting sports on this calendar is
   seeing all of them, not collapsing the day to one winner. Tapping a day opens its primary entry in History
   (`#/history/<id>`); untrained days are inert. Hidden until at least one gym or sport session exists,
-  matching "See all stats".
+  matching the Stats shortcut.
 - **Backup banner** — shown when `lastExportAt` is unset (and ≥1 session exists) or older than 30 days.
   Tapping it runs an export immediately.
 - **Lifetime stats footer** — below the backup banner, a single centred line: total sessions ever saved,
   total kg lifted (`formatCompact`, matching Stats' chart figures), and "since `<date of the first saved
-  session>`". Hidden until at least one session exists, matching "See all stats" and the calendar.
+  session>`". Hidden until at least one session exists, matching the Stats shortcut and the calendar.
 - **Gear icon** (top right) — Settings sheet: weekly goal, language, export, import, storage usage
   (`navigator.storage.estimate()`), app version, a changelog link, a "How to use" link (§5.9), and a
   link to the GitHub repo.
@@ -503,7 +506,7 @@ Bottom of the page, above the nav:
 ### 5.6 Stats
 A push view off Home (`#/stats`), **not** a sixth tab: D1 locks the navigation at five, so `tabOf()` maps
 this route to `home` and the tab bar stays lit on Home while it is open — the same arrangement as a training
-or a session detail. Reached from the "See all stats" row in §5.1; a back control returns to Home.
+or a session detail. Reached from the Stats shortcut in §5.1; a back control returns to Home.
 
 **Training-kind switcher.** Top right of the header, four emoji tabs — gym 🏋️, cycling 🚴, snowboard 🏂,
 climbing 🧗 — picking which stats show below. Local component state only (no route change); gym is the
@@ -551,6 +554,14 @@ charting dependency: one would cost more bundle than the four chart types are wo
 target in §8. Every chart carries `role="img"` with an `aria-label` stating the trend in words, and scrolls
 inside its own container rather than widening the page. Colours and spacing come only from the tokens in
 `styles.css`, so both themes follow automatically.
+
+**Tap-to-reveal values.** Every bar (`BarStrip`, `StackedBarStrip`) carries a transparent hit target sized
+to its full band and plot height, not just the painted mark — tapping, clicking or focusing it shows a
+small flag with that bar's exact number (its total, for a stacked bar) and gives the bar a 2px surface-ring
+"lift", the same treatment `LineChart`'s dots already get. A pointer tap fires `focus` before `click`, so
+both handlers just activate the same bar rather than toggling — toggling on `click` would cancel out the
+`focus` that same tap already triggered. This is additive: the aria-label, caption and (for the season
+chart) legend already state every value in words, so the tooltip enhances rather than gates.
 
 **Categorical palette (exception).** Every chart except the ski season-comparison chart is a single series in
 `--accent` — no categorical palette needed, and none to keep colourblind-safe. The season chart is inherently

@@ -106,6 +106,40 @@
   stroke-width: 1;
 }
 
+/* --- tap-to-reveal value (bars) -------------------------------------------- */
+
+/* Invisible, sized to the full band and plot height — the mark itself is
+   narrower than a comfortable touch target. No outline of its own: the
+   bar's own .chart-bar-active ring (below) is the focus/active indicator,
+   for mouse, touch and keyboard alike, so there's exactly one visual cue
+   rather than a browser default box stacked on top of it. */
+.chart-hit {
+  fill: transparent;
+  cursor: pointer;
+  outline: none;
+}
+
+/* Same "2px surface ring" treatment as .chart-dot, so a tapped bar visibly lifts. */
+.chart-bar-active {
+  stroke: var(--bg-raised);
+  stroke-width: 2;
+}
+
+.chart-tooltip {
+  pointer-events: none;
+}
+
+.chart-tooltip-bg {
+  fill: var(--text);
+}
+
+.chart-tooltip-text {
+  fill: var(--bg);
+  font-family: var(--font-num);
+  font-size: 10px;
+  font-weight: 700;
+}
+
 /* --- ranked bar list ------------------------------------------------------ */
 
 .chart-list {

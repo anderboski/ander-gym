@@ -48,7 +48,7 @@ export const es: Record<TranslationKey, string> = {
   'home.streakWeekOne': '{count} semana',
   'home.streakWeekOther': '{count} semanas',
   'home.seeAllStats': 'Ver todas las estadísticas',
-  'home.seeAllStatsSub': 'Volumen, constancia y equilibrio muscular',
+  'home.statsBoxLabel': 'Stats',
   'home.todaySection': 'Hoy',
   'home.completedToday': 'Completado hoy',
   'home.inProgress': 'En curso',
@@ -310,7 +310,6 @@ export const es: Record<TranslationKey, string> = {
 
   'stats.backToHomeAria': 'Volver a Inicio',
   'stats.title': 'Estadísticas',
-  'stats.subtitle': 'Todo lo de abajo se calcula a partir de tus sesiones guardadas.',
   'stats.removedExercises': 'Ejercicios eliminados',
   'stats.kindSwitcherAria': 'Elegir categoría de estadísticas',
 
