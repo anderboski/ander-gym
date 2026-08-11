@@ -54,7 +54,7 @@ export const en = {
   'home.streakWeekOne': '{count} week',
   'home.streakWeekOther': '{count} weeks',
   'home.seeAllStats': 'See all stats',
-  'home.seeAllStatsSub': 'Volume, consistency and muscle balance',
+  'home.statsBoxLabel': 'Stats',
   'home.todaySection': 'Today',
   'home.completedToday': 'Completed today',
   'home.inProgress': 'In progress',
@@ -311,7 +311,6 @@ export const en = {
 
   'stats.backToHomeAria': 'Back to home',
   'stats.title': 'Stats',
-  'stats.subtitle': 'Everything below is derived from your saved sessions.',
   'stats.removedExercises': 'Removed exercises',
   'stats.kindSwitcherAria': 'Choose stats category',
 

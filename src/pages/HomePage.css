@@ -121,32 +121,41 @@
   }
 }
 
-/* Push view into the stats (§5.6), directly under the week counter it expands. */
-.home-stats {
-  width: 100%;
+/* Week counter + the stats push view (§5.6) side by side, so the row takes
+   less vertical space and TODAY/CALENDAR move up. */
+.home-top-row {
   display: flex;
-  align-items: center;
+  align-items: stretch;
   gap: var(--s3);
-  margin-top: var(--s3);
-  text-align: left;
 }
 
-.home-stats-text {
-  flex: 1;
+.home-top-row .home-week {
+  flex: 2;
   min-width: 0;
 }
 
-.home-stats-title {
-  display: block;
-  font-size: 15px;
-  font-weight: 650;
+.home-stats-box {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s1);
+  text-align: center;
 }
 
-.home-stats-sub {
-  display: block;
+.home-stats-box-label {
   font-size: 13px;
-  color: var(--text-dim);
-  margin-top: 2px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  color: var(--text-faint);
+}
+
+.home-stats-box-emoji {
+  font-size: 22px;
+  line-height: 1;
 }
 
 /* --------------------------------------------------------------------------

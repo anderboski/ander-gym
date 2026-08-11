@@ -98,10 +98,7 @@ export function StatsPage() {
           <span>{t('tabbar.home')}</span>
         </button>
         <div className="stats-title-row">
-          <div>
-            <h1 className="page-title">{t('stats.title')}</h1>
-            <div className="page-sub">{t('stats.subtitle')}</div>
-          </div>
+          <h1 className="page-title">{t('stats.title')}</h1>
           <div className="stats-kind-switcher" role="tablist" aria-label={t('stats.kindSwitcherAria')}>
             {KIND_ORDER.map((k) => (
               <button
