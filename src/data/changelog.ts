@@ -214,6 +214,16 @@ export const CHANGELOG: ChangelogEntry[] = [
       'Se corrigió que Sesión ofreciera los entrenamientos de Snowboard, Ciclismo y Escalada — esos se registran con un resumen puntual desde la pestaña Entrenamientos, no como una sesión en vivo serie a serie.',
     ],
   },
+  {
+    version: '1.15.2',
+    date: '2026-08-11',
+    en: [
+      'Narrowed the Stats shortcut on Home so it and the weekly counter take up less vertical space.',
+    ],
+    es: [
+      'Se redujo el ancho del acceso directo a Estadísticas en Inicio para que, junto al contador semanal, ocupe menos espacio vertical.',
+    ],
+  },
 ];
 
 /** Keep in sync with the bootstrap-independent nature of theme/language: this
