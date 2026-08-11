@@ -45,6 +45,23 @@
   object-fit: contain;
 }
 
+/* History sheet: same framing as the carousel card's media, just standalone
+   above the trend rather than inside a card. */
+.ex-history-media {
+  width: 100%;
+  aspect-ratio: 4 / 3;
+  background: var(--bg-sunken);
+  border-radius: var(--r-md);
+  overflow: hidden;
+  margin-bottom: var(--s4);
+}
+
+.ex-history-media img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
 /* Lettered tile for custom exercises with no photo. */
 .ex-card-placeholder {
   width: 100%;
