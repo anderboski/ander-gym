@@ -11,8 +11,18 @@ import { navigate } from '../router';
 import { ChevronRightIcon } from '../components/icons';
 import { useLanguage, type TFunc } from '../data/i18n';
 import { sportSessionSummary } from '../data/sportLabels';
-import type { Session, SportSession } from '../data/types';
+import type { Session, SportSession, Training } from '../data/types';
 import './HistoryPage.css';
+
+/**
+ * Same fallback as the Home calendar dot and the Trainings row: the
+ * training's own emoji, else the label's first letter — a session's
+ * `trainingId` can point at an archived or (for a zero-history training)
+ * already-deleted training, so this never assumes a hit.
+ */
+function trainingEmoji(training: Training | undefined, label: string): string {
+  return training?.emoji ?? label.charAt(0).toUpperCase();
+}
 
 /** `12 sets · 1240 kg`, or just the sets for an all-bodyweight session. */
 export function sessionSummary(session: Session, t: TFunc): string {
@@ -48,7 +58,7 @@ function groupByMonth(items: HistoryItem[], locale: string): MonthGroup[] {
   return groups;
 }
 
-function SessionRow({ session }: { session: Session }) {
+function SessionRow({ session, training }: { session: Session; training: Training | undefined }) {
   const { t } = useLanguage();
 
   return (
@@ -57,6 +67,9 @@ function SessionRow({ session }: { session: Session }) {
       onClick={() => navigate(`/history/${session.id}`)}
       aria-label={`${session.trainingLabel}, ${formatDateTime(session.startedAt)}, ${sessionSummary(session, t)}`}
     >
+      <span className="history-row-emoji" aria-hidden="true">
+        {trainingEmoji(training, session.trainingLabel)}
+      </span>
       <span className="history-row-main">
         <span className="history-row-date num">{formatDateTime(session.startedAt)}</span>
         <span className="history-row-training">{session.trainingLabel}</span>
@@ -69,7 +82,7 @@ function SessionRow({ session }: { session: Session }) {
   );
 }
 
-function SportHistoryRow({ session }: { session: SportSession }) {
+function SportHistoryRow({ session, training }: { session: SportSession; training: Training | undefined }) {
   const { t } = useLanguage();
 
   return (
@@ -78,6 +91,9 @@ function SportHistoryRow({ session }: { session: SportSession }) {
       onClick={() => navigate(`/history/${session.id}`)}
       aria-label={`${session.trainingLabel}, ${formatShortLocalDate(session.date)}, ${sportSessionSummary(t, session)}`}
     >
+      <span className="history-row-emoji" aria-hidden="true">
+        {trainingEmoji(training, session.trainingLabel)}
+      </span>
       <span className="history-row-main">
         <span className="history-row-date num">{formatShortLocalDate(session.date)}</span>
         <span className="history-row-training">{session.trainingLabel}</span>
@@ -91,10 +107,11 @@ function SportHistoryRow({ session }: { session: SportSession }) {
 }
 
 export function HistoryPage() {
-  const { sessions, sportSessions, status } = useGym();
+  const { sessions, sportSessions, trainings, status } = useGym();
   const { t, locale } = useLanguage();
   const items = useMemo(() => mergedHistory(sessions, sportSessions), [sessions, sportSessions]);
   const groups = useMemo(() => groupByMonth(items, locale), [items, locale]);
+  const trainingsById = useMemo(() => new Map(trainings.map((tr) => [tr.id, tr])), [trainings]);
   const total = items.length;
 
   return (
@@ -120,9 +137,17 @@ export function HistoryPage() {
           <div className="history-list">
             {group.items.map((item) =>
               item.kind === 'gym' ? (
-                <SessionRow session={item.session} key={item.session.id} />
+                <SessionRow
+                  session={item.session}
+                  training={trainingsById.get(item.session.trainingId)}
+                  key={item.session.id}
+                />
               ) : (
-                <SportHistoryRow session={item.sportSession} key={item.sportSession.id} />
+                <SportHistoryRow
+                  session={item.sportSession}
+                  training={trainingsById.get(item.sportSession.trainingId)}
+                  key={item.sportSession.id}
+                />
               ),
             )}
           </div>

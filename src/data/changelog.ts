@@ -224,6 +224,16 @@ export const CHANGELOG: ChangelogEntry[] = [
       'Se redujo el ancho del acceso directo a Estadísticas en Inicio para que, junto al contador semanal, ocupe menos espacio vertical.',
     ],
   },
+  {
+    version: '1.16.0',
+    date: '2026-08-11',
+    en: [
+      'History rows now show each training’s icon on the left, so you can spot the one you’re looking for at a glance.',
+    ],
+    es: [
+      'Las filas del Historial ahora muestran el icono de cada entrenamiento a la izquierda, para reconocer el que buscas de un vistazo.',
+    ],
+  },
 ];
 
 /** Keep in sync with the bootstrap-independent nature of theme/language: this
