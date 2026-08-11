@@ -146,6 +146,15 @@ Only a phone can tell you whether a 320-unit chart is legible in a hand.
       appears (don't wait for the slide-up to settle). The Weather picker opens
       — not the date picker one field above. Repeat tapping **Snow condition**
       immediately on open.
+- [ ] Open the Snowboard and Climbing log sheets and confirm the **Date** field
+      is not focused on open (no cursor, no native date picker showing) — it
+      used to `autoFocus`, which popped the date picker up immediately and ate
+      the next tap meant for Weather/Snow condition/a grade field, wherever it
+      landed.
+- [ ] In the Climbing log sheet, tap a grade count field and type a number —
+      the field must be empty to start (not showing a real "0" you have to
+      delete first) and end up holding exactly what was typed, not a value
+      with a leftover leading zero.
 
 ## 5. Crash safety
 

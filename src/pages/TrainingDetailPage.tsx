@@ -271,7 +271,11 @@ function SportLogSheet({
   const [elevationM, setElevationM] = useState('');
   const [avgBpm, setAvgBpm] = useState('');
 
-  const [climbsByGrade, setClimbsByGrade] = useState<Record<ClimbGrade, number>>({ '3': 0, '4': 0, '5': 0 });
+  // Raw per-grade text, not numbers: a controlled numeric value re-renders as
+  // "0" the instant the field is cleared, so the digit can never actually be
+  // removed — the same reason distanceKm/elevationM/avgBpm above are strings.
+  // Parsed to a count only at submit time.
+  const [climbsByGrade, setClimbsByGrade] = useState<Record<ClimbGrade, string>>({ '3': '', '4': '', '5': '' });
 
   const canSave = date.length > 0 && !saving && (training.kind !== 'cycling' || distanceKm.trim() !== '');
 
@@ -293,7 +297,15 @@ function SportLogSheet({
           avgBpm: avgBpm.trim() ? Number(avgBpm) : null,
         };
       } else {
-        input = { kind: 'climbing', date, climbsByGrade };
+        input = {
+          kind: 'climbing',
+          date,
+          climbsByGrade: {
+            '3': Math.max(0, Math.round(Number(climbsByGrade['3']) || 0)),
+            '4': Math.max(0, Math.round(Number(climbsByGrade['4']) || 0)),
+            '5': Math.max(0, Math.round(Number(climbsByGrade['5']) || 0)),
+          },
+        };
       }
       await onSubmit(input);
       onClose();
@@ -329,7 +341,12 @@ function SportLogSheet({
             className="input"
             type="date"
             required
-            autoFocus
+            // No autoFocus: focusing a date input opens its native picker
+            // immediately, before the sheet has finished appearing — the
+            // picker then eats the next tap intended for Weather, Snow
+            // condition, or a climbing grade field further down. The date
+            // already defaults to today, so nothing is lost by leaving the
+            // form unfocused on open.
             value={date}
             max={dayKey(new Date())}
             onChange={(e) => setDate(e.target.value)}
@@ -453,11 +470,9 @@ function SportLogSheet({
                     min="0"
                     step="1"
                     aria-label={t('sportLog.gradeCountAria', { grade })}
+                    placeholder="0"
                     value={climbsByGrade[grade]}
-                    onChange={(e) => {
-                      const n = Math.max(0, Math.round(Number(e.target.value) || 0));
-                      setClimbsByGrade((c) => ({ ...c, [grade]: n }));
-                    }}
+                    onChange={(e) => setClimbsByGrade((c) => ({ ...c, [grade]: e.target.value }))}
                   />
                 </div>
               ))}

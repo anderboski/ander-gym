@@ -234,6 +234,18 @@ export const CHANGELOG: ChangelogEntry[] = [
       'Las filas del Historial ahora muestran el icono de cada entrenamiento a la izquierda, para reconocer el que buscas de un vistazo.',
     ],
   },
+  {
+    version: '1.16.1',
+    date: '2026-08-11',
+    en: [
+      'Fixed the climbing grade count fields showing a "0" you couldn\'t clear before typing a new number.',
+      'Fixed the Snowboard and Climbing log sheets sometimes opening the date picker when tapping Weather, Snow condition, or a grade field.',
+    ],
+    es: [
+      'Se corrigió que los campos de número de escaladas por grado mostraran un "0" que no se podía borrar antes de escribir un número nuevo.',
+      'Se corrigió que las hojas de registro de Snowboard y Escalada a veces abrieran el selector de fecha al tocar Tiempo, Estado de la nieve o un campo de grado.',
+    ],
+  },
 ];
 
 /** Keep in sync with the bootstrap-independent nature of theme/language: this
