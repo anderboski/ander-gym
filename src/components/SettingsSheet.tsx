@@ -186,13 +186,6 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
         </div>
       </section>
 
-      {/* --- rest timer ----------------------------------------------------- */}
-      <section className="settings-block">
-        <div className="section-title">{t('settings.restTimer')}</div>
-        <p className="settings-hint">{t('settings.restTimerHint1')}</p>
-        <p className="settings-hint">{t('settings.restTimerHint2')}</p>
-      </section>
-
       {/* --- export -------------------------------------------------------- */}
       <section className="settings-block">
         <div className="section-title">{t('settings.backup')}</div>

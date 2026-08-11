@@ -80,11 +80,6 @@ export const en = {
   'settings.trainingsPerWeek': 'Trainings per week',
   'settings.decreaseGoal': 'Decrease weekly goal',
   'settings.increaseGoal': 'Increase weekly goal',
-  'settings.restTimer': 'Rest timer',
-  'settings.restTimerHint1':
-    'Rest length is set per training day, from the bar under the session title.',
-  'settings.restTimerHint2':
-    'The countdown is visual. iOS Safari has no vibration, and a Home Screen app cannot send notifications, so a rest that ends while this app is in the background or the phone is locked passes silently. Android devices get a short vibration at zero.',
   'settings.language': 'Language',
   'settings.backup': 'Backup',
   'settings.exportData': 'Export data',

@@ -74,11 +74,6 @@ export const es: Record<TranslationKey, string> = {
   'settings.trainingsPerWeek': 'Entrenamientos por semana',
   'settings.decreaseGoal': 'Reducir objetivo semanal',
   'settings.increaseGoal': 'Aumentar objetivo semanal',
-  'settings.restTimer': 'Temporizador de descanso',
-  'settings.restTimerHint1':
-    'La duración del descanso se ajusta por cada entrenamiento, desde la barra bajo el título de la sesión.',
-  'settings.restTimerHint2':
-    'La cuenta atrás es visual. iOS Safari no tiene vibración, y una app de pantalla de inicio no puede enviar notificaciones, así que un descanso que termina con la app en segundo plano o el teléfono bloqueado pasa desapercibido. Los dispositivos Android reciben una breve vibración al llegar a cero.',
   'settings.language': 'Idioma',
   'settings.backup': 'Copia de seguridad',
   'settings.exportData': 'Exportar datos',

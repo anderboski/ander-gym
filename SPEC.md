@@ -478,8 +478,6 @@ the exercise rows.
   the device has it — feature-detected, so its absence on iOS is a no-op, not an error.
 - Timer state is deliberately ephemeral: it lives in the page, not in `activeSession`. A reload
   clears it; a half-finished rest is not training data.
-- The Settings sheet states in full that the countdown is on-screen only (§6); the bar itself
-  carries no such note, to keep the fixed header compact.
 
 Bottom of the page, above the nav:
 - **"Save session"** — large, full-width, green. Writes to `sessions` with `savedAt`, clears
