@@ -9,6 +9,7 @@ import {
   SNOW_CONDITIONS,
   WEATHER_CONDITIONS,
   type ClimbGrade,
+  type CyclingSession,
   type Exercise,
   type Session,
   type SetEntry,
@@ -1000,4 +1001,66 @@ export function climbGradePyramid(sportSessions: SportSession[], days: number, n
   }
 
   return [...CLIMB_GRADES].reverse().map((grade) => ({ grade, count: totals.get(grade) ?? 0 }));
+}
+
+/* -------------------------------------------------------------------------- */
+/* Cycling                                                                     */
+/* -------------------------------------------------------------------------- */
+
+export type CyclingSummary = {
+  rides: number;
+  totalDistanceKm: number;
+  totalElevationM: number;
+  /** Total elevation over total distance, or null with no distance to divide by — an intensity figure, not loggable directly. */
+  avgElevationPerKm: number | null;
+};
+
+/**
+ * Totals over the last `days` calendar days. Distance and elevation are
+ * summed rather than averaged — with infrequent rides a per-ride average
+ * reads as a strange fractional ride, where a total answers "how much did I
+ * ride" directly.
+ */
+export function cyclingSummary(sportSessions: SportSession[], days: number, now: Date): CyclingSummary {
+  let rides = 0;
+  let totalDistanceKm = 0;
+  let totalElevationM = 0;
+
+  for (const s of sportSessions) {
+    if (s.kind !== 'cycling') continue;
+    const age = daysBetween(parseLocalDate(s.date), now);
+    if (age < 0 || age >= days) continue;
+    rides += 1;
+    totalDistanceKm += s.distanceKm;
+    totalElevationM += s.elevationM;
+  }
+
+  return {
+    rides,
+    totalDistanceKm,
+    totalElevationM,
+    avgElevationPerKm: totalDistanceKm > 0 ? totalElevationM / totalDistanceKm : null,
+  };
+}
+
+export type CyclingRide = CyclingSession & {
+  /** This ride's own elevation/distance, or null for a distance-less ride — same reasoning as `CyclingSummary.avgElevationPerKm`. */
+  elevationPerKm: number | null;
+};
+
+/**
+ * Individual rides in the last `days` calendar days, newest first — the list
+ * that backs up the summary card with what actually happened on each ride,
+ * the same "picture never holds a number on its own" rule the exercise
+ * history charts follow.
+ */
+export function cyclingRides(sportSessions: SportSession[], days: number, now: Date): CyclingRide[] {
+  return sportSessions
+    .filter((s): s is CyclingSession => s.kind === 'cycling')
+    .filter((s) => {
+      const age = daysBetween(parseLocalDate(s.date), now);
+      return age >= 0 && age < days;
+    })
+    .sort((a, b) => b.date.localeCompare(a.date))
+    .map((s) => ({ ...s, elevationPerKm: s.distanceKm > 0 ? s.elevationM / s.distanceKm : null }));
 }

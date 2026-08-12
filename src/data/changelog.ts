@@ -256,6 +256,16 @@ export const CHANGELOG: ChangelogEntry[] = [
       'Las estadísticas de Escalada ahora muestran una pirámide de grados — vías por grado en la última semana/mes/3 meses, con el grado más difícil superado en ese periodo.',
     ],
   },
+  {
+    version: '1.18.0',
+    date: '2026-08-12',
+    en: [
+      'Cycling stats now show total distance and elevation per period, plus a list of your rides ranked by distance with elevation-per-km for each one.',
+    ],
+    es: [
+      'Las estadísticas de Ciclismo ahora muestran la distancia y el desnivel totales por periodo, además de una lista de tus salidas ordenadas por distancia con el desnivel por km de cada una.',
+    ],
+  },
 ];
 
 /** Keep in sync with the bootstrap-independent nature of theme/language: this

@@ -365,7 +365,13 @@ export const es: Record<TranslationKey, string> = {
   'stats.seasonDaysOne': '1 día',
   'stats.seasonDaysOther': '{count} días',
 
-  'stats.cyclingComingSoon': 'Las estadísticas de ciclismo llegarán pronto.',
+  'stats.cyclingEmptyState': 'Aún no hay sesiones de ciclismo registradas.',
+  'stats.cyclingRidesTitle': 'Salidas · {days} días',
+  'stats.cyclingRidesEmpty': 'No hay salidas en los últimos {days} días.',
+  'stats.cyclingRidesCaption': '{rides} · {elevation} de desnivel en total',
+  'stats.cyclingElevationPerKm': '{value} m/km',
+  'stats.rideOne': '1 salida',
+  'stats.rideOther': '{count} salidas',
 
   'stats.climbingEmptyState': 'Aún no hay sesiones de escalada registradas.',
   'stats.pyramidTitle': 'Pirámide de grados · {days} días',

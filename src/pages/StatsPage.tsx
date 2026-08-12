@@ -17,8 +17,11 @@ import { useMemo, useState } from 'react';
 import { useGym } from '../data/store';
 import {
   climbGradePyramid,
+  cyclingRides,
+  cyclingSummary,
   defaultStatsView,
   formatShortDate,
+  formatShortLocalDate,
   STATS_PERIOD_DAYS,
   STATS_PERIODS,
   STATS_VIEWS_FOR_PERIOD,
@@ -28,6 +31,8 @@ import {
   UNKNOWN_TARGET,
   volumeByTarget,
   type ClimbGradeCount,
+  type CyclingRide,
+  type CyclingSummary,
   type ExerciseCount,
   type PeriodStat,
   type SeasonSplit,
@@ -37,7 +42,7 @@ import {
 import { formatDurationEstimate } from '../data/derive';
 import { formatCompact, titleCase } from '../data/parse';
 import { translateExerciseName, translateFacetValue } from '../data/exerciseI18n';
-import { snowConditionLabel, trainingKindLabel, weatherLabel } from '../data/sportLabels';
+import { snowConditionLabel, sportSessionSummary, trainingKindLabel, weatherLabel } from '../data/sportLabels';
 import {
   BarList,
   BarStrip,
@@ -121,7 +126,7 @@ export function StatsPage() {
 
       {kind === 'gym' && <GymStats sessions={sessions} exerciseById={exerciseById} weeklyGoal={settings.weeklyGoal} now={now} />}
       {kind === 'snowboard' && <SnowboardStats sportSessions={sportSessions} />}
-      {kind === 'cycling' && <div className="empty">{t('stats.cyclingComingSoon')}</div>}
+      {kind === 'cycling' && <CyclingStats sportSessions={sportSessions} now={now} />}
       {kind === 'climbing' && <ClimbingStats sportSessions={sportSessions} now={now} />}
     </div>
   );
@@ -533,6 +538,96 @@ function SnowboardStats({ sportSessions }: { sportSessions: SportSession[] }) {
         </ChartFigure>
       </div>
     </section>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Cycling                                                                     */
+/* -------------------------------------------------------------------------- */
+
+function CyclingStats({ sportSessions, now }: { sportSessions: SportSession[]; now: Date }) {
+  const { t } = useLanguage();
+  const [period, setPeriod] = useState<StatsPeriod>('month');
+  const days = STATS_PERIOD_DAYS[period];
+
+  const hasLogs = useMemo(() => sportSessions.some((s) => s.kind === 'cycling'), [sportSessions]);
+  const summary = useMemo(() => cyclingSummary(sportSessions, days, now), [sportSessions, days, now]);
+  const rides = useMemo(() => cyclingRides(sportSessions, days, now), [sportSessions, days, now]);
+
+  if (!hasLogs) {
+    return (
+      <section className="section">
+        <div className="empty">{t('stats.cyclingEmptyState')}</div>
+      </section>
+    );
+  }
+
+  return (
+    <>
+      <section className="section">
+        <div className="stats-controls">
+          <div className="stats-segment" role="group" aria-label={t('stats.periodAria')}>
+            {STATS_PERIODS.map((p) => (
+              <button
+                key={p}
+                type="button"
+                className="stats-segment-btn"
+                aria-pressed={period === p}
+                onClick={() => setPeriod(p)}
+              >
+                {t(PERIOD_LABEL_KEY[p])}
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="section">
+        <div className="card card-pad">
+          <CyclingRides summary={summary} rides={rides} days={days} />
+        </div>
+      </section>
+    </>
+  );
+}
+
+/**
+ * One card: the period totals as the headline/caption, individual rides
+ * below as a `BarList` ranked by distance (newest first, same order
+ * `cyclingRides` already returns) — rides are infrequent enough that a
+ * bucketed time-series chart like Gym's would read as mostly-empty bars, so
+ * this follows the Climbing grade-pyramid's simpler list shape instead.
+ */
+function CyclingRides({ summary, rides, days }: { summary: CyclingSummary; rides: CyclingRide[]; days: number }) {
+  const { t } = useLanguage();
+
+  if (rides.length === 0) {
+    return (
+      <ChartFigure title={t('stats.cyclingRidesTitle', { days })}>
+        <div className="stats-empty">{t('stats.cyclingRidesEmpty', { days })}</div>
+      </ChartFigure>
+    );
+  }
+
+  return (
+    <ChartFigure
+      title={t('stats.cyclingRidesTitle', { days })}
+      value={`${formatCompact(summary.totalDistanceKm)} km`}
+      caption={t('stats.cyclingRidesCaption', {
+        rides: summary.rides === 1 ? t('stats.rideOne') : t('stats.rideOther', { count: summary.rides }),
+        elevation: `${Math.round(summary.totalElevationM)} m`,
+      })}
+    >
+      <BarList
+        rows={rides.map((ride) => ({
+          key: ride.id,
+          label: formatShortLocalDate(ride.date),
+          value: ride.distanceKm,
+          valueLabel: sportSessionSummary(t, ride),
+          note: ride.elevationPerKm !== null ? t('stats.cyclingElevationPerKm', { value: Math.round(ride.elevationPerKm) }) : undefined,
+        }))}
+      />
+    </ChartFigure>
   );
 }
 

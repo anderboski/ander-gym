@@ -557,7 +557,15 @@ included — the set is small and fixed, so dropping an untouched grade would le
 rather than just shorten a list. The caption states the total logged and the hardest grade sent in the
 window. No climbing sessions ever logged shows a plain empty state instead of the period control.
 
-**Cycling.** Placeholder — a short "stats coming soon" empty state. No charts yet.
+**Cycling.** Same period control as Gym/Climbing above a single card: a headline total distance, a caption
+stating ride count and total elevation climbed (`cyclingSummary` in `derive.ts`), and a `BarList` of the
+individual rides in the window, newest first (`cyclingRides`), bar length by that ride's distance. Each row's
+value text is the same `10.0 km · 100 m · 142 bpm` summary line History uses (`sportSessionSummary`,
+`avgBpm` omitted when not logged), with elevation-per-km as the note — the one metric worth deriving since
+it isn't directly loggable. No bucketed time-series chart (unlike Gym): rides are typically infrequent
+enough that most buckets would sit empty, so this follows Climbing's simpler list shape instead of Gym's.
+No cycling sessions ever logged shows a plain empty state instead of the period control, same as Climbing;
+a period with logs elsewhere but none in the window gets its own narrower empty state.
 
 **Charts** are hand-rolled inline SVG in `components/Chart.tsx` — `Plot` owns the box, the scales, the
 gridlines and the axis labels (per-band labels for a handful of discrete categories like seasons, edge
