@@ -365,7 +365,13 @@ export const en = {
   'stats.seasonDaysOne': '1 day',
   'stats.seasonDaysOther': '{count} days',
 
-  'stats.cyclingComingSoon': 'Cycling stats are coming soon.',
+  'stats.cyclingEmptyState': 'No cycling sessions logged yet.',
+  'stats.cyclingRidesTitle': 'Rides · {days} days',
+  'stats.cyclingRidesEmpty': 'No rides in the last {days} days.',
+  'stats.cyclingRidesCaption': '{rides} · {elevation} climbed in total',
+  'stats.cyclingElevationPerKm': '{value} m/km',
+  'stats.rideOne': '1 ride',
+  'stats.rideOther': '{count} rides',
 
   'stats.climbingEmptyState': 'No climbing sessions logged yet.',
   'stats.pyramidTitle': 'Grade pyramid · {days} days',

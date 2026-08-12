@@ -11,6 +11,8 @@ import {
   climbGradePyramid,
   completedToday,
   currentWeekCount,
+  cyclingRides,
+  cyclingSummary,
   dayKey,
   daysBetween,
   defaultStatsView,
@@ -978,6 +980,80 @@ describe('climbGradePyramid', () => {
       { grade: '4', count: 0 },
       { grade: '3', count: 0 },
     ]);
+  });
+});
+
+describe('cycling', () => {
+  const now = new Date(2026, 7, 1, 12); // 1 Aug 2026
+  let cycleSeq = 0;
+
+  function cyclingLog(date: string, distanceKm: number, elevationM: number, avgBpm: number | null = null): SportSession {
+    cycleSeq += 1;
+    return {
+      id: `cy${cycleSeq}`,
+      trainingId: 'bike',
+      trainingLabel: 'Bike',
+      date,
+      createdAt: `${date}T00:00:00.000Z`,
+      kind: 'cycling',
+      distanceKm,
+      elevationM,
+      avgBpm,
+    };
+  }
+
+  describe('cyclingSummary', () => {
+    it('is all zero with no rides', () => {
+      expect(cyclingSummary([], 30, now)).toEqual({
+        rides: 0,
+        totalDistanceKm: 0,
+        totalElevationM: 0,
+        avgElevationPerKm: null,
+      });
+    });
+
+    it('sums distance and elevation across rides in the window', () => {
+      const logs = [cyclingLog('2026-07-30', 20, 200), cyclingLog('2026-07-28', 30, 300)];
+      expect(cyclingSummary(logs, 30, now)).toEqual({
+        rides: 2,
+        totalDistanceKm: 50,
+        totalElevationM: 500,
+        avgElevationPerKm: 10,
+      });
+    });
+
+    it('excludes rides outside the window', () => {
+      const logs = [cyclingLog('2026-06-01', 20, 200)];
+      expect(cyclingSummary(logs, 30, now)).toEqual({
+        rides: 0,
+        totalDistanceKm: 0,
+        totalElevationM: 0,
+        avgElevationPerKm: null,
+      });
+    });
+
+    it('ignores non-cycling sport sessions', () => {
+      const logs = [sportSession('2026-07-30', 'x', 'climbing')];
+      expect(cyclingSummary(logs, 30, now).rides).toBe(0);
+    });
+  });
+
+  describe('cyclingRides', () => {
+    it('is empty with no rides', () => {
+      expect(cyclingRides([], 30, now)).toEqual([]);
+    });
+
+    it('lists rides newest first with elevation per km', () => {
+      const logs = [cyclingLog('2026-07-20', 10, 100), cyclingLog('2026-07-25', 25, 250)];
+      const rides = cyclingRides(logs, 30, now);
+      expect(rides.map((r) => r.date)).toEqual(['2026-07-25', '2026-07-20']);
+      expect(rides[0]?.elevationPerKm).toBe(10);
+    });
+
+    it('excludes rides outside the window', () => {
+      const logs = [cyclingLog('2026-06-01', 20, 200)];
+      expect(cyclingRides(logs, 30, now)).toEqual([]);
+    });
   });
 });
 
