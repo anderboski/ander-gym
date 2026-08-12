@@ -366,7 +366,12 @@ export const en = {
   'stats.seasonDaysOther': '{count} days',
 
   'stats.cyclingComingSoon': 'Cycling stats are coming soon.',
-  'stats.climbingComingSoon': 'Climbing stats are coming soon.',
+
+  'stats.climbingEmptyState': 'No climbing sessions logged yet.',
+  'stats.pyramidTitle': 'Grade pyramid · {days} days',
+  'stats.pyramidEmpty': 'No climbs logged in the last {days} days.',
+  'stats.pyramidCaption': '{total} logged · hardest grade sent: {grade}',
+  'stats.climbGradeLabel': 'Grade {grade}',
 
   'backup.invalidJson': 'That file is not valid JSON.',
   'backup.notABackup': 'That file is not an ander-gym backup.',

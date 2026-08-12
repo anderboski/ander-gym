@@ -16,6 +16,7 @@
 import { useMemo, useState } from 'react';
 import { useGym } from '../data/store';
 import {
+  climbGradePyramid,
   defaultStatsView,
   formatShortDate,
   STATS_PERIOD_DAYS,
@@ -26,6 +27,7 @@ import {
   topExercises,
   UNKNOWN_TARGET,
   volumeByTarget,
+  type ClimbGradeCount,
   type ExerciseCount,
   type PeriodStat,
   type SeasonSplit,
@@ -120,7 +122,7 @@ export function StatsPage() {
       {kind === 'gym' && <GymStats sessions={sessions} exerciseById={exerciseById} weeklyGoal={settings.weeklyGoal} now={now} />}
       {kind === 'snowboard' && <SnowboardStats sportSessions={sportSessions} />}
       {kind === 'cycling' && <div className="empty">{t('stats.cyclingComingSoon')}</div>}
-      {kind === 'climbing' && <div className="empty">{t('stats.climbingComingSoon')}</div>}
+      {kind === 'climbing' && <ClimbingStats sportSessions={sportSessions} now={now} />}
     </div>
   );
 }
@@ -531,5 +533,92 @@ function SnowboardStats({ sportSessions }: { sportSessions: SportSession[] }) {
         </ChartFigure>
       </div>
     </section>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Climbing                                                                    */
+/* -------------------------------------------------------------------------- */
+
+function ClimbingStats({ sportSessions, now }: { sportSessions: SportSession[]; now: Date }) {
+  const { t } = useLanguage();
+  const [period, setPeriod] = useState<StatsPeriod>('month');
+  const days = STATS_PERIOD_DAYS[period];
+
+  const hasLogs = useMemo(() => sportSessions.some((s) => s.kind === 'climbing'), [sportSessions]);
+  const pyramid = useMemo(() => climbGradePyramid(sportSessions, days, now), [sportSessions, days, now]);
+
+  if (!hasLogs) {
+    return (
+      <section className="section">
+        <div className="empty">{t('stats.climbingEmptyState')}</div>
+      </section>
+    );
+  }
+
+  return (
+    <>
+      <section className="section">
+        <div className="stats-controls">
+          <div className="stats-segment" role="group" aria-label={t('stats.periodAria')}>
+            {STATS_PERIODS.map((p) => (
+              <button
+                key={p}
+                type="button"
+                className="stats-segment-btn"
+                aria-pressed={period === p}
+                onClick={() => setPeriod(p)}
+              >
+                {t(PERIOD_LABEL_KEY[p])}
+              </button>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      <section className="section">
+        <div className="card card-pad">
+          <ClimbGradePyramid rows={pyramid} days={days} />
+        </div>
+      </section>
+    </>
+  );
+}
+
+/**
+ * Climbs per grade over the selected period, hardest grade first — the
+ * "pyramid" shape a climber expects: a short bar at the hard end tapering to
+ * a longer one at the easy end.
+ */
+function ClimbGradePyramid({ rows, days }: { rows: ClimbGradeCount[]; days: number }) {
+  const { t } = useLanguage();
+  const total = rows.reduce((sum, r) => sum + r.count, 0);
+  const hardest = rows.find((r) => r.count > 0);
+
+  if (!hardest) {
+    return (
+      <ChartFigure title={t('stats.pyramidTitle', { days })}>
+        <div className="stats-empty">{t('stats.pyramidEmpty', { days })}</div>
+      </ChartFigure>
+    );
+  }
+
+  return (
+    <ChartFigure
+      title={t('stats.pyramidTitle', { days })}
+      caption={t('stats.pyramidCaption', {
+        total: total === 1 ? t('sportLog.climbsSummaryOne') : t('sportLog.climbsSummaryOther', { count: total }),
+        grade: hardest.grade,
+      })}
+    >
+      <BarList
+        rows={rows.map((r) => ({
+          key: r.grade,
+          label: t('stats.climbGradeLabel', { grade: r.grade }),
+          value: r.count,
+          valueLabel: r.count === 1 ? t('sportLog.climbsSummaryOne') : t('sportLog.climbsSummaryOther', { count: r.count }),
+        }))}
+      />
+    </ChartFigure>
   );
 }

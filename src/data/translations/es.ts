@@ -366,7 +366,12 @@ export const es: Record<TranslationKey, string> = {
   'stats.seasonDaysOther': '{count} días',
 
   'stats.cyclingComingSoon': 'Las estadísticas de ciclismo llegarán pronto.',
-  'stats.climbingComingSoon': 'Las estadísticas de escalada llegarán pronto.',
+
+  'stats.climbingEmptyState': 'Aún no hay sesiones de escalada registradas.',
+  'stats.pyramidTitle': 'Pirámide de grados · {days} días',
+  'stats.pyramidEmpty': 'No hay vías registradas en los últimos {days} días.',
+  'stats.pyramidCaption': '{total} registradas · grado más difícil: {grade}',
+  'stats.climbGradeLabel': 'Grado {grade}',
 
   'backup.invalidJson': 'Ese archivo no es JSON válido.',
   'backup.notABackup': 'Ese archivo no es una copia de seguridad de ander-gym.',

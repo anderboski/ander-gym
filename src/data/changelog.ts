@@ -246,6 +246,16 @@ export const CHANGELOG: ChangelogEntry[] = [
       'Se corrigió que las hojas de registro de Snowboard y Escalada a veces abrieran el selector de fecha al tocar Tiempo, Estado de la nieve o un campo de grado.',
     ],
   },
+  {
+    version: '1.17.0',
+    date: '2026-08-11',
+    en: [
+      'Climbing stats now show a grade pyramid — climbs per grade over the last week/month/3 months, with the hardest grade sent in the window.',
+    ],
+    es: [
+      'Las estadísticas de Escalada ahora muestran una pirámide de grados — vías por grado en la última semana/mes/3 meses, con el grado más difícil superado en ese periodo.',
+    ],
+  },
 ];
 
 /** Keep in sync with the bootstrap-independent nature of theme/language: this
