@@ -6,6 +6,16 @@ worker, the storage layer, or the bottom navigation.
 
 Target: `https://anderboski.github.io/ander-gym/`
 
+## Seeding a test device
+
+Section 3 onward assumes a populated app. Rather than hand-creating trainings and
+sessions on every pass, seed the device once from
+[`test/fixtures/example-export.json`](../test/fixtures/example-export.json): Home → gear →
+**Import**, pick the file, choose **Replace**. It gives you a couple of trainings and sessions
+of each kind (gym + sport), custom exercises, weigh-ins, and edge cases like bodyweight sets
+and decimal weights — everything sections 3–3e exercise except the empty-state checks in
+section 3, which still need a fresh install with no import.
+
 ## 1. Install to Home Screen
 
 - [ ] Open the URL in **Safari** (not Chrome — only Safari can install a PWA on iOS).

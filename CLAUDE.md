@@ -40,6 +40,8 @@ deploy.
 data/                  static, read-only, ships as an asset. Source of truth stays at repo root.
   exercises.json       1324 exercise records
   images/              1324 JPEGs, 11 MB
+test/fixtures/
+  example-export.json  seed data for manual testing — see below
 src/
   data/                the entire domain layer
     types.ts           domain types + facet constants
@@ -75,6 +77,16 @@ keep it that way.
 
 Adding a route: extend the `Route` union in `router.ts`, handle it in `parseRoute`, map it to a tab
 in `tabOf`, and render it in `App.tsx`.
+
+### Seed data for manual testing
+
+[`test/fixtures/example-export.json`](test/fixtures/example-export.json) is a trimmed, obfuscated
+export in the `BackupFile` shape (`src/data/backup.ts`) — a couple of trainings/sessions per training
+type (gym + each sport kind), a bodyweight set, an in-progress-looking session with empty-set entries,
+custom exercises (with and without a photo), two weigh-ins, decimal weights. **Use it instead of
+hand-creating trainings and sessions** when you need a populated app to test against: Settings →
+Import → pick the file → Replace. Don't add real personal data to it; if a bug needs a shape this file
+doesn't cover, extend the fixture instead of typing data into the UI by hand.
 
 ## Invariants — break these and something real breaks
 

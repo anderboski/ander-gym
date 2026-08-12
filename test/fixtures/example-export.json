@@ -1,0 +1,730 @@
+{
+  "schemaVersion": 3,
+  "exportedAt": "2026-08-12T07:50:25.564Z",
+  "trainings": [
+    {
+      "id": "pecs-back",
+      "label": "Pecs & Back",
+      "order": 0,
+      "exerciseIds": [
+        "0606",
+        "0025",
+        "0314",
+        "0841",
+        "0198",
+        "0318",
+        "0194",
+        "0577",
+        "0285"
+      ],
+      "emoji": "🎒"
+    },
+    {
+      "id": "shoulder-bicep-tricep",
+      "label": "Shoulder, Biceps, Triceps",
+      "order": 1,
+      "exerciseIds": [
+        "0405",
+        "0334",
+        "0192",
+        "0318",
+        "0313",
+        "0194",
+        "c-7b0306b2-3a9e-47ba-926a-beb9c150376f",
+        "0201"
+      ],
+      "restSeconds": 120,
+      "emoji": "💪"
+    },
+    {
+      "id": "leg-abs",
+      "label": "Leg & Abs",
+      "order": 2,
+      "exerciseIds": [
+        "0743",
+        "0585",
+        "0032",
+        "c-438a3f11-e936-411b-bf27-6ef8842991d1",
+        "0586",
+        "1383"
+      ],
+      "emoji": "🦵"
+    },
+    {
+      "id": "t-1c6cfc7a-c6a3-489c-8f97-f32389a4e1e3",
+      "label": "Bike",
+      "order": 3,
+      "exerciseIds": [],
+      "kind": "cycling",
+      "emoji": "🚴‍♂️"
+    },
+    {
+      "id": "t-56a1c65c-11a7-477e-a279-d43253e37dc4",
+      "label": "Snowboard",
+      "order": 4,
+      "exerciseIds": [],
+      "kind": "snowboard",
+      "emoji": "🏂"
+    },
+    {
+      "id": "t-2d864377-4428-45ad-a22c-82463d36cb9f",
+      "label": "Climbing",
+      "order": 5,
+      "exerciseIds": [],
+      "kind": "climbing",
+      "emoji": "🧗‍♂️"
+    }
+  ],
+  "sessions": [
+    {
+      "trainingId": "pecs-back",
+      "trainingLabel": "Pecs & Back",
+      "startedAt": "2026-08-05T17:00:52.942Z",
+      "entries": [
+        {
+          "exerciseId": "0606",
+          "sets": [
+            {
+              "reps": 10,
+              "weight": 40,
+              "at": "2026-08-05T17:49:41.770Z"
+            },
+            {
+              "reps": 10,
+              "weight": 40,
+              "at": "2026-08-05T17:49:44.262Z"
+            },
+            {
+              "reps": 10,
+              "weight": 40,
+              "at": "2026-08-05T17:53:01.567Z"
+            }
+          ]
+        },
+        {
+          "exerciseId": "0025",
+          "sets": [
+            {
+              "reps": 10,
+              "weight": 60,
+              "at": "2026-08-05T17:05:52.925Z"
+            },
+            {
+              "reps": 10,
+              "weight": 65,
+              "at": "2026-08-05T17:10:30.808Z"
+            },
+            {
+              "reps": 7,
+              "weight": 70,
+              "at": "2026-08-05T17:19:21.585Z"
+            }
+          ]
+        },
+        {
+          "exerciseId": "0314",
+          "sets": [
+            {
+              "reps": 10,
+              "weight": 44,
+              "at": "2026-08-05T17:25:49.339Z"
+            },
+            {
+              "reps": 10,
+              "weight": 48,
+              "at": "2026-08-05T17:25:53.575Z"
+            },
+            {
+              "reps": 10,
+              "weight": 48,
+              "at": "2026-08-05T17:29:31.785Z"
+            }
+          ]
+        },
+        {
+          "exerciseId": "0841",
+          "sets": [
+            {
+              "reps": 8,
+              "weight": 0,
+              "at": "2026-08-05T17:33:44.685Z"
+            },
+            {
+              "reps": 8,
+              "weight": 0,
+              "at": "2026-08-05T17:36:03.168Z"
+            },
+            {
+              "reps": 6,
+              "weight": 0,
+              "at": "2026-08-05T17:39:16.491Z"
+            }
+          ]
+        },
+        {
+          "exerciseId": "0198",
+          "sets": []
+        },
+        {
+          "exerciseId": "0318",
+          "sets": []
+        },
+        {
+          "exerciseId": "0194",
+          "sets": []
+        },
+        {
+          "exerciseId": "0577",
+          "sets": []
+        },
+        {
+          "exerciseId": "0285",
+          "sets": [
+            {
+              "reps": 10,
+              "weight": 14,
+              "at": "2026-08-05T17:57:52.982Z"
+            }
+          ]
+        }
+      ],
+      "id": "a1d9159b-b940-4f5b-8a64-466c58c1fb83",
+      "savedAt": "2026-08-05T17:57:56.154Z"
+    },
+    {
+      "trainingId": "pecs-back",
+      "trainingLabel": "Pecs & Back",
+      "startedAt": "2026-07-05T15:59:00.000Z",
+      "entries": [
+        {
+          "exerciseId": "0047",
+          "sets": [
+            {
+              "reps": 10,
+              "weight": 50,
+              "at": "2026-07-05T16:00:00.000Z"
+            },
+            {
+              "reps": 10,
+              "weight": 50,
+              "at": "2026-07-05T16:00:01.000Z"
+            },
+            {
+              "reps": 10,
+              "weight": 50,
+              "at": "2026-07-05T16:00:02.000Z"
+            }
+          ]
+        },
+        {
+          "exerciseId": "0576",
+          "sets": [
+            {
+              "reps": 10,
+              "weight": 40,
+              "at": "2026-07-05T16:00:00.000Z"
+            },
+            {
+              "reps": 10,
+              "weight": 40,
+              "at": "2026-07-05T16:00:01.000Z"
+            },
+            {
+              "reps": 10,
+              "weight": 40,
+              "at": "2026-07-05T16:00:02.000Z"
+            }
+          ]
+        }
+      ],
+      "id": "078e2a26-3b79-4d86-9564-a2832977f5af",
+      "savedAt": "2026-07-05T16:00:03.000Z"
+    },
+    {
+      "trainingId": "shoulder-bicep-tricep",
+      "trainingLabel": "Shoulder, Biceps, Triceps",
+      "startedAt": "2026-08-08T16:46:19.535Z",
+      "entries": [
+        {
+          "exerciseId": "0318",
+          "sets": [
+            {
+              "reps": 10,
+              "weight": 12,
+              "at": "2026-08-08T17:29:07.963Z"
+            },
+            {
+              "reps": 10,
+              "weight": 12,
+              "at": "2026-08-08T17:31:40.573Z"
+            },
+            {
+              "reps": 10,
+              "weight": 12,
+              "at": "2026-08-08T17:34:51.368Z"
+            }
+          ]
+        },
+        {
+          "exerciseId": "0194",
+          "sets": [
+            {
+              "reps": 10,
+              "weight": 25,
+              "at": "2026-08-08T17:39:49.340Z"
+            },
+            {
+              "reps": 10,
+              "weight": 25,
+              "at": "2026-08-08T17:41:10.853Z"
+            }
+          ]
+        },
+        {
+          "exerciseId": "0405",
+          "sets": [
+            {
+              "reps": 10,
+              "weight": 22,
+              "at": "2026-08-08T16:53:23.152Z"
+            },
+            {
+              "reps": 10,
+              "weight": 24,
+              "at": "2026-08-08T16:57:03.121Z"
+            },
+            {
+              "reps": 12,
+              "weight": 24,
+              "at": "2026-08-08T17:00:00.845Z"
+            }
+          ]
+        },
+        {
+          "exerciseId": "0313",
+          "sets": [
+            {
+              "reps": 10,
+              "weight": 12,
+              "at": "2026-08-08T17:20:41.007Z"
+            },
+            {
+              "reps": 12,
+              "weight": 12,
+              "at": "2026-08-08T17:23:08.528Z"
+            },
+            {
+              "reps": 12,
+              "weight": 14,
+              "at": "2026-08-08T17:26:09.918Z"
+            }
+          ]
+        },
+        {
+          "exerciseId": "0334",
+          "sets": [
+            {
+              "reps": 10,
+              "weight": 12,
+              "at": "2026-08-08T17:02:13.947Z"
+            },
+            {
+              "reps": 10,
+              "weight": 12,
+              "at": "2026-08-08T17:09:08.564Z"
+            },
+            {
+              "reps": 11,
+              "weight": 12,
+              "at": "2026-08-08T17:09:12.999Z"
+            }
+          ]
+        },
+        {
+          "exerciseId": "c-7b0306b2-3a9e-47ba-926a-beb9c150376f",
+          "sets": []
+        },
+        {
+          "exerciseId": "0201",
+          "sets": [
+            {
+              "reps": 10,
+              "weight": 25,
+              "at": "2026-08-08T17:43:51.281Z"
+            },
+            {
+              "reps": 10,
+              "weight": 27.5,
+              "at": "2026-08-08T17:49:07.132Z"
+            },
+            {
+              "reps": 12,
+              "weight": 27.5,
+              "at": "2026-08-08T17:49:18.420Z"
+            }
+          ]
+        },
+        {
+          "exerciseId": "0192",
+          "sets": [
+            {
+              "reps": 10,
+              "weight": 5,
+              "at": "2026-08-08T17:13:28.331Z"
+            },
+            {
+              "reps": 10,
+              "weight": 5,
+              "at": "2026-08-08T17:16:12.298Z"
+            },
+            {
+              "reps": 10,
+              "weight": 5,
+              "at": "2026-08-08T17:18:59.805Z"
+            }
+          ]
+        }
+      ],
+      "id": "93562d2e-bcf7-4e29-958c-d3027a9f4981",
+      "savedAt": "2026-08-08T17:49:20.749Z"
+    },
+    {
+      "trainingId": "shoulder-bicep-tricep",
+      "trainingLabel": "Shoulder, Biceps, Triceps",
+      "startedAt": "2026-07-24T15:59:00.000Z",
+      "entries": [
+        {
+          "exerciseId": "0031",
+          "sets": [
+            {
+              "reps": 10,
+              "weight": 14,
+              "at": "2026-07-24T16:00:00.000Z"
+            },
+            {
+              "reps": 10,
+              "weight": 14,
+              "at": "2026-07-24T16:00:01.000Z"
+            },
+            {
+              "reps": 10,
+              "weight": 14,
+              "at": "2026-07-24T16:00:02.000Z"
+            }
+          ]
+        }
+      ],
+      "id": "26321e48-10ef-492f-906e-4bbe945639d0",
+      "savedAt": "2026-07-24T16:00:03.000Z"
+    },
+    {
+      "trainingId": "leg-abs",
+      "trainingLabel": "Leg & Abs",
+      "startedAt": "2026-08-04T16:20:24.649Z",
+      "entries": [
+        {
+          "exerciseId": "0585",
+          "sets": []
+        },
+        {
+          "exerciseId": "0605",
+          "sets": []
+        },
+        {
+          "exerciseId": "0599",
+          "sets": [
+            {
+              "reps": 10,
+              "weight": 40,
+              "at": "2026-08-04T17:20:38.111Z"
+            },
+            {
+              "reps": 10,
+              "weight": 40,
+              "at": "2026-08-04T17:25:12.011Z"
+            },
+            {
+              "reps": 12,
+              "weight": 40,
+              "at": "2026-08-04T17:25:17.031Z"
+            }
+          ]
+        },
+        {
+          "exerciseId": "0042",
+          "sets": []
+        },
+        {
+          "exerciseId": "0032",
+          "sets": [
+            {
+              "reps": 10,
+              "weight": 90,
+              "at": "2026-08-04T16:48:00.640Z"
+            },
+            {
+              "reps": 10,
+              "weight": 90,
+              "at": "2026-08-04T16:50:46.979Z"
+            },
+            {
+              "reps": 11,
+              "weight": 100,
+              "at": "2026-08-04T16:54:50.907Z"
+            }
+          ]
+        },
+        {
+          "exerciseId": "0743",
+          "sets": []
+        },
+        {
+          "exerciseId": "c-438a3f11-e936-411b-bf27-6ef8842991d1",
+          "sets": [
+            {
+              "reps": 10,
+              "weight": 10,
+              "at": "2026-08-04T16:23:45.980Z"
+            },
+            {
+              "reps": 10,
+              "weight": 15,
+              "at": "2026-08-04T16:26:58.929Z"
+            },
+            {
+              "reps": 13,
+              "weight": 15,
+              "at": "2026-08-04T16:32:21.491Z"
+            }
+          ]
+        },
+        {
+          "exerciseId": "c-ab4ae7e3-a952-4b36-bc45-da03245a2f5a",
+          "sets": [
+            {
+              "reps": 10,
+              "weight": 120,
+              "at": "2026-08-04T16:38:52.984Z"
+            },
+            {
+              "reps": 10,
+              "weight": 120,
+              "at": "2026-08-04T16:41:08.148Z"
+            },
+            {
+              "reps": 12,
+              "weight": 120,
+              "at": "2026-08-04T16:43:27.609Z"
+            }
+          ]
+        },
+        {
+          "exerciseId": "0417",
+          "sets": [
+            {
+              "reps": 15,
+              "weight": 24,
+              "at": "2026-08-04T17:03:21.258Z"
+            },
+            {
+              "reps": 15,
+              "weight": 30,
+              "at": "2026-08-04T17:05:40.879Z"
+            },
+            {
+              "reps": 20,
+              "weight": 30,
+              "at": "2026-08-04T17:07:56.404Z"
+            }
+          ]
+        },
+        {
+          "exerciseId": "3195",
+          "sets": []
+        },
+        {
+          "exerciseId": "0586",
+          "sets": [
+            {
+              "reps": 10,
+              "weight": 32.5,
+              "at": "2026-08-04T17:16:28.858Z"
+            },
+            {
+              "reps": 10,
+              "weight": 32.5,
+              "at": "2026-08-04T17:16:30.677Z"
+            },
+            {
+              "reps": 10,
+              "weight": 35,
+              "at": "2026-08-04T17:18:06.457Z"
+            }
+          ]
+        }
+      ],
+      "id": "f342bb16-316e-426e-ae01-ac9a8253f63d",
+      "savedAt": "2026-08-04T17:25:59.089Z"
+    },
+    {
+      "trainingId": "leg-abs",
+      "trainingLabel": "Leg & Abs",
+      "startedAt": "2026-07-22T15:59:00.000Z",
+      "entries": [
+        {
+          "exerciseId": "0594",
+          "sets": [
+            {
+              "reps": 10,
+              "weight": 60,
+              "at": "2026-07-22T16:00:00.000Z"
+            },
+            {
+              "reps": 10,
+              "weight": 60,
+              "at": "2026-07-22T16:00:01.000Z"
+            },
+            {
+              "reps": 10,
+              "weight": 60,
+              "at": "2026-07-22T16:00:02.000Z"
+            }
+          ]
+        }
+      ],
+      "id": "16239182-76c2-4831-88f1-1d217f1539c4",
+      "savedAt": "2026-07-22T16:00:03.000Z"
+    }
+  ],
+  "customExercises": [
+    {
+      "id": "c-438a3f11-e936-411b-bf27-6ef8842991d1",
+      "name": "Hip Thrust",
+      "category": "waist",
+      "equipment": "assisted",
+      "target": "glutes",
+      "createdAt": "2026-08-04T16:20:02.075Z",
+      "image": null
+    },
+    {
+      "id": "c-7b0306b2-3a9e-47ba-926a-beb9c150376f",
+      "name": "Face pull",
+      "category": "upper arms",
+      "equipment": "cable",
+      "target": "delts",
+      "createdAt": "2026-08-03T20:43:39.075Z",
+      "image": null
+    },
+    {
+      "id": "c-ab4ae7e3-a952-4b36-bc45-da03245a2f5a",
+      "name": "Linear Leg Raise",
+      "category": "upper legs",
+      "equipment": "assisted",
+      "target": "quads",
+      "createdAt": "2026-08-04T16:38:29.158Z",
+      "image": null
+    }
+  ],
+  "settings": {
+    "weeklyGoal": 3,
+    "lastExportAt": "2026-08-12T07:50:25.564Z",
+    "favoriteExerciseIds": [
+      "0025",
+      "0032",
+      "0047",
+      "0194",
+      "3293"
+    ]
+  },
+  "profile": {
+    "name": "Test User",
+    "birthdate": "1990-01-01",
+    "heightCm": 175
+  },
+  "checkins": [
+    {
+      "id": "ck-5695e680-56f3-46f7-adde-68d860e94ffb",
+      "date": "2026-08-08",
+      "weightKg": 78.4,
+      "photos": []
+    },
+    {
+      "id": "ck-e575298d-aaef-4f6e-8252-b7766bca8d63",
+      "date": "2026-08-11",
+      "weightKg": 77.9,
+      "photos": []
+    }
+  ],
+  "sportSessions": [
+    {
+      "kind": "cycling",
+      "date": "2026-08-01",
+      "distanceKm": 49,
+      "elevationM": 428,
+      "avgBpm": 126,
+      "id": "ss-308a9a63-3757-4c99-9ca6-9ea9bc49546f",
+      "trainingId": "t-1c6cfc7a-c6a3-489c-8f97-f32389a4e1e3",
+      "trainingLabel": "Bike",
+      "createdAt": "2026-08-12T07:44:15.450Z"
+    },
+    {
+      "kind": "cycling",
+      "date": "2026-08-09",
+      "distanceKm": 24,
+      "elevationM": 460,
+      "avgBpm": null,
+      "id": "ss-91c108b0-3ca3-4934-8c65-7030b8181831",
+      "trainingId": "t-1c6cfc7a-c6a3-489c-8f97-f32389a4e1e3",
+      "trainingLabel": "Bike",
+      "createdAt": "2026-08-09T12:16:26.328Z"
+    },
+    {
+      "kind": "climbing",
+      "date": "2026-03-25",
+      "climbsByGrade": {
+        "3": 0,
+        "4": 4,
+        "5": 1
+      },
+      "id": "ss-01350191-e01d-40cd-b0fa-d6f5e505b986",
+      "trainingId": "t-2d864377-4428-45ad-a22c-82463d36cb9f",
+      "trainingLabel": "Climbing",
+      "createdAt": "2026-08-11T21:47:05.706Z"
+    },
+    {
+      "kind": "climbing",
+      "date": "2026-07-08",
+      "climbsByGrade": {
+        "3": 0,
+        "4": 5,
+        "5": 3
+      },
+      "id": "ss-2cea7436-01aa-4398-ad4e-88d2ad033b91",
+      "trainingId": "t-2d864377-4428-45ad-a22c-82463d36cb9f",
+      "trainingLabel": "Climbing",
+      "createdAt": "2026-08-11T21:44:24.602Z"
+    },
+    {
+      "kind": "snowboard",
+      "date": "2026-01-18",
+      "weather": "snowing",
+      "snowCondition": "powder",
+      "comments": "Fresh powder all morning, lift queues were short.",
+      "id": "ss-example-snow-0001",
+      "trainingId": "t-56a1c65c-11a7-477e-a279-d43253e37dc4",
+      "trainingLabel": "Snowboard",
+      "createdAt": "2026-01-18T18:30:00.000Z"
+    },
+    {
+      "kind": "snowboard",
+      "date": "2026-03-02",
+      "weather": "sunny",
+      "snowCondition": "icy",
+      "comments": "Icy patches on the lower slope by early afternoon.",
+      "id": "ss-example-snow-0002",
+      "trainingId": "t-56a1c65c-11a7-477e-a279-d43253e37dc4",
+      "trainingLabel": "Snowboard",
+      "createdAt": "2026-03-02T17:10:00.000Z"
+    }
+  ]
+}
