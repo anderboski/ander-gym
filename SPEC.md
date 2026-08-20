@@ -517,47 +517,85 @@ or a session detail. Reached from the Stats shortcut in §5.1; a back control re
 climbing 🧗 — picking which stats show below. Local component state only (no route change); gym is the
 default. Everything is derived from `sessions`/`sportSessions`, nothing new is stored.
 
-**Gym.** Two controls above the charts, both segmented groups (same visual language as the exercise-card
-metric toggle): a **period** (last week / last month / last 3 months) and a **view** — the bucket size the
-two time-series charts use. Only the views that make sense for a period are offered, from
-`STATS_VIEWS_FOR_PERIOD` in `derive.ts`:
+**Time window.** Two dropdowns above the charts, shared by every kind that scopes to a window (gym,
+cycling, climbing — snowboard is scoped by season instead) and owned by the page, so switching kind
+keeps the window you were looking at:
 
-| Period | Offered views | Default |
-|---|---|---|
-| Last week (7 days) | Daily | Daily |
-| Last month (30 days) | Daily, Weekly | Weekly |
-| Last 3 months (90 days) | Weekly, Monthly | Weekly |
+- **Time range** — Last month (30 days), Last 3 months (90), Last year (365), or **Custom**, which
+  reveals a *From* and a *To* date picker; both days are included, neither accepts a future date.
+  An incomplete or inverted custom pair charts nothing and shows a hint instead of inventing a
+  window (`customStatsRange` returns null).
+- **View** — the bucket size the two gym time-series charts use. Gym only; the sport kinds have no
+  bucketed chart to size.
 
-Switching period resets the view only when the current one is no longer offered. Four visuals:
+Native `<select>`s rather than the segmented rows this used to have: four ranges and three views no
+longer fit side by side on a phone, and iOS renders a select as its own wheel picker. Everything
+downstream takes a resolved `StatsRange` (`{ start, end }`, local midnight, end exclusive) rather
+than a `(days, now)` pair — a custom range has no "days back from now" to express.
+
+Only the views that make sense for a window's *length* are offered (`viewsForRange`), so a
+combination like a year of daily bars is never offered rather than offered and then rejected. The
+bounds are length-based rather than a per-period table, because a custom range can be any span:
+
+| Window length | Offered views |
+|---|---|
+| ≤ 45 days | Daily |
+| 10–210 days | Weekly |
+| ≥ 60 days | Monthly |
+
+The ranges overlap so every length lands on at least one view (a month offers daily + weekly, three
+months weekly + monthly, a year monthly only). The selected view falls back to `defaultStatsView`
+— weekly wherever it is offered, since a week is the unit the goal is set in — whenever the current
+one drops out of the set; that is derived per render, not corrected in the change handler, because
+with a custom range the allowed set moves as the dates move.
+
+**Gym.** Five visuals:
 - **Sessions per bucket** (`statsBuckets`) — a bar strip. On the weekly view only, the weekly goal is drawn
   as a reference line and bars that met it wear the accent, the rest go recessive — the daily and monthly
   views aren't the unit the goal is set in, so they get a plain count instead. A bucket with nothing logged
-  is a flat stub, not a gap.
+  is a flat stub, not a gap. Buckets run from the one containing the window's first day to the one
+  containing its last, so an edge bucket the window cuts in half is still drawn whole — a bar labelled
+  "week of the 3rd" that dropped the 1st and 2nd would read as a dip that never happened. The headline
+  says "this week" only when the window actually reaches today.
 - **Session duration** (`statsBuckets`) — average minutes per bucket, also a bar strip (not a line: a bucket
   with no saved session has no duration to plot, and the bar strip's empty-stub treatment already says "no
   data" without a misleading zero-minute point).
-- **Muscle balance** (`volumeByTarget`) — ranked bar list over the selected period's day count (7/30/90), not
-  the view. A muscle never trained in the window is absent from the list rather than shown at zero.
-- **Top exercises** (`topExercises`) — the 10 exercises done most often over the period, ranked by how many
+- **Training times** (`trainingTimeOfDay`) — day of week (Monday first) against time of day, one badge per
+  saved session at its `startedAt`: which training happens on which day, at what time. Every other gym
+  chart aggregates the clock away. The badge is the training's own emoji, or the first letter of its label
+  — the same badge the Trainings list and the Home calendar draw, resolved from the live training so a
+  rename or a new emoji redraws consistently, and falling back to the session's `trainingLabel` snapshot
+  when the training no longer resolves. Identity is carried by the badge, not by colour: it stays legible
+  for any number of trainings, where a six-slot categorical palette would not, and a legend under the chart
+  pairs each badge with its training and session count. The y axis is fitted to the data and rounded out to
+  whole hours (`timeAxisBounds`, minimum six hours, clamped to the day) — a fixed 00:00–24:00 grid spends
+  most of its height on hours nobody trains in. Markers that would overlap inside a day are nudged into
+  whole badge-width lanes within that day's column, filled from the middle out; past the last free lane
+  they overlap rather than drift into the neighbouring day. Only gym sessions appear, which needs no
+  filtering: sport kinds log to `sportSessions`.
+- **Muscle balance** (`volumeByTarget`) — ranked bar list over the selected window. A muscle never trained
+  in the window is absent from the list rather than shown at zero.
+- **Top exercises** (`topExercises`) — the 10 exercises done most often over the window, ranked by how many
   separate sessions included at least one set, not by set count.
 
-Every gym aggregate walks the session list once and is memoised on its inputs and on a `now` captured once
-per mount.
+Card titles name the window — the range's own label ("Last 3 months") for the fixed ranges, the two dates
+("1 Mar – 15 Apr") for a custom one. Every gym aggregate walks the session list once and is memoised on its
+inputs and on a `now` captured once per mount.
 
 **Snowboard.** A season-comparison chart: snowboard days per season (`snowboardSeasons`), stacked by snow
 condition or weather — a segmented toggle switches the split. A season runs **July → June** (season "24/25"
 is 1 Jul 2024 – 30 Jun 2025, `seasonOf` in `derive.ts`); seasons with no logs don't appear. This is the one
 chart in the app that is not a single `--accent` series — see the categorical-palette exception below.
 
-**Climbing.** Same period control as Gym (last week/month/3 months, `STATS_PERIOD_DAYS`) above a **grade
-pyramid** — a `BarList` of climbs per grade (`climbGradePyramid` in `derive.ts`), hardest grade first so the
+**Climbing.** The same time-range dropdown as Gym (without the view, which has nothing to size) above a
+**grade pyramid** — a `BarList` of climbs per grade (`climbGradePyramid` in `derive.ts`), hardest grade first so the
 bars taper the way a climbing pyramid is expected to: short at the hard end, long at the easy end. Unlike
 the muscle-balance and top-exercises lists, every grade in `CLIMB_GRADES` is always shown, zero-count
 included — the set is small and fixed, so dropping an untouched grade would leave a hole in the pyramid
 rather than just shorten a list. The caption states the total logged and the hardest grade sent in the
 window. No climbing sessions ever logged shows a plain empty state instead of the period control.
 
-**Cycling.** Same period control as Gym/Climbing above a single card: a headline total distance, a caption
+**Cycling.** The same time-range dropdown as Gym/Climbing above a single card: a headline total distance, a caption
 stating ride count and total elevation climbed (`cyclingSummary` in `derive.ts`), and a `BarList` of the
 individual rides in the window, newest first (`cyclingRides`), bar length by that ride's distance. Each row's
 value text is the same `10.0 km · 100 m · 142 bpm` summary line History uses (`sportSessionSummary`,
@@ -568,9 +606,10 @@ No cycling sessions ever logged shows a plain empty state instead of the period 
 a period with logs elsewhere but none in the window gets its own narrower empty state.
 
 **Charts** are hand-rolled inline SVG in `components/Chart.tsx` — `Plot` owns the box, the scales, the
-gridlines and the axis labels (per-band labels for a handful of discrete categories like seasons, edge
-labels for a continuous timeline); `LineChart`, `BarStrip` and `StackedBarStrip` are marks-only layers on
-top of it; `BarList` is the HTML ranked list, where the category labels must wrap and stay selectable. No
+gridlines and the axis labels (per-band labels for a handful of discrete categories like seasons or
+weekdays, edge labels for a continuous timeline; monthly edge labels carry the year, since a year of
+buckets starts and ends in the same month); `LineChart`, `BarStrip`, `StackedBarStrip` and
+`TimeOfWeekPlot` are marks-only layers on top of it; `BarList` is the HTML ranked list, where the category labels must wrap and stay selectable. No
 charting dependency: one would cost more bundle than the four chart types are worth against the Lighthouse
 target in §8. Every chart carries `role="img"` with an `aria-label` stating the trend in words, and scrolls
 inside its own container rather than widening the page. Colours and spacing come only from the tokens in
@@ -578,7 +617,9 @@ inside its own container rather than widening the page. Colours and spacing come
 
 **Tap-to-reveal values.** Every bar (`BarStrip`, `StackedBarStrip`) carries a transparent hit target sized
 to its full band and plot height, not just the painted mark — tapping, clicking or focusing it shows a
-small flag with that bar's exact number (its total, for a stacked bar) and gives the bar a 2px surface-ring
+small flag with that bar's exact number (its total, for a stacked bar). A time-of-week badge has the same
+treatment, its flag naming the training and the day and time (clipped to fit the plot; the legend and the
+marker's `aria-label` carry the full name) and gives the bar a 2px surface-ring
 "lift", the same treatment `LineChart`'s dots already get. A pointer tap fires `focus` before `click`, so
 both handlers just activate the same bar rather than toggling — toggling on `click` would cancel out the
 `focus` that same tap already triggered. This is additive: the aria-label, caption and (for the season

@@ -224,3 +224,26 @@
 .chart-legend-value {
   color: var(--text-faint);
 }
+
+/* --- time-of-week map ----------------------------------------------------- */
+
+/* Day separators sit behind the badges and must not compete with the hour
+   gridlines, which are the ones carrying a value. */
+.chart-grid-faint {
+  opacity: 0.5;
+}
+
+/* Emoji render in their own colour; a single-letter badge falls back to the
+   accent, so a training with no emoji still reads as a plotted point. */
+.chart-badge {
+  fill: var(--accent);
+  font-size: 11px;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+/* Same "lift on tap" idea as .chart-bar-active, done with scale rather than a
+   ring: a stroke on a colour-emoji glyph paints an outline around the artwork. */
+.chart-badge-active {
+  font-size: 14px;
+}

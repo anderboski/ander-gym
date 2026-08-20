@@ -68,14 +68,91 @@
   transform: scale(0.94);
 }
 
-/* Period + view segmented controls above the gym charts. Same visual language
-   as the exercise-card metric toggle (ex-progress-toggle/-metric). */
+/* Time-window controls above the charts: a period and a view dropdown side by
+   side, with the two date pickers dropping underneath for a custom range. */
 .stats-controls {
   display: flex;
   flex-direction: column;
-  gap: var(--s2);
+  gap: var(--s3);
 }
 
+.stats-selects {
+  display: flex;
+  gap: var(--s3);
+}
+
+.stats-field {
+  flex: 1;
+  min-width: 0;
+}
+
+/* The native select keeps the iOS wheel picker — a bigger tap target than any
+   chip row, and one the user already knows. `.input` strips the platform
+   appearance, so the disclosure caret is drawn back on here. */
+.stats-select {
+  padding-right: var(--s8);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23667080' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--s3) center;
+  background-size: 16px;
+}
+
+/* A window that offers a single bucket size still shows which one it is. */
+.stats-select:disabled {
+  color: var(--text-dim);
+  opacity: 1;
+}
+
+/* Safari renders a date input's text left-aligned but vertically off-centre
+   inside a fixed-height box; a flex box re-centres it. */
+.stats-field input[type='date'] {
+  display: flex;
+  align-items: center;
+}
+
+/* Which training each badge on the time-of-week map is. Not a ChartLegend:
+   the identity channel there is the badge itself, not a colour swatch. */
+.stats-map-legend {
+  list-style: none;
+  margin: var(--s3) 0 0;
+  padding: 0;
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s1) var(--s4);
+}
+
+.stats-map-legend-item {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--s2);
+  font-size: 12px;
+}
+
+.stats-map-badge {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--r-sm);
+  background: var(--bg-raised-2);
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.stats-map-legend-label {
+  color: var(--text-dim);
+}
+
+.stats-map-legend-value {
+  color: var(--text-faint);
+}
+
+/* Segmented toggle — the snowboard chart's snow/weather split. Same visual
+   language as the exercise-card metric toggle (ex-progress-toggle/-metric). */
 .stats-segment {
   display: flex;
   gap: var(--s1);
