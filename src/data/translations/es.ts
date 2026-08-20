@@ -314,11 +314,16 @@ export const es: Record<TranslationKey, string> = {
   'stats.removedExercises': 'Ejercicios eliminados',
   'stats.kindSwitcherAria': 'Elegir categoría de estadísticas',
 
-  'stats.periodAria': 'Elegir un intervalo de tiempo',
-  'stats.periodWeek': 'Última semana',
+  'stats.periodLabel': 'Intervalo',
   'stats.periodMonth': 'Último mes',
   'stats.periodThreeMonths': 'Últimos 3 meses',
-  'stats.viewAria': 'Elegir el tamaño de los bloques',
+  'stats.periodYear': 'Último año',
+  'stats.periodCustom': 'Personalizado',
+  'stats.customFrom': 'Desde',
+  'stats.customTo': 'Hasta',
+  'stats.customInvalid': 'Elige una fecha de inicio y una fecha final igual o posterior.',
+  'stats.rangeEmpty': 'No se ha registrado nada en este intervalo.',
+  'stats.viewLabel': 'Vista',
   'stats.viewDaily': 'Diario',
   'stats.viewWeekly': 'Semanal',
   'stats.viewMonthly': 'Mensual',
@@ -330,6 +335,7 @@ export const es: Record<TranslationKey, string> = {
   'stats.sessionsPerWeek': 'Sesiones por semana',
   'stats.sessionsPerMonth': 'Sesiones por mes',
   'stats.currentThisUnit': '{count} este/a {unit}',
+  'stats.currentFinalUnit': '{count} en el/la último/a {unit}',
   'stats.sessionsCaption': '{total} sesiones en esta ventana',
   'stats.sessionsAriaPlain': '{title}: {total} sesiones en total, {current} en el/la último/a {unit}.',
   'stats.consistencyCaption':
@@ -343,14 +349,17 @@ export const es: Record<TranslationKey, string> = {
   'stats.durationAria':
     'Duración media de la sesión por bloque en esta ventana: {current} la más reciente, frente a una media de {average} y una máxima de {best}.',
 
-  'stats.muscleBalanceTitle': 'Equilibrio muscular · {days} días',
-  'stats.muscleBalanceEmpty': 'No se ha registrado nada en los últimos {days} días.',
+  'stats.timeMapTitle': 'Horarios de entrenamiento · {range}',
+  'stats.timeMapEmpty': 'No hay sesiones en este intervalo para situar en la semana.',
+  'stats.timeMapAria':
+    '{count} sesiones situadas por día de la semana y hora del día, entre las {from} y las {to}. Cada entrenamiento se marca con su propio icono.',
+
+  'stats.muscleBalanceTitle': 'Equilibrio muscular · {range}',
   'stats.muscleBalanceCaption':
     'Más volumen en {most}, menos en {least}. Un músculo que no hayas entrenado en absoluto simplemente no aparece en esta lista.',
   'stats.muscleBalanceSingle': 'Solo se entrenó un grupo muscular en esta ventana.',
 
-  'stats.topExercisesTitle': 'Ejercicios más frecuentes · {days} días',
-  'stats.topExercisesEmpty': 'No se ha registrado nada en los últimos {days} días.',
+  'stats.topExercisesTitle': 'Ejercicios más frecuentes · {range}',
   'stats.timesOne': '1 vez',
   'stats.timesOther': '{count} veces',
 
@@ -366,16 +375,14 @@ export const es: Record<TranslationKey, string> = {
   'stats.seasonDaysOther': '{count} días',
 
   'stats.cyclingEmptyState': 'Aún no hay sesiones de ciclismo registradas.',
-  'stats.cyclingRidesTitle': 'Salidas · {days} días',
-  'stats.cyclingRidesEmpty': 'No hay salidas en los últimos {days} días.',
+  'stats.cyclingRidesTitle': 'Salidas · {range}',
   'stats.cyclingRidesCaption': '{rides} · {elevation} de desnivel en total',
   'stats.cyclingElevationPerKm': '{value} m/km',
   'stats.rideOne': '1 salida',
   'stats.rideOther': '{count} salidas',
 
   'stats.climbingEmptyState': 'Aún no hay sesiones de escalada registradas.',
-  'stats.pyramidTitle': 'Pirámide de grados · {days} días',
-  'stats.pyramidEmpty': 'No hay vías registradas en los últimos {days} días.',
+  'stats.pyramidTitle': 'Pirámide de grados · {range}',
   'stats.pyramidCaption': '{total} registradas · grado más difícil: {grade}',
   'stats.climbGradeLabel': 'Grado {grade}',
 

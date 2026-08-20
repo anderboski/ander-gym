@@ -266,6 +266,18 @@ export const CHANGELOG: ChangelogEntry[] = [
       'Las estadísticas de Ciclismo ahora muestran la distancia y el desnivel totales por periodo, además de una lista de tus salidas ordenadas por distancia con el desnivel por km de cada una.',
     ],
   },
+  {
+    version: '1.19.0',
+    date: '2026-08-20',
+    en: [
+      'Stats now pick a time range from a dropdown — last month, last 3 months, last year, or a custom start and end date — with a second dropdown for the daily/weekly/monthly view.',
+      'New gym chart: training times, plotting each session by day of the week and time of day so you can see when you actually train.',
+    ],
+    es: [
+      'Las estadísticas ahora usan un desplegable para el intervalo de tiempo — último mes, últimos 3 meses, último año o unas fechas de inicio y fin a tu elección — y otro para la vista diaria/semanal/mensual.',
+      'Nuevo gráfico de gimnasio: horarios de entrenamiento, con cada sesión situada por día de la semana y hora del día para ver cuándo entrenas de verdad.',
+    ],
+  },
 ];
 
 /** Keep in sync with the bootstrap-independent nature of theme/language: this

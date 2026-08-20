@@ -315,11 +315,16 @@ export const en = {
   'stats.removedExercises': 'Removed exercises',
   'stats.kindSwitcherAria': 'Choose stats category',
 
-  'stats.periodAria': 'Choose a time range',
-  'stats.periodWeek': 'Last week',
+  'stats.periodLabel': 'Time range',
   'stats.periodMonth': 'Last month',
   'stats.periodThreeMonths': 'Last 3 months',
-  'stats.viewAria': 'Choose a bucket size',
+  'stats.periodYear': 'Last year',
+  'stats.periodCustom': 'Custom',
+  'stats.customFrom': 'From',
+  'stats.customTo': 'To',
+  'stats.customInvalid': 'Pick a start date and an end date on or after it.',
+  'stats.rangeEmpty': 'Nothing logged in this range.',
+  'stats.viewLabel': 'View',
   'stats.viewDaily': 'Daily',
   'stats.viewWeekly': 'Weekly',
   'stats.viewMonthly': 'Monthly',
@@ -331,6 +336,7 @@ export const en = {
   'stats.sessionsPerWeek': 'Sessions per week',
   'stats.sessionsPerMonth': 'Sessions per month',
   'stats.currentThisUnit': '{count} this {unit}',
+  'stats.currentFinalUnit': '{count} in the final {unit}',
   'stats.sessionsCaption': '{total} sessions in this window',
   'stats.sessionsAriaPlain': '{title}: {total} sessions in total, {current} in the most recent {unit}.',
   'stats.consistencyCaption': '{total} sessions over {weeks} weeks · goal of {goal} met in {met} of them',
@@ -343,14 +349,17 @@ export const en = {
   'stats.durationAria':
     'Average session duration per bucket in this window: {current} most recently, against an average of {average} and a longest of {best}.',
 
-  'stats.muscleBalanceTitle': 'Muscle balance · {days} days',
-  'stats.muscleBalanceEmpty': 'Nothing logged in the last {days} days.',
+  'stats.timeMapTitle': 'Training times · {range}',
+  'stats.timeMapEmpty': 'No sessions in this range to place on the week.',
+  'stats.timeMapAria':
+    '{count} sessions placed by day of the week and time of day, between {from} and {to}. Each training is marked with its own icon.',
+
+  'stats.muscleBalanceTitle': 'Muscle balance · {range}',
   'stats.muscleBalanceCaption':
     'Most volume on {most}, least on {least}. A muscle you have not trained at all is simply absent from this list.',
   'stats.muscleBalanceSingle': 'Only one muscle group trained in this window.',
 
-  'stats.topExercisesTitle': 'Top exercises · {days} days',
-  'stats.topExercisesEmpty': 'Nothing logged in the last {days} days.',
+  'stats.topExercisesTitle': 'Top exercises · {range}',
   'stats.timesOne': '1 time',
   'stats.timesOther': '{count} times',
 
@@ -366,16 +375,14 @@ export const en = {
   'stats.seasonDaysOther': '{count} days',
 
   'stats.cyclingEmptyState': 'No cycling sessions logged yet.',
-  'stats.cyclingRidesTitle': 'Rides · {days} days',
-  'stats.cyclingRidesEmpty': 'No rides in the last {days} days.',
+  'stats.cyclingRidesTitle': 'Rides · {range}',
   'stats.cyclingRidesCaption': '{rides} · {elevation} climbed in total',
   'stats.cyclingElevationPerKm': '{value} m/km',
   'stats.rideOne': '1 ride',
   'stats.rideOther': '{count} rides',
 
   'stats.climbingEmptyState': 'No climbing sessions logged yet.',
-  'stats.pyramidTitle': 'Grade pyramid · {days} days',
-  'stats.pyramidEmpty': 'No climbs logged in the last {days} days.',
+  'stats.pyramidTitle': 'Grade pyramid · {range}',
   'stats.pyramidCaption': '{total} logged · hardest grade sent: {grade}',
   'stats.climbGradeLabel': 'Grade {grade}',
 

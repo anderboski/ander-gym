@@ -108,6 +108,21 @@ Only a phone can tell you whether a 320-unit chart is legible in a hand.
       browser back gesture.
 - [ ] Sessions-per-week: weeks that met your goal are green, the rest grey, and a
       week you did not train reads as a flat stub rather than as missing data.
+- [ ] **Time range** dropdown: tapping it opens the iOS wheel picker, and each of
+      Last month / Last 3 months / Last year redraws every card, with the range
+      named in each card's title.
+- [ ] **View** follows the range: a month offers Daily and Weekly, a year only
+      Monthly — and the select greys out rather than going blank when there is
+      only one to pick.
+- [ ] Choose **Custom**: two date pickers appear, pre-filled with the last month.
+      Neither accepts a date after today. Set the end date *before* the start and
+      the charts are replaced by a hint, not by an empty or invented window.
+- [ ] Switch the kind switcher to Cycling and back: the range you picked is still
+      selected, and Cycling shows the range dropdown with no View beside it.
+- [ ] **Training times**: badges sit inside their weekday column — none straddles a
+      day line — and the hour labels on the left are not clipped. Tap a badge: the
+      flag names the training, the day and the time, and clears when you tap
+      elsewhere. The legend under the chart lists every training with its count.
 - [ ] Muscle balance: long target names wrap instead of truncating, and every bar
       has its kg value beside it.
 - [ ] Toggle iOS Dark/Light while a chart is on screen. Lines, bars, gridlines and

@@ -15,6 +15,7 @@ import {
   cyclingSummary,
   dayKey,
   daysBetween,
+  customStatsRange,
   defaultStatsView,
   epley1RM,
   exerciseProgress,
@@ -23,6 +24,7 @@ import {
   formatDurationEstimate,
   formatElapsed,
   formatShortDate,
+  formatMinutesOfDay,
   formatShortLocalDate,
   greetingBucket,
   historyFor,
@@ -35,6 +37,7 @@ import {
   nextTraining,
   parseLocalDate,
   personalRecords,
+  rangeDays,
   remainingSeconds,
   REST_DONE_MS,
   restPhase,
@@ -48,10 +51,15 @@ import {
   startOfMonth,
   startOfWeek,
   startRest,
+  resolveStatsRange,
   statsBuckets,
+  timeAxisBounds,
   topExercises,
   totalVolume,
+  trailingRange,
+  trainingTimeOfDay,
   UNKNOWN_TARGET,
+  viewsForRange,
   volumeByTarget,
   weeklyStreak,
   weeklySummary,
@@ -685,7 +693,7 @@ describe('volumeByTarget', () => {
   }
 
   it('is empty with no sessions', () => {
-    expect(volumeByTarget([], catalogue, 30, now)).toEqual([]);
+    expect(volumeByTarget([], catalogue, trailingRange(30, now))).toEqual([]);
   });
 
   it('aggregates by target, heaviest first', () => {
@@ -697,7 +705,7 @@ describe('volumeByTarget', () => {
       ]),
       mixed(at(2026, 7, 20), [['0002', 10, 50]]),
     ];
-    expect(volumeByTarget(sessions, catalogue, 30, now)).toEqual([
+    expect(volumeByTarget(sessions, catalogue, trailingRange(30, now))).toEqual([
       { target: 'quads', volume: 1100, sets: 2 },
       { target: 'pectorals', volume: 720, sets: 2 },
     ]);
@@ -705,14 +713,14 @@ describe('volumeByTarget', () => {
 
   it('buckets an exercise the catalogue no longer knows', () => {
     const sessions = [mixed(at(2026, 7, 30), [['c-deleted', 10, 20]])];
-    expect(volumeByTarget(sessions, catalogue, 30, now)).toEqual([
+    expect(volumeByTarget(sessions, catalogue, trailingRange(30, now))).toEqual([
       { target: UNKNOWN_TARGET, volume: 200, sets: 1 },
     ]);
   });
 
   it('keeps a bodyweight-only target at zero volume rather than hiding it', () => {
     const sessions = [mixed(at(2026, 7, 30), [['0003', 20, 0]])];
-    expect(volumeByTarget(sessions, catalogue, 30, now)).toEqual([
+    expect(volumeByTarget(sessions, catalogue, trailingRange(30, now))).toEqual([
       { target: 'abs', volume: 0, sets: 1 },
     ]);
   });
@@ -723,7 +731,7 @@ describe('volumeByTarget', () => {
       mixed(at(2026, 7, 3), [['0002', 1, 10]]), // 29 days back
       mixed(at(2026, 7, 2), [['0003', 1, 100]]), // 30 days back
     ];
-    expect(volumeByTarget(sessions, catalogue, 30, now).map((t) => t.target)).toEqual([
+    expect(volumeByTarget(sessions, catalogue, trailingRange(30, now)).map((t) => t.target)).toEqual([
       'quads',
       'pectorals',
     ]);
@@ -731,15 +739,105 @@ describe('volumeByTarget', () => {
 
   it('ignores exercises that were listed but never logged', () => {
     const sessions = [session(at(2026, 7, 30), 'a', [{ exerciseId: '0001', sets: [] }])];
-    expect(volumeByTarget(sessions, catalogue, 30, now)).toEqual([]);
+    expect(volumeByTarget(sessions, catalogue, trailingRange(30, now))).toEqual([]);
   });
 });
 
-describe('defaultStatsView', () => {
-  it('picks daily for a week, weekly for a month and for three months', () => {
-    expect(defaultStatsView('week')).toBe('daily');
-    expect(defaultStatsView('month')).toBe('weekly');
-    expect(defaultStatsView('threeMonths')).toBe('weekly');
+describe('stats time window', () => {
+  const now = new Date(2026, 7, 2, 10); // Sun 2 Aug 2026
+
+  describe('trailingRange', () => {
+    it('ends at tomorrow midnight so today is inside the window', () => {
+      const range = trailingRange(30, now);
+      expect(range.end).toEqual(new Date(2026, 7, 3));
+    });
+
+    it('counts today as the first of the `days` days', () => {
+      expect(trailingRange(30, now).start).toEqual(new Date(2026, 6, 4));
+      expect(rangeDays(trailingRange(30, now))).toBe(30);
+    });
+
+    it('is a single day for one day back', () => {
+      expect(rangeDays(trailingRange(1, now))).toBe(1);
+    });
+  });
+
+  describe('customStatsRange', () => {
+    it('includes both picked days', () => {
+      const range = customStatsRange({ from: '2026-03-01', to: '2026-03-31' });
+      expect(range?.start).toEqual(new Date(2026, 2, 1));
+      expect(range?.end).toEqual(new Date(2026, 3, 1));
+      expect(range && rangeDays(range)).toBe(31);
+    });
+
+    it('accepts a single day', () => {
+      const range = customStatsRange({ from: '2026-03-01', to: '2026-03-01' });
+      expect(range && rangeDays(range)).toBe(1);
+    });
+
+    it('is null when a date is missing, malformed or inverted', () => {
+      expect(customStatsRange({ from: '', to: '2026-03-31' })).toBeNull();
+      expect(customStatsRange({ from: '2026-03-01', to: '' })).toBeNull();
+      expect(customStatsRange({ from: '2026-3-1', to: '2026-03-31' })).toBeNull();
+      expect(customStatsRange({ from: '2026-04-01', to: '2026-03-31' })).toBeNull();
+    });
+  });
+
+  describe('resolveStatsRange', () => {
+    const none = { from: '', to: '' };
+
+    it('resolves each fixed period to its trailing day count', () => {
+      expect(rangeDays(resolveStatsRange('month', now, none)!)).toBe(30);
+      expect(rangeDays(resolveStatsRange('threeMonths', now, none)!)).toBe(90);
+      expect(rangeDays(resolveStatsRange('year', now, none)!)).toBe(365);
+    });
+
+    it('ignores the custom dates for a fixed period', () => {
+      const range = resolveStatsRange('month', now, { from: '2020-01-01', to: '2020-01-02' });
+      expect(range?.start).toEqual(new Date(2026, 6, 4));
+    });
+
+    it('is null for an unusable custom range', () => {
+      expect(resolveStatsRange('custom', now, none)).toBeNull();
+    });
+  });
+
+  describe('viewsForRange', () => {
+    const viewsFor = (days: number) => viewsForRange(trailingRange(days, now));
+
+    it('offers daily and weekly for a month', () => {
+      expect(viewsFor(30)).toEqual(['daily', 'weekly']);
+    });
+
+    it('offers weekly and monthly for three months', () => {
+      expect(viewsFor(90)).toEqual(['weekly', 'monthly']);
+    });
+
+    it('offers monthly only for a year', () => {
+      expect(viewsFor(365)).toEqual(['monthly']);
+    });
+
+    it('offers daily only for a window too short to bucket by week', () => {
+      expect(viewsFor(5)).toEqual(['daily']);
+    });
+
+    it('never leaves a window with no view to draw', () => {
+      for (let days = 1; days <= 800; days += 1) {
+        expect(viewsFor(days).length).toBeGreaterThan(0);
+      }
+    });
+  });
+
+  describe('defaultStatsView', () => {
+    it('prefers weekly wherever it is offered', () => {
+      expect(defaultStatsView(trailingRange(30, now))).toBe('weekly');
+      expect(defaultStatsView(trailingRange(90, now))).toBe('weekly');
+    });
+
+    it('falls back to the only view a very short or very long window offers', () => {
+      expect(defaultStatsView(trailingRange(5, now))).toBe('daily');
+      expect(defaultStatsView(trailingRange(365, now))).toBe('monthly');
+    });
   });
 });
 
@@ -762,7 +860,7 @@ describe('statsBuckets', () => {
   }
 
   it('returns 7 daily buckets ending today for week/daily', () => {
-    const buckets = statsBuckets([], 'week', 'daily', now);
+    const buckets = statsBuckets([], trailingRange(7, now), 'daily');
     expect(buckets).toHaveLength(7);
     expect(buckets[0]?.start).toBe(new Date(2026, 6, 27).toISOString());
     expect(buckets[6]?.start).toBe(new Date(2026, 7, 2).toISOString());
@@ -770,46 +868,45 @@ describe('statsBuckets', () => {
   });
 
   it('buckets sessions into the matching day', () => {
-    const buckets = statsBuckets([lifted(at(2026, 8, 1, 9), 25)], 'week', 'daily', now);
+    const buckets = statsBuckets([lifted(at(2026, 8, 1, 9), 25)], trailingRange(7, now), 'daily');
     expect(buckets.map((b) => b.sessions)).toEqual([0, 0, 0, 0, 0, 1, 0]);
     expect(buckets[5]?.volume).toBe(250);
   });
 
-  it('returns 5 weekly buckets for month/weekly, matching weeklySummary boundaries', () => {
-    const buckets = statsBuckets([lifted(at(2026, 7, 28), 10)], 'month', 'weekly', now);
+  it('returns whole weekly buckets covering the month window', () => {
+    const buckets = statsBuckets([lifted(at(2026, 7, 28), 10)], trailingRange(30, now), 'weekly');
     expect(buckets).toHaveLength(5);
     expect(buckets[4]?.sessions).toBe(1);
   });
 
-  it('returns 3 monthly buckets for threeMonths/monthly', () => {
+  it('covers every calendar month the window touches, including a partial edge', () => {
     const buckets = statsBuckets(
       [lifted(at(2026, 6, 15), 10), lifted(at(2026, 8, 1), 20)],
-      'threeMonths',
+      trailingRange(90, now),
       'monthly',
-      now,
     );
-    expect(buckets).toHaveLength(3);
+    // 90 days back from Sun 2 Aug starts on 5 May, so May is a partial bucket.
     expect(buckets.map((b) => b.start)).toEqual([
+      new Date(2026, 4, 1).toISOString(),
       new Date(2026, 5, 1).toISOString(),
       new Date(2026, 6, 1).toISOString(),
       new Date(2026, 7, 1).toISOString(),
     ]);
-    expect(buckets[0]?.sessions).toBe(1);
-    expect(buckets[2]?.sessions).toBe(1);
+    expect(buckets[1]?.sessions).toBe(1);
+    expect(buckets[3]?.sessions).toBe(1);
   });
 
   it('averages minutes among sessions with a positive duration, null with none', () => {
     const buckets = statsBuckets(
       [lifted(at(2026, 8, 1, 8), 10, 30), lifted(at(2026, 8, 1, 18), 10, 60)],
-      'week',
+      trailingRange(7, now),
       'daily',
-      now,
     );
     expect(buckets[5]?.avgMinutes).toBe(45);
   });
 
   it('ignores a non-positive savedAt - startedAt when averaging duration', () => {
-    const buckets = statsBuckets([lifted(at(2026, 8, 1, 8), 10, 0)], 'week', 'daily', now);
+    const buckets = statsBuckets([lifted(at(2026, 8, 1, 8), 10, 0)], trailingRange(7, now), 'daily');
     expect(buckets[5]?.avgMinutes).toBeNull();
   });
 });
@@ -835,7 +932,7 @@ describe('topExercises', () => {
       withExercises(at(2026, 7, 30), ['0001', '0002']),
       withExercises(at(2026, 7, 28), ['0001']),
     ];
-    expect(topExercises(sessions, 30, now, 10)).toEqual([
+    expect(topExercises(sessions, trailingRange(30, now), 10)).toEqual([
       { exerciseId: '0001', count: 2 },
       { exerciseId: '0002', count: 1 },
     ]);
@@ -843,22 +940,140 @@ describe('topExercises', () => {
 
   it('excludes sessions outside the window', () => {
     const sessions = [withExercises(at(2026, 6, 1), ['0001'])];
-    expect(topExercises(sessions, 30, now, 10)).toEqual([]);
+    expect(topExercises(sessions, trailingRange(30, now), 10)).toEqual([]);
   });
 
   it('ignores an entry with no sets', () => {
     const sessions = [session(at(2026, 7, 30), 'a', [{ exerciseId: '0001', sets: [] }])];
-    expect(topExercises(sessions, 30, now, 10)).toEqual([]);
+    expect(topExercises(sessions, trailingRange(30, now), 10)).toEqual([]);
   });
 
   it('respects the limit', () => {
     const sessions = [withExercises(at(2026, 7, 30), ['0001', '0002', '0003'])];
-    expect(topExercises(sessions, 30, now, 2)).toHaveLength(2);
+    expect(topExercises(sessions, trailingRange(30, now), 2)).toHaveLength(2);
   });
 
   it('breaks ties by exercise id', () => {
     const sessions = [withExercises(at(2026, 7, 30), ['0002', '0001'])];
-    expect(topExercises(sessions, 30, now, 10).map((r) => r.exerciseId)).toEqual(['0001', '0002']);
+    expect(topExercises(sessions, trailingRange(30, now), 10).map((r) => r.exerciseId)).toEqual(['0001', '0002']);
+  });
+});
+
+describe('trainingTimeOfDay', () => {
+  const now = new Date(2026, 7, 2, 10); // Sun 2 Aug 2026
+  const range = trailingRange(30, now);
+
+  const trainings: Training[] = [
+    { id: 't-push', label: 'Push', order: 0, exerciseIds: [], emoji: '\u{1F4AA}' },
+    { id: 't-legs', label: 'Legs', order: 1, exerciseIds: [] },
+  ];
+
+  /** One saved session for `trainingId`, started at the given local time. */
+  function started(y: number, m: number, d: number, h: number, min: number, trainingId: string): Session {
+    return { ...session(at(y, m, d, h, min), trainingId), trainingLabel: trainingId === 't-push' ? 'Push' : 'Legs' };
+  }
+
+  it('places a session on its weekday and minute of day', () => {
+    const map = trainingTimeOfDay([started(2026, 7, 28, 18, 45, 't-push')], trainings, range);
+    expect(map.points).toEqual([
+      expect.objectContaining({ trainingId: 't-push', weekday: 1, minutes: 18 * 60 + 45 }),
+    ]);
+  });
+
+  it('counts Sunday as the last weekday, matching Monday-first weeks', () => {
+    const map = trainingTimeOfDay([started(2026, 8, 2, 9, 0, 't-legs')], trainings, range);
+    expect(map.points[0]?.weekday).toBe(6);
+  });
+
+  it('badges from the training emoji, falling back to the first letter of its label', () => {
+    const map = trainingTimeOfDay(
+      [started(2026, 7, 28, 18, 0, 't-push'), started(2026, 7, 29, 18, 0, 't-legs')],
+      trainings,
+      range,
+    );
+    expect(map.points.map((p) => p.badge)).toEqual(['\u{1F4AA}', 'L']);
+  });
+
+  it('falls back to the session label snapshot when the training no longer resolves', () => {
+    // The session snapshotted "Legs" at start time; no training with this id survives.
+    const map = trainingTimeOfDay([started(2026, 7, 28, 18, 0, 't-gone')], trainings, range);
+    expect(map.points[0]).toMatchObject({ badge: 'L', label: 'Legs' });
+  });
+
+  it('excludes sessions outside the window', () => {
+    const map = trainingTimeOfDay([started(2026, 6, 1, 18, 0, 't-push')], trainings, range);
+    expect(map.points).toEqual([]);
+    expect(map.series).toEqual([]);
+  });
+
+  it('summarises one series per training, most sessions first', () => {
+    const map = trainingTimeOfDay(
+      [
+        started(2026, 7, 28, 18, 0, 't-push'),
+        started(2026, 7, 30, 18, 0, 't-push'),
+        started(2026, 7, 29, 18, 0, 't-legs'),
+      ],
+      trainings,
+      range,
+    );
+    expect(map.series).toEqual([
+      { trainingId: 't-push', badge: '\u{1F4AA}', label: 'Push', count: 2 },
+      { trainingId: 't-legs', badge: 'L', label: 'Legs', count: 1 },
+    ]);
+  });
+
+  it('orders points by weekday then time, so collision nudging is deterministic', () => {
+    const map = trainingTimeOfDay(
+      [
+        started(2026, 7, 30, 9, 0, 't-push'), // Thu
+        started(2026, 7, 28, 20, 0, 't-legs'), // Tue late
+        started(2026, 7, 28, 7, 30, 't-push'), // Tue early
+      ],
+      trainings,
+      range,
+    );
+    expect(map.points.map((p) => [p.weekday, p.minutes])).toEqual([
+      [1, 7 * 60 + 30],
+      [1, 20 * 60],
+      [3, 9 * 60],
+    ]);
+  });
+
+  it('fits the axis to whole hours around the data', () => {
+    const map = trainingTimeOfDay(
+      [started(2026, 7, 28, 7, 30, 't-push'), started(2026, 7, 30, 20, 15, 't-legs')],
+      trainings,
+      range,
+    );
+    expect(map.axis).toEqual([7 * 60, 21 * 60]);
+  });
+});
+
+describe('timeAxisBounds', () => {
+  it('is a plain daytime span with no data to fit', () => {
+    expect(timeAxisBounds([])).toEqual([6 * 60, 22 * 60]);
+  });
+
+  it('widens a single point to a readable span', () => {
+    const [lo, hi] = timeAxisBounds([18 * 60]);
+    expect(hi - lo).toBeGreaterThanOrEqual(6 * 60);
+    expect(lo).toBeLessThanOrEqual(18 * 60);
+    expect(hi).toBeGreaterThanOrEqual(18 * 60);
+  });
+
+  it('never runs past either end of the day', () => {
+    expect(timeAxisBounds([5, 23 * 60 + 59])).toEqual([0, 24 * 60]);
+    expect(timeAxisBounds([0])).toEqual([0, 6 * 60]);
+    expect(timeAxisBounds([23 * 60 + 59])).toEqual([18 * 60, 24 * 60]);
+  });
+});
+
+describe('formatMinutesOfDay', () => {
+  it('is zero-padded 24-hour time', () => {
+    expect(formatMinutesOfDay(0)).toBe('00:00');
+    expect(formatMinutesOfDay(9 * 60 + 5)).toBe('09:05');
+    expect(formatMinutesOfDay(18 * 60 + 45)).toBe('18:45');
+    expect(formatMinutesOfDay(24 * 60)).toBe('00:00');
   });
 });
 
@@ -940,7 +1155,7 @@ describe('climbGradePyramid', () => {
       sportSession('2026-07-30', 'c', 'climbing', { '3': 2, '4': 1, '5': 0 }),
       sportSession('2026-07-28', 'c', 'climbing', { '3': 1, '4': 0, '5': 3 }),
     ];
-    expect(climbGradePyramid(logs, 30, now)).toEqual([
+    expect(climbGradePyramid(logs, trailingRange(30, now))).toEqual([
       { grade: '5', count: 3 },
       { grade: '4', count: 1 },
       { grade: '3', count: 3 },
@@ -949,7 +1164,7 @@ describe('climbGradePyramid', () => {
 
   it('keeps a grade with no climbs at zero rather than dropping it', () => {
     const logs = [sportSession('2026-07-30', 'c', 'climbing', { '3': 0, '4': 0, '5': 1 })];
-    expect(climbGradePyramid(logs, 30, now)).toEqual([
+    expect(climbGradePyramid(logs, trailingRange(30, now))).toEqual([
       { grade: '5', count: 1 },
       { grade: '4', count: 0 },
       { grade: '3', count: 0 },
@@ -957,7 +1172,7 @@ describe('climbGradePyramid', () => {
   });
 
   it('is all zero with no climbing logs', () => {
-    expect(climbGradePyramid([], 30, now)).toEqual([
+    expect(climbGradePyramid([], trailingRange(30, now))).toEqual([
       { grade: '5', count: 0 },
       { grade: '4', count: 0 },
       { grade: '3', count: 0 },
@@ -966,7 +1181,7 @@ describe('climbGradePyramid', () => {
 
   it('excludes logs outside the window', () => {
     const logs = [sportSession('2026-06-01', 'c', 'climbing', { '3': 5, '4': 0, '5': 0 })];
-    expect(climbGradePyramid(logs, 30, now)).toEqual([
+    expect(climbGradePyramid(logs, trailingRange(30, now))).toEqual([
       { grade: '5', count: 0 },
       { grade: '4', count: 0 },
       { grade: '3', count: 0 },
@@ -975,7 +1190,7 @@ describe('climbGradePyramid', () => {
 
   it('ignores non-climbing sport sessions', () => {
     const logs = [sportSession('2026-07-30', 'x', 'cycling')];
-    expect(climbGradePyramid(logs, 30, now)).toEqual([
+    expect(climbGradePyramid(logs, trailingRange(30, now))).toEqual([
       { grade: '5', count: 0 },
       { grade: '4', count: 0 },
       { grade: '3', count: 0 },
@@ -1004,7 +1219,7 @@ describe('cycling', () => {
 
   describe('cyclingSummary', () => {
     it('is all zero with no rides', () => {
-      expect(cyclingSummary([], 30, now)).toEqual({
+      expect(cyclingSummary([], trailingRange(30, now))).toEqual({
         rides: 0,
         totalDistanceKm: 0,
         totalElevationM: 0,
@@ -1014,7 +1229,7 @@ describe('cycling', () => {
 
     it('sums distance and elevation across rides in the window', () => {
       const logs = [cyclingLog('2026-07-30', 20, 200), cyclingLog('2026-07-28', 30, 300)];
-      expect(cyclingSummary(logs, 30, now)).toEqual({
+      expect(cyclingSummary(logs, trailingRange(30, now))).toEqual({
         rides: 2,
         totalDistanceKm: 50,
         totalElevationM: 500,
@@ -1024,7 +1239,7 @@ describe('cycling', () => {
 
     it('excludes rides outside the window', () => {
       const logs = [cyclingLog('2026-06-01', 20, 200)];
-      expect(cyclingSummary(logs, 30, now)).toEqual({
+      expect(cyclingSummary(logs, trailingRange(30, now))).toEqual({
         rides: 0,
         totalDistanceKm: 0,
         totalElevationM: 0,
@@ -1034,25 +1249,25 @@ describe('cycling', () => {
 
     it('ignores non-cycling sport sessions', () => {
       const logs = [sportSession('2026-07-30', 'x', 'climbing')];
-      expect(cyclingSummary(logs, 30, now).rides).toBe(0);
+      expect(cyclingSummary(logs, trailingRange(30, now)).rides).toBe(0);
     });
   });
 
   describe('cyclingRides', () => {
     it('is empty with no rides', () => {
-      expect(cyclingRides([], 30, now)).toEqual([]);
+      expect(cyclingRides([], trailingRange(30, now))).toEqual([]);
     });
 
     it('lists rides newest first with elevation per km', () => {
       const logs = [cyclingLog('2026-07-20', 10, 100), cyclingLog('2026-07-25', 25, 250)];
-      const rides = cyclingRides(logs, 30, now);
+      const rides = cyclingRides(logs, trailingRange(30, now));
       expect(rides.map((r) => r.date)).toEqual(['2026-07-25', '2026-07-20']);
       expect(rides[0]?.elevationPerKm).toBe(10);
     });
 
     it('excludes rides outside the window', () => {
       const logs = [cyclingLog('2026-06-01', 20, 200)];
-      expect(cyclingRides(logs, 30, now)).toEqual([]);
+      expect(cyclingRides(logs, trailingRange(30, now))).toEqual([]);
     });
   });
 });

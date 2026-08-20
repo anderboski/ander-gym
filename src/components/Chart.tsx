@@ -124,14 +124,25 @@ type PlotProps = {
    * "chart". An SVG is invisible without it.
    */
   ariaLabel: string;
+  /**
+   * Plot height in user units. The default is a strip, where the y axis only
+   * has to separate a handful of bar heights; a 2-D grid needs the room
+   * because its y axis carries as much meaning as its x.
+   */
+  height?: number;
+  /** Where to draw a gridline and a tick label. Defaults to the two domain bounds — enough for a strip, not for a grid. */
+  ticks?: number[];
+  /** Left gutter in user units. Wider than the default for tick labels longer than a compact number, e.g. a clock time. */
+  padLeft?: number;
   children: (frame: Frame) => ReactNode;
 };
 
-function Plot({ count, domain, spread, formatTick, xLabels, bandLabels, ariaLabel, children }: PlotProps) {
-  const left = PAD.left;
+function Plot({ count, domain, spread, formatTick, xLabels, bandLabels, ariaLabel, height, ticks, padLeft, children }: PlotProps) {
+  const boxHeight = height ?? BOX.h;
+  const left = padLeft ?? PAD.left;
   const right = BOX.w - PAD.right;
   const top = PAD.top;
-  const bottom = BOX.h - PAD.bottom;
+  const bottom = boxHeight - PAD.bottom;
 
   const [min, max] = domain;
   const range = max - min || 1;
@@ -156,12 +167,12 @@ function Plot({ count, domain, spread, formatTick, xLabels, bandLabels, ariaLabe
   return (
     <svg
       className="chart-svg"
-      viewBox={`0 0 ${BOX.w} ${BOX.h}`}
+      viewBox={`0 0 ${BOX.w} ${boxHeight}`}
       preserveAspectRatio="xMidYMid meet"
       role="img"
       aria-label={ariaLabel}
     >
-      {domain.map((value) => (
+      {(ticks ?? domain).map((value) => (
         <g key={value}>
           <line className="chart-grid" x1={left} x2={right} y1={frame.y(value)} y2={frame.y(value)} />
           <text
@@ -180,17 +191,17 @@ function Plot({ count, domain, spread, formatTick, xLabels, bandLabels, ariaLabe
 
       {bandLabels ? (
         bandLabels.map((label, i) => (
-          <text key={i} className="chart-tick" x={frame.x(i)} y={BOX.h - 4} textAnchor="middle">
+          <text key={i} className="chart-tick" x={frame.x(i)} y={boxHeight - 4} textAnchor="middle">
             {label}
           </text>
         ))
       ) : (
         xLabels && (
           <>
-            <text className="chart-tick" x={left} y={BOX.h - 4} textAnchor="start">
+            <text className="chart-tick" x={left} y={boxHeight - 4} textAnchor="start">
               {xLabels[0]}
             </text>
-            <text className="chart-tick" x={right} y={BOX.h - 4} textAnchor="end">
+            <text className="chart-tick" x={right} y={boxHeight - 4} textAnchor="end">
               {xLabels[1]}
             </text>
           </>
@@ -288,10 +299,11 @@ export function LineChart({ values, formatTick, xLabels, ariaLabel }: LineChartP
  * The value flag shown above a tapped/focused bar — clamped inside the plot
  * box on both axes so it never gets clipped at an edge bar or a near-max
  * value. Sizing is a rough character-count heuristic rather than measured
- * text: every value here is a short number, never a paragraph.
+ * text: every value here is a short number or a training name, never a
+ * paragraph.
  */
-function BarTooltip({ x, y, left, right, text }: { x: number; y: number; left: number; right: number; text: string }) {
-  const w = Math.max(18, text.length * 5.6 + 8);
+function ValueFlag({ x, y, left, right, text }: { x: number; y: number; left: number; right: number; text: string }) {
+  const w = Math.max(18, text.length * 6.2 + 8);
   const h = 14;
   const boxX = Math.min(right - w / 2, Math.max(left + w / 2, x)) - w / 2;
   const boxY = Math.max(2, y - h - 4);
@@ -428,7 +440,7 @@ export function BarStrip({
               />
             )}
             {active !== null && values[active] !== undefined && (
-              <BarTooltip
+              <ValueFlag
                 x={frame.x(active)}
                 y={values[active] <= 0 ? frame.base - 2 : frame.y(values[active])}
                 left={frame.left}
@@ -520,12 +532,190 @@ export function StackedBarStrip({ buckets, series, formatTick, ariaLabel }: Stac
               );
             })}
             {active !== null && totals[active] !== undefined && (
-              <BarTooltip
+              <ValueFlag
                 x={frame.x(active)}
                 y={frame.y(totals[active])}
                 left={frame.left}
                 right={frame.right}
                 text={formatTick(totals[active])}
+              />
+            )}
+          </>
+        );
+      }}
+    </Plot>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Time-of-week map                                                            */
+/* -------------------------------------------------------------------------- */
+
+export type TimeMarker = {
+  key: string;
+  /** 0 = Monday … 6 = Sunday. */
+  weekday: number;
+  /** Minutes from local midnight. */
+  minutes: number;
+  /** The glyph drawn at the point — an emoji or a single letter. */
+  badge: string;
+  /** What the flag shows when the marker is activated. Kept short: the flag is sized by character count, and a wide one crowds the plot. */
+  label: string;
+  /** What a screen reader hears instead — the same reading, with nothing abbreviated away. */
+  ariaLabel: string;
+};
+
+/** The badge box, in user units — also the vertical gap two markers need before they read as separate. */
+const MARKER = 12;
+/** Taller than the strip charts: here the y axis is a whole day, not four bar heights. */
+const MAP_HEIGHT = 208;
+/** A clock time is wider than the compact numbers the strip charts label, and a clipped axis is worse than a narrower plot. */
+const MAP_PAD_LEFT = 46;
+
+/**
+ * Whole-hour gridlines at a step that keeps the axis to about five labels —
+ * every hour on a short span, every fourth on a full day, so the ticks stay
+ * readable without the eye having to interpolate between two distant ones.
+ */
+function hourTicks([lo, hi]: [number, number]): number[] {
+  const hours = (hi - lo) / 60;
+  const step = (hours <= 6 ? 1 : hours <= 12 ? 2 : hours <= 18 ? 3 : 4) * 60;
+  const ticks: number[] = [];
+  for (let m = lo; m <= hi; m += step) ticks.push(m);
+  return ticks;
+}
+
+type TimeOfWeekPlotProps = {
+  markers: TimeMarker[];
+  /** Minute bounds of the y axis — whole hours, so every tick lands on one. */
+  domain: [number, number];
+  /** Seven short weekday names, Monday first. */
+  dayLabels: string[];
+  formatTime: (minutes: number) => string;
+  ariaLabel: string;
+};
+
+/**
+ * A day-of-week × time-of-day grid with one badge per session — the shape of
+ * a training week, which no bar chart can show: bars aggregate away exactly
+ * the "Tuesday evening, Saturday morning" pattern this exists to expose.
+ *
+ * Markers that would overlap inside a day column are nudged sideways in
+ * alternating steps rather than drawn on top of each other, so two trainings
+ * an hour apart on the same weekday both stay readable. The nudge is
+ * deterministic (the caller hands markers over in a stable order) and stays
+ * inside the column, so a badge never drifts into the neighbouring day.
+ */
+export function TimeOfWeekPlot({ markers, domain, dayLabels, formatTime, ariaLabel }: TimeOfWeekPlotProps) {
+  const [active, setActive] = useState<string | null>(null);
+
+  return (
+    <Plot
+      count={dayLabels.length}
+      domain={domain}
+      spread="band"
+      height={MAP_HEIGHT}
+      ticks={hourTicks(domain)}
+      padLeft={MAP_PAD_LEFT}
+      formatTick={formatTime}
+      bandLabels={dayLabels}
+      ariaLabel={ariaLabel}
+    >
+      {(frame) => {
+        // Whole badge-widths inside one day, filled from the middle out. A
+        // fixed set of lanes rather than a growing offset: a Tuesday-evening
+        // habit produces a dozen markers at the same height, and anything
+        // that keeps stepping outwards to fit them ends up drawing them over
+        // the neighbouring day. Past the last free lane they overlap instead
+        // — an unreadable pile still says "Tuesday evening"; a badge in the
+        // wrong column says something false.
+        const lanes = Math.max(1, Math.floor(frame.band / MARKER));
+        const laneWidth = frame.band / lanes;
+        const centre = (lanes - 1) / 2;
+        const order = Array.from({ length: lanes }, (_, i) => i).sort(
+          (a, b) => Math.abs(a - centre) - Math.abs(b - centre) || a - b,
+        );
+        const taken = new Map<string, number[]>();
+
+        const placed = markers.map((marker) => {
+          const y = frame.y(marker.minutes);
+          let lane = order[0] ?? 0;
+          let widest = -1;
+          for (const candidate of order) {
+            const column = taken.get(`${marker.weekday}:${candidate}`) ?? [];
+            const gap = column.reduce((min, placedY) => Math.min(min, Math.abs(placedY - y)), Infinity);
+            if (gap >= MARKER) {
+              lane = candidate;
+              widest = Infinity;
+              break;
+            }
+            // Nothing is free: remember the lane whose nearest neighbour is
+            // furthest away, so the unavoidable overlap is the mildest one.
+            if (gap > widest) {
+              widest = gap;
+              lane = candidate;
+            }
+          }
+          const column = taken.get(`${marker.weekday}:${lane}`) ?? [];
+          column.push(y);
+          taken.set(`${marker.weekday}:${lane}`, column);
+          return { marker, x: frame.x(marker.weekday) + (lane - centre) * laneWidth, y };
+        });
+
+        const activePoint = placed.find((p) => p.marker.key === active);
+
+        return (
+          <>
+            {dayLabels.map((_, i) =>
+              i === 0 ? null : (
+                <line
+                  key={i}
+                  className="chart-grid chart-grid-faint"
+                  x1={frame.x(i) - frame.band / 2}
+                  x2={frame.x(i) - frame.band / 2}
+                  y1={frame.y(domain[1])}
+                  y2={frame.base}
+                />
+              ),
+            )}
+
+            {placed.map(({ marker, x, y }) => (
+              <g key={marker.key}>
+                <text
+                  className={active === marker.key ? 'chart-badge chart-badge-active' : 'chart-badge'}
+                  x={x}
+                  y={y}
+                  textAnchor="middle"
+                  dominantBaseline="central"
+                >
+                  {marker.badge}
+                </text>
+                <rect
+                  className="chart-hit"
+                  x={x - MARKER / 2}
+                  y={y - MARKER / 2}
+                  width={MARKER}
+                  height={MARKER}
+                  tabIndex={0}
+                  role="button"
+                  aria-label={marker.ariaLabel}
+                  aria-pressed={active === marker.key}
+                  // Same activate-only handlers as BarHitTarget: a tap fires
+                  // focus before click, so toggling would cancel itself out.
+                  onClick={() => setActive(marker.key)}
+                  onFocus={() => setActive(marker.key)}
+                  onBlur={() => setActive((a) => (a === marker.key ? null : a))}
+                />
+              </g>
+            ))}
+
+            {activePoint && (
+              <ValueFlag
+                x={activePoint.x}
+                y={activePoint.y - MARKER / 2}
+                left={frame.left}
+                right={frame.right}
+                text={activePoint.marker.label}
               />
             )}
           </>

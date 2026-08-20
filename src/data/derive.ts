@@ -137,6 +137,16 @@ export function formatShortDate(iso: string): string {
 }
 
 /**
+ * `Jul 26` — a month bucket on a chart axis, where two `1 Aug` edges a year
+ * apart would read as the same date. Same locale-independent months as
+ * `formatShortDate`, for the same reason.
+ */
+export function formatShortMonth(iso: string): string {
+  const d = new Date(iso);
+  return `${MONTHS[d.getMonth()] ?? ''} ${String(d.getFullYear() % 100).padStart(2, '0')}`;
+}
+
+/**
  * `23 Jul` from a bare `YYYY-MM-DD` date (check-ins) — parsed as local
  * midnight via `parseLocalDate` rather than `formatShortDate`'s `new
  * Date(iso)`, which would read a date-only string as UTC and can land on the
@@ -751,8 +761,7 @@ export type TargetVolume = {
 };
 
 /**
- * Volume per muscle `target` over the last `days` calendar days, heaviest
- * first — the "am I skipping legs?" view.
+ * Volume per muscle `target` over `range`, heaviest first — the "am I skipping legs?" view.
  *
  * `target` lives on the catalogue, never on a `SessionEntry` (which snapshots
  * ids only, SPEC §3), so the lookup is passed in and this stays pure. An id
@@ -766,14 +775,12 @@ export type TargetVolume = {
 export function volumeByTarget(
   sessions: Session[],
   exercises: ReadonlyMap<string, Pick<Exercise, 'target'>>,
-  days: number,
-  now: Date,
+  range: StatsRange,
 ): TargetVolume[] {
   const totals = new Map<string, { volume: number; sets: number }>();
 
   for (const session of sessions) {
-    const age = daysBetween(new Date(session.startedAt), now);
-    if (age < 0 || age >= days) continue;
+    if (!inRange(new Date(session.startedAt), range)) continue;
 
     for (const entry of session.entries) {
       if (entry.sets.length === 0) continue;
@@ -793,51 +800,106 @@ export function volumeByTarget(
 }
 
 /* -------------------------------------------------------------------------- */
-/* Stats page timeline (gym)                                                   */
+/* Stats page time window                                                      */
 /* -------------------------------------------------------------------------- */
 
-export const STATS_PERIODS = ['week', 'month', 'threeMonths'] as const;
+export const STATS_PERIODS = ['month', 'threeMonths', 'year', 'custom'] as const;
 export type StatsPeriod = (typeof STATS_PERIODS)[number];
 
 export const STATS_VIEWS = ['daily', 'weekly', 'monthly'] as const;
 export type StatsView = (typeof STATS_VIEWS)[number];
 
-/** Trailing calendar days each period covers — what `topExercises` and the muscle-balance breakdown scope to. */
-export const STATS_PERIOD_DAYS: Record<StatsPeriod, number> = {
-  week: 7,
+/** Trailing calendar days each fixed period covers. `custom` has none — its span comes from the two picked dates. */
+export const STATS_PERIOD_DAYS: Record<Exclude<StatsPeriod, 'custom'>, number> = {
   month: 30,
   threeMonths: 90,
+  year: 365,
 };
 
 /**
- * Which bucket sizes make sense for each period, offered in this order. A
- * week is 7 days, so only a daily bucket says anything; three months of
- * daily bars would be 90 slivers on a phone width, so that period only
- * offers weekly/monthly. The Stats page reads this to build its view chip
- * row and to fall back to a sane view when the period changes underneath it.
+ * A resolved window every stats aggregate is scoped to: `start` at local
+ * midnight inclusive, `end` at local midnight exclusive.
+ *
+ * A single window type instead of the old `(days, now)` pair, because a
+ * custom range has no "days back from now" to express — and with one type
+ * the period control resolves the window once and every aggregate filters
+ * the same way.
  */
-export const STATS_VIEWS_FOR_PERIOD: Record<StatsPeriod, readonly StatsView[]> = {
-  week: ['daily'],
-  month: ['daily', 'weekly'],
-  threeMonths: ['weekly', 'monthly'],
-};
+export type StatsRange = { start: Date; end: Date };
 
-const STATS_DEFAULT_VIEW: Record<StatsPeriod, StatsView> = {
-  week: 'daily',
-  month: 'weekly',
-  threeMonths: 'weekly',
-};
+/** The two `YYYY-MM-DD` dates behind the custom period, both inclusive. Empty strings mean "not picked yet". */
+export type CustomRangeInput = { from: string; to: string };
 
-/** The view to fall back to when switching period leaves the current one unavailable. */
-export function defaultStatsView(period: StatsPeriod): StatsView {
-  return STATS_DEFAULT_VIEW[period];
+function inRange(at: Date, range: StatsRange): boolean {
+  const t = at.getTime();
+  return t >= range.start.getTime() && t < range.end.getTime();
 }
 
-const STATS_BUCKET_COUNT: Record<StatsPeriod, Partial<Record<StatsView, number>>> = {
-  week: { daily: 7 },
-  month: { daily: 30, weekly: 5 },
-  threeMonths: { weekly: 13, monthly: 3 },
-};
+/** The last `days` calendar days ending with today — today counts as day 1, matching the old `age < days` filter. */
+export function trailingRange(days: number, now: Date): StatsRange {
+  const end = startOfDay(now);
+  end.setDate(end.getDate() + 1);
+  const start = startOfDay(now);
+  start.setDate(start.getDate() - (days - 1));
+  return { start, end };
+}
+
+const ISO_DATE = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * The window two picked dates describe, both days included.
+ *
+ * Null when either date is missing or the pair is inverted: the Stats page
+ * shows a hint rather than charting a window the user did not ask for.
+ */
+export function customStatsRange({ from, to }: CustomRangeInput): StatsRange | null {
+  if (!ISO_DATE.test(from) || !ISO_DATE.test(to) || from > to) return null;
+  const end = parseLocalDate(to);
+  end.setDate(end.getDate() + 1);
+  return { start: parseLocalDate(from), end };
+}
+
+/** The window a period selection resolves to. Null only for an incomplete or inverted custom range. */
+export function resolveStatsRange(period: StatsPeriod, now: Date, custom: CustomRangeInput): StatsRange | null {
+  return period === 'custom' ? customStatsRange(custom) : trailingRange(STATS_PERIOD_DAYS[period], now);
+}
+
+/** Whole calendar days the window spans. */
+export function rangeDays(range: StatsRange): number {
+  return daysBetween(range.start, range.end);
+}
+
+/**
+ * Bucket sizes that say something about a window of this length, in this
+ * order. Bounds rather than a per-period table, because a custom range can be
+ * any span: 90 daily slivers don't fit a phone, a single weekly bar over four
+ * days isn't a trend, and a monthly bar needs more than one month to compare
+ * against. Every span lands on at least one view — the daily ceiling sits
+ * above the weekly floor, and the weekly ceiling above the monthly floor.
+ */
+const DAILY_MAX_DAYS = 45;
+const WEEKLY_MIN_DAYS = 10;
+const WEEKLY_MAX_DAYS = 210;
+const MONTHLY_MIN_DAYS = 60;
+
+export function viewsForRange(range: StatsRange): StatsView[] {
+  const days = rangeDays(range);
+  const views: StatsView[] = [];
+  if (days <= DAILY_MAX_DAYS) views.push('daily');
+  if (days >= WEEKLY_MIN_DAYS && days <= WEEKLY_MAX_DAYS) views.push('weekly');
+  if (days >= MONTHLY_MIN_DAYS) views.push('monthly');
+  return views;
+}
+
+/**
+ * The view to select when the current one is not offered for a window.
+ * Weekly first where it fits: a week is the unit the goal is set in, so it is
+ * the one bucket the sessions chart can draw its reference line on.
+ */
+export function defaultStatsView(range: StatsRange): StatsView {
+  const views = viewsForRange(range);
+  return views.includes('weekly') ? 'weekly' : (views[0] ?? 'monthly');
+}
 
 /** One time-series bucket for the sessions-count and duration charts. */
 export type PeriodStat = {
@@ -862,15 +924,17 @@ function stepBucket(view: StatsView, d: Date, n: number): Date {
 }
 
 /**
- * Sessions bucketed by day/week/month, oldest first, trailing back from
- * `now`. Bucket count comes from `STATS_BUCKET_COUNT`, always exactly what
- * `STATS_VIEWS_FOR_PERIOD` offers for `period` — callers pass a period/view
- * pair straight from the Stats page controls. Empty buckets are present with
- * zeros, same reasoning as `weeklySummary`: a gap in training is the point.
+ * Sessions bucketed by day/week/month across `range`, oldest first.
+ *
+ * The buckets run from the one containing `range.start` to the one containing
+ * its last day, so the edges are whole buckets even when the window cuts a
+ * week or a month in half — a partial edge bucket is drawn from every session
+ * it holds, not just the part inside the window, because a bar labelled "week
+ * of the 3rd" that silently dropped the 1st and 2nd would read as a dip that
+ * never happened. Empty buckets are present with zeros, same reasoning as
+ * `weeklySummary`: a gap in training is the point.
  */
-export function statsBuckets(sessions: Session[], period: StatsPeriod, view: StatsView, now: Date): PeriodStat[] {
-  const count = STATS_BUCKET_COUNT[period][view] ?? 1;
-
+export function statsBuckets(sessions: Session[], range: StatsRange, view: StatsView): PeriodStat[] {
   const buckets = new Map<number, { sessions: number; volume: number; minutes: number[] }>();
   for (const s of sessions) {
     const key = bucketStartOf(view, new Date(s.startedAt)).getTime();
@@ -882,10 +946,10 @@ export function statsBuckets(sessions: Session[], period: StatsPeriod, view: Sta
     buckets.set(key, bucket);
   }
 
-  const anchor = bucketStartOf(view, now);
+  const lastDay = new Date(range.end.getTime() - 1);
+  const first = bucketStartOf(view, range.start);
   const out: PeriodStat[] = [];
-  for (let i = count - 1; i >= 0; i -= 1) {
-    const start = stepBucket(view, anchor, -i);
+  for (let start = first; start.getTime() <= bucketStartOf(view, lastDay).getTime(); start = stepBucket(view, start, 1)) {
     const bucket = buckets.get(start.getTime());
     out.push({
       start: start.toISOString(),
@@ -903,16 +967,14 @@ export function statsBuckets(sessions: Session[], period: StatsPeriod, view: Sta
 export type ExerciseCount = { exerciseId: string; count: number };
 
 /**
- * The exercises done most often in the last `days` days, ranked by how many
- * separate sessions included at least one set for it — "how many times
- * you've done it", not how many individual sets. Ties break by id for a
- * stable order.
+ * The exercises done most often in `range`, ranked by how many separate
+ * sessions included at least one set for it — "how many times you've done
+ * it", not how many individual sets. Ties break by id for a stable order.
  */
-export function topExercises(sessions: Session[], days: number, now: Date, limit: number): ExerciseCount[] {
+export function topExercises(sessions: Session[], range: StatsRange, limit: number): ExerciseCount[] {
   const counts = new Map<string, number>();
   for (const s of sessions) {
-    const age = daysBetween(new Date(s.startedAt), now);
-    if (age < 0 || age >= days) continue;
+    if (!inRange(new Date(s.startedAt), range)) continue;
     for (const entry of s.entries) {
       if (entry.sets.length === 0) continue;
       counts.set(entry.exerciseId, (counts.get(entry.exerciseId) ?? 0) + 1);
@@ -922,6 +984,113 @@ export function topExercises(sessions: Session[], days: number, now: Date, limit
     .map(([exerciseId, count]) => ({ exerciseId, count }))
     .sort((a, b) => b.count - a.count || a.exerciseId.localeCompare(b.exerciseId))
     .slice(0, limit);
+}
+
+/* -------------------------------------------------------------------------- */
+/* Training time-of-week map (gym)                                             */
+/* -------------------------------------------------------------------------- */
+
+/** One saved gym session placed on the day-of-week × time-of-day grid. */
+export type TrainingTimePoint = {
+  sessionId: string;
+  trainingId: string;
+  /** 0 = Monday … 6 = Sunday, matching `startOfWeek`'s Monday-first weeks. */
+  weekday: number;
+  /** Minutes from local midnight of `startedAt` — when the session began, not when it was saved. */
+  minutes: number;
+  /** The training's emoji, or the first letter of its label — the same badge the Trainings list and the Home calendar draw. */
+  badge: string;
+  label: string;
+};
+
+export type TrainingTimeSeries = { trainingId: string; badge: string; label: string; count: number };
+
+export type TrainingTimeMap = {
+  points: TrainingTimePoint[];
+  /** One entry per training with points in the window, most sessions first — the legend, and the reason the badges are readable at all. */
+  series: TrainingTimeSeries[];
+  /** Whole-hour minute bounds for the y axis, fitted to the points. */
+  axis: [number, number];
+};
+
+/** Fallback badge for a training that no longer resolves — the session's own label snapshot is all that's left. */
+function badgeOf(label: string): string {
+  return label.charAt(0).toUpperCase();
+}
+
+const HOUR = 60;
+/** Below this the markers of a normal training week stack into an unreadable strip, so the axis is padded out to it. */
+const MIN_AXIS_SPAN = 6 * HOUR;
+/** What an empty map shows: a plain 06:00–22:00 day, so the grid still reads as a day. */
+const EMPTY_AXIS: [number, number] = [6 * HOUR, 22 * HOUR];
+
+/**
+ * Every saved gym session in `range` as a point on a day-of-week × time-of-day
+ * grid — "what do I train, on which day, at what time".
+ *
+ * `sessions` only ever holds gym sessions (sport kinds log to `sportSessions`
+ * instead, SPEC §3), so there is no kind to filter on here. Badges resolve
+ * from the live training rather than from the session, so a renamed or
+ * re-emoji'd training redraws consistently; a training that no longer
+ * resolves falls back to the label the session snapshotted at start time.
+ *
+ * The axis is fitted to the data and rounded out to whole hours: a fixed
+ * 00:00–24:00 grid spends most of its height on hours nobody trains in.
+ */
+export function trainingTimeOfDay(sessions: Session[], trainings: Training[], range: StatsRange): TrainingTimeMap {
+  const byId = new Map(trainings.map((t) => [t.id, t]));
+  const points: TrainingTimePoint[] = [];
+
+  for (const s of sessions) {
+    const at = new Date(s.startedAt);
+    if (!inRange(at, range)) continue;
+    const training = byId.get(s.trainingId);
+    points.push({
+      sessionId: s.id,
+      trainingId: s.trainingId,
+      weekday: (at.getDay() + 6) % 7,
+      minutes: at.getHours() * 60 + at.getMinutes(),
+      badge: training?.emoji ?? badgeOf(training?.label ?? s.trainingLabel),
+      label: training?.label ?? s.trainingLabel,
+    });
+  }
+
+  const counts = new Map<string, TrainingTimeSeries>();
+  for (const p of points) {
+    const entry = counts.get(p.trainingId);
+    if (entry) entry.count += 1;
+    else counts.set(p.trainingId, { trainingId: p.trainingId, badge: p.badge, label: p.label, count: 1 });
+  }
+
+  return {
+    points: points.sort((a, b) => a.weekday - b.weekday || a.minutes - b.minutes || a.sessionId.localeCompare(b.sessionId)),
+    series: [...counts.values()].sort((a, b) => b.count - a.count || a.label.localeCompare(b.label)),
+    axis: timeAxisBounds(points.map((p) => p.minutes)),
+  };
+}
+
+/**
+ * Whole-hour bounds containing every minute value, widened symmetrically to
+ * `MIN_AXIS_SPAN` and clamped to the day — a single session, or a week of
+ * sessions all at 18:00, would otherwise collapse the axis to zero height.
+ */
+export function timeAxisBounds(minutes: number[]): [number, number] {
+  if (minutes.length === 0) return EMPTY_AXIS;
+  let lo = Math.floor(Math.min(...minutes) / HOUR) * HOUR;
+  let hi = Math.ceil(Math.max(...minutes) / HOUR) * HOUR;
+  while (hi - lo < MIN_AXIS_SPAN) {
+    if (lo > 0) lo -= HOUR;
+    if (hi - lo < MIN_AXIS_SPAN && hi < 24 * HOUR) hi += HOUR;
+    if (lo === 0 && hi === 24 * HOUR) break;
+  }
+  return [lo, hi];
+}
+
+/** `18:45` from minutes-from-midnight. 24-hour, zero-padded — the axis and the marker flags share it. */
+export function formatMinutesOfDay(minutes: number): string {
+  const h = Math.floor(minutes / 60) % 24;
+  const m = Math.round(minutes % 60);
+  return `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -981,20 +1150,19 @@ export function snowboardSeasons(sportSessions: SportSession[], splitBy: SeasonS
 export type ClimbGradeCount = { grade: ClimbGrade; count: number };
 
 /**
- * Climbs per grade over the last `days` calendar days, hardest grade first —
+ * Climbs per grade over `range`, hardest grade first —
  * the shape a "pyramid" is expected to have, tapering from a short bar at the
  * hard end to a longer one at the easy end. Unlike `volumeByTarget`'s
  * open-ended muscle targets, `CLIMB_GRADES` is small and fixed, so every
  * grade is always present, zero-count included — dropping an untouched grade
  * would leave a hole in the pyramid rather than just shorten a list.
  */
-export function climbGradePyramid(sportSessions: SportSession[], days: number, now: Date): ClimbGradeCount[] {
+export function climbGradePyramid(sportSessions: SportSession[], range: StatsRange): ClimbGradeCount[] {
   const totals = new Map<ClimbGrade, number>(CLIMB_GRADES.map((grade) => [grade, 0]));
 
   for (const s of sportSessions) {
     if (s.kind !== 'climbing') continue;
-    const age = daysBetween(parseLocalDate(s.date), now);
-    if (age < 0 || age >= days) continue;
+    if (!inRange(parseLocalDate(s.date), range)) continue;
     for (const grade of CLIMB_GRADES) {
       totals.set(grade, (totals.get(grade) ?? 0) + s.climbsByGrade[grade]);
     }
@@ -1016,20 +1184,19 @@ export type CyclingSummary = {
 };
 
 /**
- * Totals over the last `days` calendar days. Distance and elevation are
+ * Totals over `range`. Distance and elevation are
  * summed rather than averaged — with infrequent rides a per-ride average
  * reads as a strange fractional ride, where a total answers "how much did I
  * ride" directly.
  */
-export function cyclingSummary(sportSessions: SportSession[], days: number, now: Date): CyclingSummary {
+export function cyclingSummary(sportSessions: SportSession[], range: StatsRange): CyclingSummary {
   let rides = 0;
   let totalDistanceKm = 0;
   let totalElevationM = 0;
 
   for (const s of sportSessions) {
     if (s.kind !== 'cycling') continue;
-    const age = daysBetween(parseLocalDate(s.date), now);
-    if (age < 0 || age >= days) continue;
+    if (!inRange(parseLocalDate(s.date), range)) continue;
     rides += 1;
     totalDistanceKm += s.distanceKm;
     totalElevationM += s.elevationM;
@@ -1049,18 +1216,15 @@ export type CyclingRide = CyclingSession & {
 };
 
 /**
- * Individual rides in the last `days` calendar days, newest first — the list
+ * Individual rides in `range`, newest first — the list
  * that backs up the summary card with what actually happened on each ride,
  * the same "picture never holds a number on its own" rule the exercise
  * history charts follow.
  */
-export function cyclingRides(sportSessions: SportSession[], days: number, now: Date): CyclingRide[] {
+export function cyclingRides(sportSessions: SportSession[], range: StatsRange): CyclingRide[] {
   return sportSessions
     .filter((s): s is CyclingSession => s.kind === 'cycling')
-    .filter((s) => {
-      const age = daysBetween(parseLocalDate(s.date), now);
-      return age >= 0 && age < days;
-    })
+    .filter((s) => inRange(parseLocalDate(s.date), range))
     .sort((a, b) => b.date.localeCompare(a.date))
     .map((s) => ({ ...s, elevationPerKm: s.distanceKm > 0 ? s.elevationM / s.distanceKm : null }));
 }
