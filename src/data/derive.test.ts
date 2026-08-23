@@ -99,6 +99,9 @@ function sportSession(
   if (kind === 'climbing') {
     return { ...base, kind, climbsByGrade };
   }
+  if (kind === 'other') {
+    return { ...base, kind, comments: '' };
+  }
   return { ...base, kind, distanceKm: 10, elevationM: 100, avgBpm: null };
 }
 
@@ -1446,6 +1449,46 @@ describe('mergedHistory', () => {
     const sport = sportSession('2026-08-03');
     const [item] = mergedHistory([], [sport]);
     expect(item?.at).toEqual(new Date(2026, 7, 3));
+  });
+
+  it("interleaves an 'other' log like any other sport kind", () => {
+    const gym = session(at(2026, 8, 1));
+    const other = sportSession('2026-08-02', 'padel', 'other');
+    const items = mergedHistory([gym], [other]);
+    expect(items[0]).toMatchObject({ kind: 'other', sportSession: other });
+  });
+});
+
+/**
+ * The "no analytics" half of the 'other' kind (SPEC §5.7): it has to reach
+ * History and the calendar, and it has to reach nothing else. The weekly goal
+ * and the streak are safe by construction (they take `Session[]`, and sport
+ * logs live in a different store), but the stats aggregates all take
+ * `SportSession[]` and filter by kind — so this is the regression guard for
+ * an aggregate that forgets to filter.
+ */
+describe("the 'other' sport kind", () => {
+  const now = new Date(2026, 7, 1, 12); // 1 Aug 2026
+  const logs = [sportSession('2026-07-30', 'padel', 'other'), sportSession('2026-07-28', 'padel', 'other')];
+
+  it('reaches the calendar', () => {
+    expect(sportSessionsByDay(logs).get('2026-07-30')).toEqual([logs[0]]);
+  });
+
+  it('is invisible to every sport aggregate', () => {
+    expect(snowboardSeasons(logs, 'snow')).toEqual([]);
+    expect(climbGradePyramid(logs, trailingRange(30, now))).toEqual([
+      { grade: '5', count: 0 },
+      { grade: '4', count: 0 },
+      { grade: '3', count: 0 },
+    ]);
+    expect(cyclingSummary(logs, trailingRange(30, now))).toEqual({
+      rides: 0,
+      totalDistanceKm: 0,
+      totalElevationM: 0,
+      avgElevationPerKm: null,
+    });
+    expect(cyclingRides(logs, trailingRange(30, now))).toEqual([]);
   });
 });
 

@@ -296,7 +296,7 @@ function SportLogSheet({
           elevationM: Number(elevationM) || 0,
           avgBpm: avgBpm.trim() ? Number(avgBpm) : null,
         };
-      } else {
+      } else if (training.kind === 'climbing') {
         input = {
           kind: 'climbing',
           date,
@@ -306,6 +306,8 @@ function SportLogSheet({
             '5': Math.max(0, Math.round(Number(climbsByGrade['5']) || 0)),
           },
         };
+      } else {
+        input = { kind: 'other', date, comments: comments.trim() };
       }
       await onSubmit(input);
       onClose();
@@ -454,6 +456,24 @@ function SportLogSheet({
               />
             </div>
           </>
+        )}
+
+        {/* An 'other' training records nothing measurable — the training's own
+            name says what the activity was, so the notes are the whole form. */}
+        {training.kind === 'other' && (
+          <div className="tr-name-field">
+            <label className="label" htmlFor="sport-log-other-comments">
+              {t('sportLog.commentsLabel')}
+            </label>
+            <textarea
+              id="sport-log-other-comments"
+              className="input"
+              rows={3}
+              value={comments}
+              placeholder={t('sportLog.commentsPlaceholder')}
+              onChange={(e) => setComments(e.target.value)}
+            />
+          </div>
         )}
 
         {training.kind === 'climbing' && (

@@ -132,7 +132,7 @@ Only a phone can tell you whether a 320-unit chart is legible in a hand.
       "image".
 - [ ] Settings → Display → larger text. Captions wrap; no chart card overflows.
 
-## 3e. Sport sessions (Snowboard / Cycling / Climbing)
+## 3e. Sport sessions (Snowboard / Cycling / Climbing / Other)
 
 - [ ] Trainings → **+ Add training day** → set Type to **Cycling**, name it
       **Morning ride** → Save. It appears under a new **Other activities**
@@ -150,6 +150,15 @@ Only a phone can tell you whether a 320-unit chart is legible in a hand.
       **Delete log** button — no way to edit a saved value.
 - [ ] Repeat for a **Snowboard** training (Weather / Snow condition dropdowns
       + a Comments field) and a **Climbing** one (a count per grade 3/4/5).
+- [ ] Repeat for an **Other** training (name it after a real activity, e.g.
+      **Padel**): the log sheet has only a Date and a Comments field. The
+      History row shows the first line of those comments, and its detail view
+      has no stat tiles above the Delete log button — just the comments card.
+- [ ] Log a second **Other** session leaving Comments empty: the History row
+      reads *Session logged* rather than sitting blank.
+- [ ] Stats → the kind switcher still shows exactly four tabs (gym, cycling,
+      snowboard, climbing) — **Other** has none, and its logs change nothing
+      on any of the four.
 - [ ] Log a gym session and a sport session on the same date. The calendar
       cell shows the gym badge plus a small dot for the sport session
       underneath, rather than only one or the other.

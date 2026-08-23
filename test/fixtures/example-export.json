@@ -73,6 +73,14 @@
       "exerciseIds": [],
       "kind": "climbing",
       "emoji": "🧗‍♂️"
+    },
+    {
+      "id": "t-9f4b1d2e-5c8a-4e77-b3d1-6a0f2c9e4b15",
+      "label": "Padel",
+      "order": 6,
+      "exerciseIds": [],
+      "kind": "other",
+      "emoji": "🎾"
     }
   ],
   "sessions": [
@@ -725,6 +733,24 @@
       "trainingId": "t-56a1c65c-11a7-477e-a279-d43253e37dc4",
       "trainingLabel": "Snowboard",
       "createdAt": "2026-03-02T17:10:00.000Z"
+    },
+    {
+      "kind": "other",
+      "date": "2026-07-19",
+      "comments": "Doubles with the usual crew, lost the third set.",
+      "id": "ss-example-other-0001",
+      "trainingId": "t-9f4b1d2e-5c8a-4e77-b3d1-6a0f2c9e4b15",
+      "trainingLabel": "Padel",
+      "createdAt": "2026-07-19T20:05:00.000Z"
+    },
+    {
+      "kind": "other",
+      "date": "2026-08-05",
+      "comments": "",
+      "id": "ss-example-other-0002",
+      "trainingId": "t-9f4b1d2e-5c8a-4e77-b3d1-6a0f2c9e4b15",
+      "trainingLabel": "Padel",
+      "createdAt": "2026-08-05T19:40:00.000Z"
     }
   ]
 }

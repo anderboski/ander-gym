@@ -91,10 +91,17 @@ export const TRAINING_ID_PREFIX = 't-';
  * of `sessions` — summary stats filled in after the activity, not sets
  * tracked live. Fixed at creation; there is no UI to change a training's
  * kind afterward.
+ *
+ * `'other'` is the escape hatch for any activity the app has no dedicated
+ * kind for — padel, surfing, a hike. It behaves exactly like the named sport
+ * kinds (History, calendar, never counted toward the weekly goal) but records
+ * nothing measurable beyond a date and free-text notes, so it has no Stats
+ * tab: what the sport even is varies per training, and there is nothing
+ * comparable to chart across them.
  */
-export type TrainingKind = 'gym' | 'snowboard' | 'cycling' | 'climbing';
+export type TrainingKind = 'gym' | 'snowboard' | 'cycling' | 'climbing' | 'other';
 
-export const SPORT_KINDS = ['snowboard', 'cycling', 'climbing'] as const;
+export const SPORT_KINDS = ['snowboard', 'cycling', 'climbing', 'other'] as const;
 export type SportKind = (typeof SPORT_KINDS)[number];
 
 /** Rest lengths offered inline in the session header, in seconds. */
@@ -187,14 +194,26 @@ export type ClimbingSession = SportSessionBase & {
   climbsByGrade: Record<ClimbGrade, number>;
 };
 
+/**
+ * A user-defined activity. Deliberately has no numeric fields: an `'other'`
+ * training is whatever sport the user named it, so no two of them measure the
+ * same thing and there is nothing to aggregate. The training's label carries
+ * what the activity was; `comments` is the only payload.
+ */
+export type OtherSession = SportSessionBase & {
+  kind: 'other';
+  comments: string;
+};
+
 /** A logged, immutable sport activity — the non-gym equivalent of `Session`. No editing: delete and re-log to correct. */
-export type SportSession = SnowboardSession | CyclingSession | ClimbingSession;
+export type SportSession = SnowboardSession | CyclingSession | ClimbingSession | OtherSession;
 
 /** What a log form collects, before the store stamps identity fields on. */
 export type NewSnowboardSession = Omit<SnowboardSession, 'id' | 'trainingId' | 'trainingLabel' | 'createdAt'>;
 export type NewCyclingSession = Omit<CyclingSession, 'id' | 'trainingId' | 'trainingLabel' | 'createdAt'>;
 export type NewClimbingSession = Omit<ClimbingSession, 'id' | 'trainingId' | 'trainingLabel' | 'createdAt'>;
-export type NewSportSession = NewSnowboardSession | NewCyclingSession | NewClimbingSession;
+export type NewOtherSession = Omit<OtherSession, 'id' | 'trainingId' | 'trainingLabel' | 'createdAt'>;
+export type NewSportSession = NewSnowboardSession | NewCyclingSession | NewClimbingSession | NewOtherSession;
 
 export type Settings = {
   weeklyGoal: number;

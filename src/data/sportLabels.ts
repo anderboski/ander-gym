@@ -16,6 +16,8 @@ export function trainingKindLabel(t: TFunc, kind: TrainingKind): string {
       return t('trainingKind.cycling');
     case 'climbing':
       return t('trainingKind.climbing');
+    case 'other':
+      return t('trainingKind.other');
   }
 }
 
@@ -41,5 +43,9 @@ export function sportSessionSummary(t: TFunc, s: SportSession): string {
       const total = Object.values(s.climbsByGrade).reduce((sum, n) => sum + n, 0);
       return total === 1 ? t('sportLog.climbsSummaryOne') : t('sportLog.climbsSummaryOther', { count: total });
     }
+    // The notes are the only thing an 'other' log records, so they double as
+    // its summary line; without them the row would otherwise read blank.
+    case 'other':
+      return s.comments.trim().split('\n')[0]?.trim() || t('sportLog.otherSummary');
   }
 }
