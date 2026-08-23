@@ -278,6 +278,18 @@ export const CHANGELOG: ChangelogEntry[] = [
       'Nuevo gráfico de gimnasio: horarios de entrenamiento, con cada sesión situada por día de la semana y hora del día para ver cuándo entrenas de verdad.',
     ],
   },
+  {
+    version: '1.20.0',
+    date: '2026-08-23',
+    en: [
+      'New "Other" training type: create a day for any activity — padel, surfing, a hike — and log it with a date and a note.',
+      'Other activities show up in your history and on the Home calendar, and never count toward your weekly goal.',
+    ],
+    es: [
+      'Nuevo tipo de entrenamiento "Otro": crea un día para cualquier actividad — pádel, surf, una excursión — y regístralo con una fecha y una nota.',
+      'Las actividades "Otro" aparecen en el historial y en el calendario de Inicio, y nunca cuentan para tu objetivo semanal.',
+    ],
+  },
 ];
 
 /** Keep in sync with the bootstrap-independent nature of theme/language: this

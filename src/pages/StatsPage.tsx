@@ -81,10 +81,18 @@ import {
 } from '../data/types';
 import './StatsPage.css';
 
-/** Top-right switcher order — gym first (the default), then the three sports. */
-const KIND_ORDER: TrainingKind[] = ['gym', 'cycling', 'snowboard', 'climbing'];
+/**
+ * Top-right switcher order — gym first (the default), then the sports that
+ * have charts. `'other'` is deliberately absent: an 'other' log records
+ * nothing but a date and notes, and no two 'other' trainings measure the same
+ * thing, so there is nothing to aggregate (SPEC §5.7). Narrowed to its own
+ * literal union rather than `TrainingKind[]` so a future kind has to opt into
+ * this page instead of silently needing an emoji here.
+ */
+const KIND_ORDER = ['gym', 'cycling', 'snowboard', 'climbing'] as const satisfies readonly TrainingKind[];
+type StatsKind = (typeof KIND_ORDER)[number];
 
-const KIND_EMOJI: Record<TrainingKind, string> = {
+const KIND_EMOJI: Record<StatsKind, string> = {
   gym: '🏋️',
   cycling: '🚴',
   snowboard: '🏂',
@@ -130,7 +138,7 @@ export function StatsPage() {
   // Captured once: it is a memo key, and a fresh Date per render would
   // invalidate every aggregate on every keystroke elsewhere in the tree.
   const [now] = useState(() => new Date());
-  const [kind, setKind] = useState<TrainingKind>('gym');
+  const [kind, setKind] = useState<StatsKind>('gym');
   const [period, setPeriod] = useState<StatsPeriod>(INITIAL_PERIOD);
   // Pre-filled with the opening period rather than blank, so switching to
   // Custom opens on a window that already draws instead of on an error hint.

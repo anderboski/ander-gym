@@ -20,7 +20,7 @@ anything written here.
 | D6 | Custom exercise image | Optional photo from camera/library, downscaled, stored as a blob; lettered placeholder otherwise |
 | D7 | Session history | Read-only; whole sessions may be deleted with confirmation |
 | D8 | Units | Kilograms only in v1 |
-| D9 | Sport sessions | A training's `kind` (`gym` default, or `snowboard`/`cycling`/`climbing`) fixed at creation. A non-`gym` training has no exercises, never joins Home's rotation, and logs to the separate `sportSessions` store — one-shot summary stats entered after the fact, not a live in-progress session — instead of `sessions`. Never counted toward the weekly goal or streak. Shown on Home's calendar (every activity gets a dot, not just one per day) and interleaved into History; immutable like a gym session, delete and re-log to correct |
+| D9 | Sport sessions | A training's `kind` (`gym` default, or `snowboard`/`cycling`/`climbing`/`other`) fixed at creation. A non-`gym` training has no exercises, never joins Home's rotation, and logs to the separate `sportSessions` store — one-shot summary stats entered after the fact, not a live in-progress session — instead of `sessions`. Never counted toward the weekly goal or streak. Shown on Home's calendar (every activity gets a dot, not just one per day) and interleaved into History; immutable like a gym session, delete and re-log to correct. `other` is the user-defined kind — any activity the app has no dedicated form for — and records only a date and free-text notes, so it has no Stats tab (§5.6) |
 
 **Non-goals for v1:** cross-device sync, accounts, plate calculators,
 video/GIF playback, notifications, unit switching, editing past sets.
@@ -106,6 +106,7 @@ type SportSessionBase = { id: string; trainingId: string; trainingLabel: string;
 type SnowboardSession = SportSessionBase & { kind: 'snowboard'; weather: WeatherCondition; snowCondition: SnowCondition; comments: string };
 type CyclingSession   = SportSessionBase & { kind: 'cycling'; distanceKm: number; elevationM: number /* "desnivel" */; avgBpm: number | null };
 type ClimbingSession  = SportSessionBase & { kind: 'climbing'; climbsByGrade: Record<'3' | '4' | '5', number> };
+type OtherSession     = SportSessionBase & { kind: 'other'; comments: string };
 
 type WeatherCondition = 'sunny' | 'cloudy' | 'snowing' | 'foggy' | 'windy';
 type SnowCondition = 'powder' | 'packed' | 'icy' | 'slushy' | 'spring' | 'groomed';
@@ -517,6 +518,11 @@ or a session detail. Reached from the Stats shortcut in §5.1; a back control re
 climbing 🧗 — picking which stats show below. Local component state only (no route change); gym is the
 default. Everything is derived from `sessions`/`sportSessions`, nothing new is stored.
 
+`other` has **no tab here, on purpose**: an `other` log records nothing measurable, and two `other`
+trainings ("Padel", "Surf") don't measure the same thing anyway, so there is nothing to aggregate across
+them. The switcher's kind list is its own narrowed union in `StatsPage.tsx`, not `TrainingKind`, so a
+future kind has to opt in here rather than silently need an emoji and a panel.
+
 **Time window.** Two dropdowns above the charts, shared by every kind that scopes to a window (gym,
 cycling, climbing — snowboard is scoped by season instead) and owned by the page, so switching kind
 keeps the window you were looking at:
@@ -679,6 +685,10 @@ the route, branching on `Training.kind` rather than adding a new one.
   - **Cycling** — Distance in km (required, decimal), Elevation gain in m ("desnivel"), and an optional
     average heart rate in bpm.
   - **Climbing** — a count per grade, whole buckets 3 / 4 / 5 only (no French/Spanish a/b/c subgrades).
+  - **Other** — the date and a free-text Comments field, nothing else. The training's own name says what
+    the activity was, so there is nothing generic left worth collecting; its History row shows the first
+    line of those notes as its summary, or "Session logged" when they are empty, and its detail view has
+    no stat tiles.
 - **Immutable**, same rule as a gym session (D7) — no editing, only delete-and-re-log to correct a mistake.
 - **Never affects Home's rotation, weekly goal, or streak** — those all read `sessions` only; sport sessions
   live in the separate `sportSessions` store precisely so they fall out of that maths for free rather than

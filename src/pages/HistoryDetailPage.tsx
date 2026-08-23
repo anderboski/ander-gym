@@ -202,30 +202,34 @@ function SportSessionDetail({ session, onDeleted }: { session: SportSession; onD
           {session.trainingLabel} · {trainingKindLabel(t, session.kind)}
         </div>
 
-        <div className="history-stats">
-          {session.kind === 'snowboard' && (
-            <>
-              <Stat value={weatherLabel(t, session.weather)} label={t('sportLog.weatherLabel')} />
-              <Stat value={snowConditionLabel(t, session.snowCondition)} label={t('sportLog.snowLabel')} />
-            </>
-          )}
-          {session.kind === 'cycling' && (
-            <>
-              <Stat value={`${session.distanceKm.toFixed(1)} km`} label={t('sportLog.distanceLabel')} />
-              <Stat value={`${Math.round(session.elevationM)} m`} label={t('sportLog.elevationLabel')} />
-              {session.avgBpm !== null && (
-                <Stat value={`${Math.round(session.avgBpm)}`} label={t('sportLog.bpmLabel')} />
-              )}
-            </>
-          )}
-          {session.kind === 'climbing' &&
-            CLIMB_GRADES.map((grade) => (
-              <Stat key={grade} value={String(session.climbsByGrade[grade])} label={grade} />
-            ))}
-        </div>
+        {/* An 'other' log has no measurements at all, so it gets no tile row —
+            an empty one would leave a gap under the header. */}
+        {session.kind !== 'other' && (
+          <div className="history-stats">
+            {session.kind === 'snowboard' && (
+              <>
+                <Stat value={weatherLabel(t, session.weather)} label={t('sportLog.weatherLabel')} />
+                <Stat value={snowConditionLabel(t, session.snowCondition)} label={t('sportLog.snowLabel')} />
+              </>
+            )}
+            {session.kind === 'cycling' && (
+              <>
+                <Stat value={`${session.distanceKm.toFixed(1)} km`} label={t('sportLog.distanceLabel')} />
+                <Stat value={`${Math.round(session.elevationM)} m`} label={t('sportLog.elevationLabel')} />
+                {session.avgBpm !== null && (
+                  <Stat value={`${Math.round(session.avgBpm)}`} label={t('sportLog.bpmLabel')} />
+                )}
+              </>
+            )}
+            {session.kind === 'climbing' &&
+              CLIMB_GRADES.map((grade) => (
+                <Stat key={grade} value={String(session.climbsByGrade[grade])} label={grade} />
+              ))}
+          </div>
+        )}
       </div>
 
-      {session.kind === 'snowboard' && session.comments && (
+      {(session.kind === 'snowboard' || session.kind === 'other') && session.comments && (
         <section className="section">
           <h2 className="section-title">{t('sportLog.commentsLabel')}</h2>
           <p className="card card-pad">{session.comments}</p>
