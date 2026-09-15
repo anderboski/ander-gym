@@ -43,7 +43,7 @@ import {
 import { ExerciseBrowser } from '../components/ExerciseBrowser';
 import { ExerciseHistorySheet } from '../components/ExerciseCard';
 import { ConfirmSheet, Sheet, Toast } from '../components/Sheet';
-import { ChevronRightIcon, ClockIcon, PlusIcon, TrashIcon } from '../components/icons';
+import { CheckIcon, ChevronRightIcon, ClockIcon, PlusIcon, TrashIcon } from '../components/icons';
 import { navigate } from '../router';
 import './SessionPage.css';
 
@@ -540,11 +540,12 @@ function ActiveView({
         <Sheet title={t('exercises.addExercise')} onClose={() => setPickingExercise(false)} full>
           <ExerciseBrowser
             layout="list"
-            excludeIds={active.entries.map((e) => e.exerciseId)}
-            renderItem={(exercise) => (
+            disabledIds={active.entries.map((e) => e.exerciseId)}
+            renderItem={(exercise, { disabled }) => (
               <SessPickRow
                 key={exercise.id}
                 exercise={exercise}
+                disabled={disabled}
                 onAdd={() => {
                   void addExerciseToSession(exercise.id);
                   setPickingExercise(false);
@@ -648,12 +649,27 @@ function RowThumb({ exercise, name }: { exercise: Exercise | undefined; name: st
 }
 
 /** One row in the mid-session "add exercise" picker — appends to the session, not the training. */
-function SessPickRow({ exercise, onAdd }: { exercise: Exercise; onAdd: () => void }) {
+function SessPickRow({
+  exercise,
+  disabled,
+  onAdd,
+}: {
+  exercise: Exercise;
+  disabled: boolean;
+  onAdd: () => void;
+}) {
   const { t, language } = useLanguage();
   const name = translateExerciseName(language, exercise.name);
 
   return (
-    <button className="sess-pick" onClick={onAdd} aria-label={t('trainingDetail.addAria', { name })}>
+    <button
+      className="sess-pick"
+      onClick={onAdd}
+      disabled={disabled}
+      aria-label={
+        disabled ? t('session.alreadyAddedAria', { name }) : t('trainingDetail.addAria', { name })
+      }
+    >
       <span className="sess-pick-thumb">
         {exercise.imageUrl ? (
           <img src={exercise.imageUrl} alt="" loading="lazy" decoding="async" />
@@ -664,12 +680,15 @@ function SessPickRow({ exercise, onAdd }: { exercise: Exercise; onAdd: () => voi
       <span className="sess-pick-main">
         <span className="sess-pick-name">{name}</span>
         <span className="sess-pick-meta">
-          {titleCase(translateFacetValue(language, 'equipment', exercise.equipment))} ·{' '}
-          {titleCase(translateFacetValue(language, 'target', exercise.target))}
+          {disabled
+            ? t('session.alreadyAdded')
+            : `${titleCase(translateFacetValue(language, 'equipment', exercise.equipment))} · ${titleCase(
+                translateFacetValue(language, 'target', exercise.target),
+              )}`}
         </span>
       </span>
       <span className="sess-pick-add" aria-hidden="true">
-        <PlusIcon />
+        {disabled ? <CheckIcon /> : <PlusIcon />}
       </span>
     </button>
   );

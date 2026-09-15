@@ -290,6 +290,18 @@ export const CHANGELOG: ChangelogEntry[] = [
       'Las actividades "Otro" aparecen en el historial y en el calendario de Inicio, y nunca cuentan para tu objetivo semanal.',
     ],
   },
+  {
+    version: '1.20.1',
+    date: '2026-09-15',
+    en: [
+      'Fixed the exercise search when adding an exercise to a session or a training day: it now returns exactly what the Exercises tab returns for the same search and filters.',
+      'Exercises you already have are shown greyed out as "already added" instead of quietly disappearing from the results.',
+    ],
+    es: [
+      'Se corrigió la búsqueda de ejercicios al añadir uno a una sesión o a un entrenamiento: ahora devuelve exactamente lo mismo que la pestaña Ejercicios con la misma búsqueda y filtros.',
+      'Los ejercicios que ya tienes aparecen atenuados como "ya añadido" en lugar de desaparecer de los resultados.',
+    ],
+  },
 ];
 
 /** Keep in sync with the bootstrap-independent nature of theme/language: this

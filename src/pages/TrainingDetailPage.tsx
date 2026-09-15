@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { ExerciseBrowser } from '../components/ExerciseBrowser';
 import { ExerciseCard } from '../components/ExerciseCard';
 import { Sheet, Toast } from '../components/Sheet';
-import { ChevronLeftIcon, ChevronRightIcon, GripIcon, PlusIcon } from '../components/icons';
+import { CheckIcon, ChevronLeftIcon, ChevronRightIcon, GripIcon, PlusIcon } from '../components/icons';
 import { titleCase } from '../data/parse';
 import { useGym } from '../data/store';
 import { useLanguage } from '../data/i18n';
@@ -28,12 +28,29 @@ import './TrainingsPage.css';
 import './HistoryPage.css';
 
 /** One row in the "add exercise" picker. */
-function PickerRow({ exercise, onAdd }: { exercise: Exercise; onAdd: () => void }) {
+function PickerRow({
+  exercise,
+  disabled,
+  onAdd,
+}: {
+  exercise: Exercise;
+  disabled: boolean;
+  onAdd: () => void;
+}) {
   const { t, language } = useLanguage();
   const name = translateExerciseName(language, exercise.name);
 
   return (
-    <button className="tr-pick" onClick={onAdd} aria-label={t('trainingDetail.addAria', { name })}>
+    <button
+      className="tr-pick"
+      onClick={onAdd}
+      disabled={disabled}
+      aria-label={
+        disabled
+          ? t('trainingDetail.alreadyAddedAria', { name })
+          : t('trainingDetail.addAria', { name })
+      }
+    >
       <span className="tr-pick-thumb">
         {exercise.imageUrl ? (
           <img src={exercise.imageUrl} alt="" loading="lazy" decoding="async" />
@@ -44,12 +61,15 @@ function PickerRow({ exercise, onAdd }: { exercise: Exercise; onAdd: () => void 
       <span className="tr-pick-main">
         <span className="tr-pick-name">{name}</span>
         <span className="tr-pick-meta">
-          {titleCase(translateFacetValue(language, 'equipment', exercise.equipment))} ·{' '}
-          {titleCase(translateFacetValue(language, 'target', exercise.target))}
+          {disabled
+            ? t('trainingDetail.alreadyAdded')
+            : `${titleCase(translateFacetValue(language, 'equipment', exercise.equipment))} · ${titleCase(
+                translateFacetValue(language, 'target', exercise.target),
+              )}`}
         </span>
       </span>
       <span className="tr-pick-add" aria-hidden="true">
-        <PlusIcon />
+        {disabled ? <CheckIcon /> : <PlusIcon />}
       </span>
     </button>
   );
@@ -214,11 +234,12 @@ export function TrainingDetailPage({ trainingId }: { trainingId: string }) {
         <Sheet title={t('exercises.addExercise')} onClose={() => setPicking(false)} full>
           <ExerciseBrowser
             layout="list"
-            excludeIds={training.exerciseIds}
-            renderItem={(exercise) => (
+            disabledIds={training.exerciseIds}
+            renderItem={(exercise, { disabled }) => (
               <PickerRow
                 key={exercise.id}
                 exercise={exercise}
+                disabled={disabled}
                 onAdd={() => {
                   void addExerciseToTraining(training.id, exercise.id);
                   setPicking(false);
