@@ -289,6 +289,17 @@
   background: var(--bg-raised-2);
 }
 
+/* Already in this training — kept in the results, but unpickable (SPEC §5.3). */
+.tr-pick:disabled {
+  background: var(--bg-sunken);
+  color: var(--text-faint);
+}
+
+.tr-pick:disabled .tr-pick-add {
+  background: transparent;
+  color: var(--text-faint);
+}
+
 .tr-pick-thumb {
   flex: none;
   width: 52px;
@@ -322,6 +333,8 @@
 }
 
 .tr-pick-meta {
+  /* A span by default: without this the meta line runs into the name. */
+  display: block;
   margin-top: 2px;
   font-size: 12px;
   color: var(--text-dim);

@@ -24,10 +24,20 @@ const PAGE_SIZE = 30;
 export type ExerciseBrowserProps = {
   /** 'carousel' = horizontal snap strip; 'list' = vertical stack. */
   layout: 'carousel' | 'list';
-  /** Renders one match. */
-  renderItem: (exercise: Exercise) => ReactNode;
-  /** Exercise ids to omit from results entirely. */
-  excludeIds?: string[];
+  /**
+   * Renders one match. `disabled` is true for an exercise the caller already
+   * holds (see `disabledIds`); the row is expected to render it as unpickable
+   * rather than the caller filtering it out.
+   */
+  renderItem: (exercise: Exercise, state: { disabled: boolean }) => ReactNode;
+  /**
+   * Exercises the caller already holds. They stay in the results — and in the
+   * match count — and are handed to `renderItem` as disabled instead. Dropping
+   * them would make the same query return a different set here than on the
+   * Exercises page, which reads as a broken filter rather than as "you already
+   * have this one" (SPEC §5.3, §5.4).
+   */
+  disabledIds?: string[];
   /**
    * With no search query, list exercises logged at least once before the
    * rest of the alphabetical listing, instead of interleaved with it.
@@ -38,7 +48,7 @@ export type ExerciseBrowserProps = {
 export function ExerciseBrowser({
   layout,
   renderItem,
-  excludeIds,
+  disabledIds,
   sortDoneFirst,
 }: ExerciseBrowserProps): ReactElement {
   const { exercises, exerciseLatest, exerciseRecords, settings } = useGym();
@@ -59,16 +69,15 @@ export function ExerciseBrowser({
 
   // Callers usually pass a freshly-built array; key on the contents so the
   // memo below is not invalidated on every parent render.
-  const excludeKey = excludeIds?.join(' ') ?? '';
-  const excluded = useMemo(
-    () => new Set(excludeKey ? excludeKey.split(' ') : []),
-    [excludeKey],
+  const disabledKey = disabledIds?.join(' ') ?? '';
+  const disabled = useMemo(
+    () => new Set(disabledKey ? disabledKey.split(' ') : []),
+    [disabledKey],
   );
 
   const matches = useMemo(() => {
     const doneIds = sortDoneFirst ? new Set(exerciseLatest.keys()) : undefined;
     let found = searchExercises(exercises, query, facets, doneIds, language);
-    if (excluded.size > 0) found = found.filter((ex) => !excluded.has(ex.id));
     if (onlyPR) found = found.filter((ex) => exerciseRecords.has(ex.id));
     if (onlyFavorites) found = found.filter((ex) => favoriteIds.has(ex.id));
     return found;
@@ -76,7 +85,6 @@ export function ExerciseBrowser({
     exercises,
     query,
     facets,
-    excluded,
     sortDoneFirst,
     language,
     exerciseLatest,
@@ -89,7 +97,7 @@ export function ExerciseBrowser({
   // Any change to the result set starts the window over.
   useEffect(() => {
     setLimit(PAGE_SIZE);
-  }, [query, facets, excluded, onlyPR, onlyFavorites]);
+  }, [query, facets, onlyPR, onlyFavorites]);
 
   const visible = matches.slice(0, limit);
   const hasMore = limit < matches.length;
@@ -215,7 +223,7 @@ export function ExerciseBrowser({
         <div className="empty">{t('browser.noMatches')}</div>
       ) : (
         <div className={layout === 'carousel' ? 'browser-strip' : 'browser-list'}>
-          {visible.map((ex) => renderItem(ex))}
+          {visible.map((ex) => renderItem(ex, { disabled: disabled.has(ex.id) }))}
           {hasMore && <div className="browser-sentinel" ref={sentinelRef} aria-hidden="true" />}
         </div>
       )}

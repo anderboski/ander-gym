@@ -414,6 +414,20 @@
   background: var(--bg-raised-2);
 }
 
+/*
+ * Already in this session: kept in the results so a search returns the same
+ * set as the Exercises page, but unpickable and visibly so.
+ */
+.sess-pick:disabled {
+  background: var(--bg-sunken);
+  color: var(--text-faint);
+}
+
+.sess-pick:disabled .sess-pick-add {
+  background: transparent;
+  color: var(--text-faint);
+}
+
 .sess-pick-thumb {
   flex: none;
   width: 52px;
@@ -447,6 +461,8 @@
 }
 
 .sess-pick-meta {
+  /* A span by default: without this the meta line runs into the name. */
+  display: block;
   margin-top: 2px;
   font-size: 12px;
   color: var(--text-dim);

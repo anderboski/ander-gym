@@ -235,6 +235,8 @@ export const es: Record<TranslationKey, string> = {
   'sportLog.notFoundBody': 'Puede que se haya eliminado, o que el enlace esté desactualizado.',
 
   'trainingDetail.addAria': 'Añadir {name}',
+  'trainingDetail.alreadyAdded': 'Ya está en este entrenamiento',
+  'trainingDetail.alreadyAddedAria': '{name} ya está en este entrenamiento',
   'trainingDetail.notFoundTitle': 'No encontrado',
   'trainingDetail.notFoundBody': 'Ese entrenamiento ya no existe.',
   'trainingDetail.backToTrainings': 'Volver a Entrenamientos',
@@ -287,6 +289,8 @@ export const es: Record<TranslationKey, string> = {
   'session.noSetsLoggedAria': 'Sin series registradas para {name}',
   'session.setAria': 'Serie {index} de {name}, {label}. Toca para eliminar.',
   'session.removeFromSessionAria': 'Quitar {name} de esta sesión',
+  'session.alreadyAdded': 'Ya está en esta sesión',
+  'session.alreadyAddedAria': '{name} ya está en esta sesión',
   'session.addSetAria': 'Añadir serie a {name}',
   'session.repsError': 'Las repeticiones deben ser un número entero mayor que 0.',
   'session.weightError': 'El peso debe ser 0 o más. Déjalo vacío para peso corporal.',

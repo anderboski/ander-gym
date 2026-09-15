@@ -431,7 +431,10 @@ Training days are fully user-managed — there is no fixed list and nothing is s
   training lists its exercises in (§5.4) and the order they're rendered in here and on Home's per-training
   card.
 - The "+" card opens an exercise picker — the same search + facet UI as the Exercises page in selection
-  mode. Picking one appends it to `exerciseIds`. Already-included exercises are shown as disabled.
+  mode. Picking one appends it to `exerciseIds`. Already-included exercises are shown as disabled, labelled
+  "Already in this training". They stay in the results and in the match count: a picker that silently drops
+  them answers the same query differently from the Exercises page, which reads as a broken filter rather
+  than as "you already have this one".
 - Duplicate exercises within one training are rejected.
 
 ### 5.4 Session
@@ -466,10 +469,11 @@ exercise:
   untouched, so skipping a machine for one session doesn't drop it from the training's plan.
 
 Bottom of the page, above **Save session**:
-- **"+ Add exercise"** opens the same search + facet picker as Trainings (§5.3), excluding exercises
-  already in this session. Picking one appends a row with an empty `sets` array to `activeSession.entries`
-  only — the training's own `exerciseIds` are untouched, so a one-off substitute doesn't pollute future
-  sessions of that day.
+- **"+ Add exercise"** opens the same search + facet picker as Trainings (§5.3). Exercises already in this
+  session are shown as disabled and labelled "Already in this session" — listed and counted like any other
+  match, for the same reason as §5.3. Picking one appends a row with an empty `sets` array to
+  `activeSession.entries` only — the training's own `exerciseIds` are untouched, so a one-off substitute
+  doesn't pollute future sessions of that day.
 
 **Rest timer.** A bar pinned under the session title, both fixed in place above the scrolling table
 so neither ever overlaps the other, rendered in both states so a rest starting or ending never moves

@@ -237,6 +237,8 @@ export const en = {
   'sportLog.notFoundBody': 'It may have been deleted, or the link is out of date.',
 
   'trainingDetail.addAria': 'Add {name}',
+  'trainingDetail.alreadyAdded': 'Already in this training',
+  'trainingDetail.alreadyAddedAria': '{name} is already in this training',
   'trainingDetail.notFoundTitle': 'Not found',
   'trainingDetail.notFoundBody': 'That training day no longer exists.',
   'trainingDetail.backToTrainings': 'Back to trainings',
@@ -288,6 +290,8 @@ export const en = {
   'session.noSetsLoggedAria': 'No sets logged for {name}',
   'session.setAria': 'Set {index} of {name}, {label}. Tap to delete.',
   'session.removeFromSessionAria': 'Remove {name} from this session',
+  'session.alreadyAdded': 'Already in this session',
+  'session.alreadyAddedAria': '{name} is already in this session',
   'session.addSetAria': 'Add set to {name}',
   'session.repsError': 'Reps must be a whole number greater than 0.',
   'session.weightError': 'Weight must be 0 or more. Leave it empty for bodyweight.',
