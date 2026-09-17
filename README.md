@@ -16,7 +16,7 @@ Five tabs:
 |---|---|
 | **Home** | Trainings this week against a weekly goal, current streak, and the training you should do today — tap to start it. |
 | **Exercises** | 1324 exercises, fuzzy-searchable, filterable by category, equipment and target muscle. Each card shows your latest sets for that exercise; tap the image for full history. |
-| **Trainings** | Your training days — add as many as you like, rename anytime, reorder by dragging the grip on the left of a card (that order is the rotation). Never deletable. Open one to add or remove the exercises it contains. |
+| **Trainings** | Your training days — add as many as you like, rename anytime, reorder by dragging the grip on the left of a card (that order is the rotation). A training with history can be archived, never deleted. Open one to add or remove the exercises it contains. |
 | **Session** | The workout you're doing right now. Log reps × weight per exercise, then save or discard. |
 | **History** | Every saved session, newest first. Read-only — it's the record everything else derives from. |
 
@@ -70,7 +70,7 @@ first, double-confirmed).
   `derive.ts` (pure read models), `search.ts` (Fuse.js + facets), `backup.ts`,
   and `store.tsx` — the `useGym()` hook every page reads through. No page talks
   to IndexedDB directly.
-- **Hash routing** (`src/router.ts`, ~50 lines). Deliberate: GitHub Pages has no
+- **Hash routing** (`src/router.ts`, ~80 lines). Deliberate: GitHub Pages has no
   rewrite rule, so a path-based deep link would 404 on reload.
 - **`src/styles.css`** holds the design tokens and primitives; each page keeps its
   own CSS file next to it.

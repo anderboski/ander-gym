@@ -320,6 +320,28 @@ export const CHANGELOG: ChangelogEntry[] = [
       'El aviso de copia de seguridad cuenta ahora las sesiones registradas desde la última copia, y aparece a partir de cinco en lugar de esperar un mes.',
     ],
   },
+  {
+    version: '1.22.0',
+    date: '2026-09-17',
+    en: [
+      'A cleaner look throughout: flat, borderless cards, a calmer palette that follows iOS in both light and dark mode, and proper icons instead of emoji in the app’s own controls.',
+      'Dates now read the way you would write them — "Aug 5, 17:00", "yesterday", "44 days ago" — and exercise names are capitalised.',
+      'Home has a new header: the date, your greeting, and an initials avatar that opens your profile. Today’s training gets a big play button; the Stats shortcut sits inside the week card.',
+      'During a session, logged sets show as numbered chips under each exercise, the elapsed time and set count sit above the title, and the rest bar lights up while it counts down.',
+      'Stats picks the sport with an icon control; the language setting is a simple English / Español switch.',
+      'Importing a backup is now all-or-nothing: if anything fails part-way, nothing is changed.',
+      'Fixed: archived training days no longer appear in the Session tab’s list.',
+    ],
+    es: [
+      'Un aspecto más limpio en toda la app: tarjetas planas sin bordes, una paleta más sobria que sigue la de iOS en modo claro y oscuro, e iconos en lugar de emojis en los controles de la propia app.',
+      'Las fechas se leen como las escribirías — "5 ago, 17:00", "ayer", "hace 44 días" — y los nombres de los ejercicios van en mayúscula inicial.',
+      'Inicio tiene una cabecera nueva: la fecha, tu saludo y un avatar con tus iniciales que abre tu perfil. El entrenamiento de hoy tiene un gran botón de reproducir; el acceso a Estadísticas va dentro de la tarjeta semanal.',
+      'Durante una sesión, las series registradas aparecen como fichas numeradas bajo cada ejercicio, el tiempo transcurrido y el número de series van sobre el título, y la barra de descanso se ilumina mientras cuenta.',
+      'Estadísticas elige el deporte con un control de iconos; el ajuste de idioma es un simple selector English / Español.',
+      'Importar una copia de seguridad es ahora todo o nada: si algo falla a medias, no se cambia nada.',
+      'Corregido: los entrenamientos archivados ya no aparecen en la lista de la pestaña Sesión.',
+    ],
+  },
 ];
 
 /** Keep in sync with the bootstrap-independent nature of theme/language: this
