@@ -7,9 +7,7 @@
   gap: var(--s3);
 }
 
-/* Icon sized down from the 20px .btn default so it balances the small label. */
-.exercises-add svg {
-  width: 16px;
-  height: 16px;
-  margin-left: calc(-1 * var(--s1));
+.exercises-add {
+  background: var(--accent);
+  color: var(--accent-fg);
 }

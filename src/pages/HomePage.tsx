@@ -7,7 +7,7 @@
  * All maths comes from data/derive.ts. `now` is captured once per render so the
  * week counter, streak and "days ago" lines can never disagree with each other.
  */
-import { useEffect, useMemo, useState } from 'react';
+import { useMemo, useState } from 'react';
 import { useGym } from '../data/store';
 import {
   addMonths,
@@ -17,7 +17,6 @@ import {
   currentWeekCount,
   dayKey,
   daysBetween,
-  formatDate,
   formatDurationEstimate,
   greetingBucket,
   isSameDay,
@@ -28,6 +27,7 @@ import {
   sessionsByDay,
   sportSessionsByDay,
   startOfMonth,
+  trainingBadge,
   weeklyStreak,
 } from '../data/derive';
 import { formatCompact } from '../data/parse';
@@ -35,18 +35,22 @@ import type { ExportOutcome } from '../data/backup';
 import { navigate } from '../router';
 import {
   AlertIcon,
+  ChartIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   CloseIcon,
+  FlameIcon,
   GearIcon,
   MoonIcon,
   PlayIcon,
   SunIcon,
+  UserIcon,
 } from '../components/icons';
 import { SettingsSheet } from '../components/SettingsSheet';
 import { Toast } from '../components/Sheet';
+import { useTransient } from '../hooks/useTransient';
 import { getTheme, otherTheme, setTheme, type Theme } from '../data/theme';
-import { daysAgoLabel, useLanguage, type TranslationKey } from '../data/i18n';
+import { daysAgoLabel, formatDay, formatLongDate, formatMonthYear, useLanguage, type TranslationKey } from '../data/i18n';
 import type { Session, SportSession, Training } from '../data/types';
 import './HomePage.css';
 
@@ -66,25 +70,25 @@ const EXPORT_TOAST_KEY: Record<Exclude<ExportOutcome, 'cancelled'>, TranslationK
   downloaded: 'common.backupDownloaded',
 };
 
+/** Up to two initials from a name — "Ander Sainz" → "AS". */
+function initials(name: string): string {
+  return name
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((part) => part.charAt(0).toUpperCase())
+    .join('');
+}
+
 export function HomePage() {
-  const {
-    status,
-    error,
-    trainings,
-    sessions,
-    sportSessions,
-    active,
-    settings,
-    profile,
-    startSession,
-    exportNow,
-  } = useGym();
+  const { status, error, trainings, sessions, sportSessions, active, settings, profile, startSession, exportNow } =
+    useGym();
 
   const { t, locale } = useLanguage();
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [bannerDismissed, setBannerDismissed] = useState(false);
   const [busy, setBusy] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useTransient<string>(3200);
   const [theme, setThemeState] = useState<Theme>(() => getTheme());
 
   function toggleTheme() {
@@ -93,18 +97,9 @@ export function HomePage() {
     setThemeState(next);
   }
 
-  useEffect(() => {
-    if (!toast) return;
-    const t = window.setTimeout(() => setToast(null), 3200);
-    return () => window.clearTimeout(t);
-  }, [toast]);
-
   const now = new Date();
-  // Split around the {name} token instead of interpolating it, so only the
-  // name itself renders as the clickable/blue part — the rest of the
-  // greeting stays plain heading text.
-  const [greetingPrefix, greetingSuffix = ''] = t(GREETING_KEYS[greetingBucket(now)]).split('{name}');
-  const greetingName = profile.name.trim() || t('home.greetingNamePlaceholder');
+  const name = profile.name.trim();
+  const greeting = t(GREETING_KEYS[greetingBucket(now)]);
   const goal = settings.weeklyGoal;
   const weekCount = currentWeekCount(sessions, now);
   const streak = weeklyStreak(sessions, goal, now);
@@ -146,28 +141,23 @@ export function HomePage() {
   return (
     <div className="page">
       <header className="page-header home-header">
-        <div>
-          <h1 className="page-title">
-            {greetingPrefix}
-            <button type="button" className="home-greeting-name" onClick={() => navigate('/profile')} aria-label={t('home.greetingAria')}>
-              {greetingName}
-            </button>
-            {greetingSuffix}
-          </h1>
-          <div className="page-sub">
-            {now.toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' })}
-          </div>
+        <div className="home-header-text">
+          <div className="home-date">{formatLongDate(locale, now)}</div>
+          <h1 className="page-title">{name ? t('home.greetingWithName', { greeting, name }) : greeting}</h1>
         </div>
         <div className="home-header-actions">
           <button
-            className="icon-btn"
+            className="icon-btn icon-btn-filled"
             aria-label={theme === 'light' ? t('home.themeToDark') : t('home.themeToLight')}
             onClick={toggleTheme}
           >
-            {theme === 'light' ? <SunIcon /> : <MoonIcon />}
+            {theme === 'light' ? <MoonIcon /> : <SunIcon />}
           </button>
-          <button className="icon-btn" aria-label={t('settings.title')} onClick={() => setSettingsOpen(true)}>
+          <button className="icon-btn icon-btn-filled" aria-label={t('settings.title')} onClick={() => setSettingsOpen(true)}>
             <GearIcon />
+          </button>
+          <button type="button" className="avatar" onClick={() => navigate('/profile')} aria-label={t('home.greetingAria')}>
+            {name ? initials(name) : <UserIcon />}
           </button>
         </div>
       </header>
@@ -192,24 +182,23 @@ export function HomePage() {
 
       {status === 'ready' && (
         <>
-          {/* --- week counter + streak ------------------------------------ */}
+          {/* --- week counter + streak + stats shortcut --------------------- */}
           <section className="section">
-            <div className="home-top-row">
-              <div className="card card-pad home-week">
-                <GoalRing count={weekCount} goal={goal} />
-                <div className="home-week-text">
-                  <div className="home-week-count">
-                    {t(weekCount === 1 ? 'home.weekCountOne' : 'home.weekCountOther', { count: weekCount })}
-                  </div>
-                  <div className="home-week-goal">
-                    {t('home.goalPrefix')} <span className="num">{goal}</span> {t('home.goalSuffix')}
-                  </div>
-                  {streak > 0 && (
-                    <div className="home-streak">
-                      🔥 {t(streak === 1 ? 'home.streakWeekOne' : 'home.streakWeekOther', { count: streak })}
-                    </div>
-                  )}
+            <div className="card card-pad home-week">
+              <GoalRing count={weekCount} goal={goal} />
+              <div className="home-week-text">
+                <div className="home-week-count">
+                  {t(weekCount === 1 ? 'home.weekCountOne' : 'home.weekCountOther', { count: weekCount })}
                 </div>
+                <div className="home-week-goal">
+                  {t('home.goalPrefix')} <span className="num">{goal}</span> {t('home.goalSuffix')}
+                </div>
+                {streak > 0 && (
+                  <div className="home-streak">
+                    <FlameIcon />
+                    {t(streak === 1 ? 'home.streakWeekOne' : 'home.streakWeekOther', { count: streak })}
+                  </div>
+                )}
               </div>
 
               {/* The week counter's push view (§5.6). Hidden until there is
@@ -217,12 +206,12 @@ export function HomePage() {
               {sessions.length > 0 && (
                 <button
                   type="button"
-                  className="card card-pad card-tappable home-stats-box"
+                  className="home-stats-btn"
                   onClick={() => navigate('/stats')}
                   aria-label={t('home.seeAllStats')}
                 >
-                  <span className="home-stats-box-label">{t('home.statsBoxLabel')}</span>
-                  <span className="home-stats-box-emoji" aria-hidden="true">📊</span>
+                  <ChartIcon />
+                  <span>{t('home.statsBoxLabel')}</span>
                 </button>
               )}
             </div>
@@ -230,43 +219,39 @@ export function HomePage() {
 
           {/* --- today's training ----------------------------------------- */}
           <section className="section">
-            <div className="section-title">{t('home.todaySection')}</div>
-
-            {doneToday && (
-              <div className="home-done">
-                <span className="pill pill-accent">{t('home.completedToday')}</span>
-                <span className="home-done-label">{doneToday.trainingLabel}</span>
-              </div>
-            )}
+            <div className="section-head">
+              <div className="section-title">{t('home.todaySection')}</div>
+              {doneToday && (
+                <span className="pill pill-accent home-done">
+                  {t('home.completedToday')} · {doneToday.trainingLabel}
+                </span>
+              )}
+            </div>
 
             {active ? (
-              <button
-                className="card card-pad card-tappable home-card"
-                onClick={() => navigate('/session')}
-              >
+              <button className="card card-tappable home-card home-card-active" onClick={() => navigate('/session')}>
                 <div className="home-card-main">
                   <span className="pill pill-accent">{t('home.inProgress')}</span>
                   <div className="home-card-title">{active.trainingLabel}</div>
-                  <div className="home-card-cta">{t('home.resumeSession')}</div>
+                  <div className="home-card-cta">
+                    {t('home.resumeSession')}
+                    <ChevronRightIcon />
+                  </div>
                 </div>
-                <ChevronRightIcon className="home-card-chevron" />
               </button>
             ) : today ? (
-              <button
-                className="card card-pad card-tappable home-card"
-                disabled={busy}
-                onClick={() => void handleStart(today.id)}
-              >
+              <button className="card card-tappable home-card" disabled={busy} onClick={() => void handleStart(today.id)} aria-label={`${t('home.startSession')}: ${today.label}`}>
                 <div className="home-card-main">
+                  <div className="home-card-badge" aria-hidden="true">
+                    {trainingBadge(today)}
+                  </div>
                   <div className="home-card-title">{today.label}</div>
                   <div className="home-card-last">
                     {lastForToday ? (
                       <>
-                        <span className="num">{formatDate(lastForToday.startedAt)}</span>
+                        <span>{formatDay(locale, lastForToday.startedAt, now)}</span>
                         <span className="home-card-dot">·</span>
-                        <span>
-                          {daysAgoLabel(t, daysBetween(new Date(lastForToday.startedAt), now))}
-                        </span>
+                        <span>{daysAgoLabel(t, daysBetween(new Date(lastForToday.startedAt), now))}</span>
                       </>
                     ) : (
                       <span>{t('home.neverDone')}</span>
@@ -278,21 +263,15 @@ export function HomePage() {
                       </>
                     )}
                   </div>
-                  <div className="home-card-cta">
-                    <PlayIcon className="home-card-cta-icon" />
-                    {t('home.startSession')}
-                  </div>
                 </div>
-                <ChevronRightIcon className="home-card-chevron" />
+                <div className="home-card-play" aria-hidden="true">
+                  <PlayIcon />
+                </div>
               </button>
             ) : (
-              <div className="card card-pad">
-                <div className="empty">{t('home.noTrainingsYet')}</div>
-                <button
-                  className="btn btn-sm"
-                  style={{ marginTop: 'var(--s3)' }}
-                  onClick={() => navigate('/trainings')}
-                >
+              <div className="card card-pad home-empty">
+                <p className="home-empty-text">{t('home.noTrainingsYet')}</p>
+                <button className="btn btn-tinted" onClick={() => navigate('/trainings')}>
                   {t('home.goToTrainings')}
                 </button>
               </div>
@@ -303,13 +282,7 @@ export function HomePage() {
           {(sessions.length > 0 || sportSessions.length > 0) && (
             <section className="section">
               <div className="section-title">{t('home.calendarSection')}</div>
-              <HomeCalendar
-                sessions={sessions}
-                sportSessions={sportSessions}
-                trainings={trainings}
-                now={now}
-                locale={locale}
-              />
+              <HomeCalendar sessions={sessions} sportSessions={sportSessions} trainings={trainings} now={now} locale={locale} />
             </section>
           )}
 
@@ -317,33 +290,20 @@ export function HomePage() {
           {backup.due && !bannerDismissed && (
             <section className="section">
               <div className="home-banner">
-                <button
-                  className="home-banner-main"
-                  disabled={busy}
-                  onClick={() => void handleExport()}
-                >
+                <button className="home-banner-main" disabled={busy} onClick={() => void handleExport()}>
                   <AlertIcon className="home-banner-icon" />
                   <span className="home-banner-text">
-                    <span className="home-banner-title">
-                      {lastExportAt ? t('home.backupOutdated') : t('home.backupFirst')}
-                    </span>
+                    <span className="home-banner-title">{lastExportAt ? t('home.backupOutdated') : t('home.backupFirst')}</span>
                     <span className="home-banner-body">
                       {backup.unsaved > 0
-                        ? t(
-                            backup.unsaved === 1
-                              ? 'home.backupUnsavedOne'
-                              : 'home.backupUnsavedOther',
-                            { count: backup.unsaved },
-                          )
+                        ? t(backup.unsaved === 1 ? 'home.backupUnsavedOne' : 'home.backupUnsavedOther', {
+                            count: backup.unsaved,
+                          })
                         : t('home.backupBody')}
                     </span>
                   </span>
                 </button>
-                <button
-                  className="icon-btn home-banner-dismiss"
-                  aria-label={t('home.dismissBackup')}
-                  onClick={() => setBannerDismissed(true)}
-                >
+                <button className="icon-btn home-banner-dismiss" aria-label={t('home.dismissBackup')} onClick={() => setBannerDismissed(true)}>
                   <CloseIcon />
                 </button>
               </div>
@@ -356,7 +316,7 @@ export function HomePage() {
               <span className="num">{lifetime.totalSessions}</span>{' '}
               {t(lifetime.totalSessions === 1 ? 'common.sessionsOne' : 'common.sessionsOther')} ·{' '}
               <span className="num">{formatCompact(lifetime.totalVolumeKg)}</span> {t('home.lifetimeKgLifted')}
-              {lifetime.since && <> {t('home.lifetimeSince', { date: formatDate(lifetime.since) })}</>}
+              {lifetime.since && <> · {t('home.lifetimeSince', { date: formatMonthYear(locale, lifetime.since) })}</>}
             </div>
           )}
         </>
@@ -398,14 +358,15 @@ function GoalRing({ count, goal }: { count: number; goal: number }) {
   );
 }
 
-/**
- * Month calendar: one training per day at most (the later one wins on a
- * multi-session day, per `sessionsByDay`). Tapping a trained day opens that
- * session in History; the month in view is local state, independent of `now`.
- */
 /** One calendar-day badge: a resolvable id to open, an icon, and a label for the day's aria description. */
-type DayBadge = { id: string; emoji: string; label: string };
+type DayBadge = { id: string; badge: string; label: string };
 
+/**
+ * Month calendar: one primary activity per day (the gym session if there is
+ * one, else the first sport session), with a pip for each further activity.
+ * Tapping a trained day opens its primary entry in History; the month in view
+ * is local state, independent of `now`.
+ */
 function HomeCalendar({
   sessions,
   sportSessions,
@@ -426,30 +387,25 @@ function HomeCalendar({
   const trainingsById = useMemo(() => new Map(trainings.map((tr) => [tr.id, tr])), [trainings]);
   const grid = useMemo(() => monthGrid(month), [month]);
 
-  const monthLabel = month.toLocaleDateString(locale, { month: 'long', year: 'numeric' });
   const weekdays = grid.slice(0, 7).map(({ date }) => ({
     narrow: date.toLocaleDateString(locale, { weekday: 'narrow' }),
     full: date.toLocaleDateString(locale, { weekday: 'long' }),
   }));
 
+  const PIP_CAP = 3;
+
   return (
     <div className="card card-pad home-cal">
       <div className="home-cal-head">
-        <button
-          className="icon-btn"
-          aria-label={t('home.prevMonth')}
-          onClick={() => setMonth((m) => addMonths(m, -1))}
-        >
-          <ChevronLeftIcon />
-        </button>
-        <div className="home-cal-title">{monthLabel}</div>
-        <button
-          className="icon-btn"
-          aria-label={t('home.nextMonth')}
-          onClick={() => setMonth((m) => addMonths(m, 1))}
-        >
-          <ChevronRightIcon />
-        </button>
+        <div className="home-cal-title">{formatMonthYear(locale, month)}</div>
+        <div className="home-cal-nav">
+          <button className="icon-btn" aria-label={t('home.prevMonth')} onClick={() => setMonth((m) => addMonths(m, -1))}>
+            <ChevronLeftIcon />
+          </button>
+          <button className="icon-btn" aria-label={t('home.nextMonth')} onClick={() => setMonth((m) => addMonths(m, 1))}>
+            <ChevronRightIcon />
+          </button>
+        </div>
       </div>
 
       <div className="home-cal-weekdays">
@@ -469,29 +425,25 @@ function HomeCalendar({
           if (!inMonth) classes.push('home-cal-day-out');
           if (isSameDay(date, now)) classes.push('home-cal-day-today');
 
-          // Gym session first (preserves the pre-existing tap target on an
-          // ordinary day), sport sessions after — every activity gets a dot,
-          // not just a "later wins" winner, since seeing all of them is the
-          // whole point of showing sports on this calendar.
           const badges: DayBadge[] = [];
           if (session) {
             badges.push({
               id: session.id,
-              emoji: trainingsById.get(session.trainingId)?.emoji ?? session.trainingLabel.charAt(0).toUpperCase(),
+              badge: trainingBadge(trainingsById.get(session.trainingId), session.trainingLabel),
               label: session.trainingLabel,
             });
           }
           for (const s of sports) {
             badges.push({
               id: s.id,
-              emoji: trainingsById.get(s.trainingId)?.emoji ?? s.trainingLabel.charAt(0).toUpperCase(),
+              badge: trainingBadge(trainingsById.get(s.trainingId), s.trainingLabel),
               label: s.trainingLabel,
             });
           }
 
           if (badges.length === 0) {
             return (
-              <div className={classes.join(' ')} key={date.toISOString()}>
+              <div className={classes.join(' ')} key={key}>
                 <span className="home-cal-daynum">{date.getDate()}</span>
               </div>
             );
@@ -500,28 +452,25 @@ function HomeCalendar({
           classes.push('home-cal-day-trained');
           const primary = badges[0]!;
           const extra = badges.slice(1);
-          const PIP_CAP = 3;
 
           return (
             <button
               type="button"
               className={classes.join(' ')}
-              key={date.toISOString()}
+              key={key}
               onClick={() => navigate(`/history/${primary.id}`)}
               aria-label={`${date.toLocaleDateString(locale, { day: 'numeric', month: 'long' })}, ${badges.map((b) => b.label).join(', ')}`}
             >
               <span className="home-cal-daynum">{date.getDate()}</span>
               <span className="home-cal-dot" aria-hidden="true">
-                {primary.emoji}
+                {primary.badge}
               </span>
               {extra.length > 0 && (
                 <span className="home-cal-pips" aria-hidden="true">
                   {extra.slice(0, PIP_CAP).map((b) => (
                     <span className="home-cal-pip" key={b.id} />
                   ))}
-                  {extra.length > PIP_CAP && (
-                    <span className="home-cal-pip-more">+{extra.length - PIP_CAP}</span>
-                  )}
+                  {extra.length > PIP_CAP && <span className="home-cal-pip-more">+{extra.length - PIP_CAP}</span>}
                 </span>
               )}
             </button>

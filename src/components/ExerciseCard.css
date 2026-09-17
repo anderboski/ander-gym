@@ -1,19 +1,19 @@
-/* Shared exercise card — used by Exercises, Trainings and the picker. */
+/* Shared exercise card — used by Exercises and the Trainings detail. */
 
 .ex-card {
   position: relative;
   display: flex;
   flex-direction: column;
   background: var(--bg-raised);
-  border: 1px solid var(--border);
   border-radius: var(--r-lg);
+  box-shadow: var(--shadow-card);
   overflow: hidden;
 }
 
 /* Fixed width so cards snap predictably inside a horizontal carousel. */
 .ex-card-carousel {
   flex: none;
-  width: 78vw;
+  width: 76vw;
   max-width: 320px;
   scroll-snap-align: center;
 }
@@ -22,57 +22,32 @@
   width: 100%;
 }
 
+/* The catalogue images are line drawings on white; the tile keeps that white
+   in both themes rather than tinting them, so the drawing stays crisp. */
 .ex-card-media {
   position: relative;
   width: 100%;
   aspect-ratio: 4 / 3;
-  background: var(--bg-sunken);
+  background: #ffffff;
   display: block;
   overflow: hidden;
 }
 
-/* Training day view: exercises are already grouped, so the photo only needs
-   to confirm the movement — shrink it and centre it instead of running edge
-   to edge. */
-.ex-card-block .ex-card-media {
-  width: 50%;
-  margin: 0 auto;
-}
-
-.ex-card-media img {
+.ex-card-thumb {
   width: 100%;
   height: 100%;
-  object-fit: contain;
-}
-
-/* History sheet: same framing as the carousel card's media, just standalone
-   above the trend rather than inside a card. */
-.ex-history-media {
-  width: 100%;
-  aspect-ratio: 4 / 3;
-  background: var(--bg-sunken);
-  border-radius: var(--r-md);
-  overflow: hidden;
-  margin-bottom: var(--s4);
-}
-
-.ex-history-media img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
-
-/* Lettered tile for custom exercises with no photo. */
-.ex-card-placeholder {
-  width: 100%;
-  height: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  border-radius: 0;
   font-size: 44px;
-  font-weight: 700;
-  color: var(--text-faint);
-  background: var(--bg-raised-2);
+}
+
+/* Training day view: exercises are already grouped, so the photo only needs
+   to confirm the movement — shorter, and centred. */
+.ex-card-block .ex-card-media {
+  aspect-ratio: 2 / 1;
+}
+
+.ex-card-block .ex-card-media img {
+  padding: var(--s2) 0;
 }
 
 .ex-card-media::after {
@@ -84,11 +59,25 @@
 }
 
 .ex-card-media:active::after {
-  background: rgba(0, 0, 0, 0.14);
+  background: rgba(0, 0, 0, 0.12);
+}
+
+/* History sheet: the same framing as the card's media, standalone above the trend. */
+.ex-history {
+  padding: 0 var(--s5);
+}
+
+.ex-history-media {
+  width: 100%;
+  height: auto;
+  aspect-ratio: 4 / 3;
+  border-radius: var(--r-md);
+  margin-bottom: var(--s4);
+  font-size: 44px;
 }
 
 .ex-card-body {
-  padding: var(--s3);
+  padding: var(--s3) var(--s4) var(--s4);
   display: flex;
   flex-direction: column;
   gap: var(--s2);
@@ -97,8 +86,8 @@
 }
 
 .ex-card-name {
-  font-size: 15px;
-  font-weight: 650;
+  font-size: 16px;
+  font-weight: 600;
   letter-spacing: -0.01em;
   line-height: 1.25;
   /* Two lines max, so cards in a row keep a consistent height. */
@@ -118,47 +107,54 @@
   display: flex;
   align-items: baseline;
   gap: var(--s2);
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-dim);
+  margin-top: var(--s1);
 }
 
-.ex-card-none {
-  font-size: 12px;
+.ex-card-latest-ago {
   color: var(--text-faint);
 }
 
+.ex-card-none {
+  font-size: 13px;
+  color: var(--text-faint);
+  margin-top: var(--s1);
+}
+
 /* Personal record (SPEC §5.2). Overlaid rather than placed in the body flow so
-   a card with a record is exactly as tall as one without — the carousel row
-   height and the media aspect ratio are untouched. Left-aligned to stay clear
-   of the trash button in the Trainings context. */
+   a card with a record is exactly as tall as one without. Left-aligned to stay
+   clear of the star and trash buttons in the opposite corner. */
 .ex-card-pr {
   position: absolute;
-  top: var(--s1);
-  left: var(--s1);
+  top: var(--s2);
+  left: var(--s2);
   z-index: 1;
   display: inline-flex;
   align-items: center;
   gap: var(--s1);
-  padding: 2px var(--s2);
+  padding: 4px var(--s2) 4px 6px;
   border-radius: var(--r-full);
-  font-size: 11px;
+  font-size: 12px;
   font-weight: 700;
   color: var(--warn);
-  /* Tokenised on both sides, so light and dark follow --bg / --warn. */
-  background: color-mix(in srgb, var(--bg) 78%, transparent);
-  border: 1px solid color-mix(in srgb, var(--warn) 35%, transparent);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: var(--bg-raised);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
   /* Never intercept the tap that opens the history sheet. */
   pointer-events: none;
+}
+
+.ex-card-pr svg {
+  width: 14px;
+  height: 14px;
 }
 
 /* Favorite star + (Trainings-only) remove button, stacked top-right so
    neither ever collides with the PR badge on the opposite corner. */
 .ex-card-actions {
   position: absolute;
-  top: var(--s1);
-  right: var(--s1);
+  top: var(--s2);
+  right: var(--s2);
   z-index: 1;
   display: flex;
   gap: var(--s1);
@@ -166,12 +162,11 @@
 
 .ex-card-favorite,
 .ex-card-remove {
-  width: 36px;
-  height: 36px;
+  width: 34px;
+  height: 34px;
   border-radius: var(--r-full);
-  background: color-mix(in srgb, var(--bg) 70%, transparent);
-  backdrop-filter: blur(8px);
-  -webkit-backdrop-filter: blur(8px);
+  background: var(--bg-raised);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.18);
   display: inline-flex;
   align-items: center;
   justify-content: center;
@@ -191,8 +186,8 @@
 
 .ex-card-favorite svg,
 .ex-card-remove svg {
-  width: 18px;
-  height: 18px;
+  width: 17px;
+  height: 17px;
 }
 
 /* --- set matrix ---------------------------------------------------------- */
@@ -200,21 +195,21 @@
 .set-matrix {
   width: 100%;
   border-collapse: collapse;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .set-matrix th {
   text-align: left;
-  font-size: 10px;
-  font-weight: 700;
+  font-size: 11px;
+  font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
+  letter-spacing: 0.04em;
   color: var(--text-faint);
   padding-bottom: 2px;
 }
 
 .set-matrix td {
-  padding: 1px 0;
+  padding: 2px 0;
   color: var(--text);
   font-variant-numeric: tabular-nums;
 }
@@ -233,39 +228,8 @@
 }
 
 .ex-progress-none {
-  font-size: 13px;
-  color: var(--text-dim);
-}
-
-/* Segmented metric switch. 44px minimum on each half — it is the only control
-   in the sheet and it sits under a thumb. */
-.ex-progress-toggle {
-  flex: none;
-  display: flex;
-  gap: var(--s1);
-  padding: var(--s1);
-  border-radius: var(--r-md);
-  background: var(--bg-raised-2);
-}
-
-.ex-progress-metric {
-  min-height: 44px;
-  min-width: 44px;
-  padding: 0 var(--s3);
-  border-radius: var(--r-sm);
   font-size: 14px;
-  font-weight: 600;
   color: var(--text-dim);
-  white-space: nowrap;
-}
-
-.ex-progress-metric[aria-pressed='true'] {
-  background: var(--bg-raised);
-  color: var(--text);
-}
-
-.ex-progress-metric:active {
-  opacity: 0.7;
 }
 
 /* One reading is a figure, not a line — so it is set as one. */
@@ -293,10 +257,10 @@
 
 .ex-history-date {
   font-size: 15px;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .ex-history-ago {
-  font-size: 12px;
+  font-size: 13px;
   color: var(--text-dim);
 }

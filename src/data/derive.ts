@@ -105,37 +105,12 @@ export function greetingBucket(now: Date): GreetingBucket {
 
 const pad = (n: number) => String(n).padStart(2, '0');
 
-/** `2026-07-23`, local-time. Shared by `formatDate` and the calendar's day lookup. */
+/** `2026-07-23`, local-time — the calendar's day key, and what `SportSession.date` stores. */
 export function dayKey(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`;
 }
 
-/** `2026-07-23` */
-export function formatDate(iso: string): string {
-  return dayKey(new Date(iso));
-}
-
-/** `2026-07-23 18:40` */
-export function formatDateTime(iso: string): string {
-  const d = new Date(iso);
-  return `${formatDate(iso)} ${pad(d.getHours())}:${pad(d.getMinutes())}`;
-}
-
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-/**
- * `23 Jul` — chart axes only, where `2026-07-23` is too wide for a phone.
- * Spelled out here rather than via `toLocaleDateString` so the output does not
- * depend on the device locale, which would move the axis labels under the user.
- */
-function shortDateLabel(d: Date): string {
-  return `${d.getDate()} ${MONTHS[d.getMonth()] ?? ''}`;
-}
-
-/** `23 Jul` from a full timestamp (session/set `at` fields). */
-export function formatShortDate(iso: string): string {
-  return shortDateLabel(new Date(iso));
-}
 
 /**
  * `Jul 26` — a month bucket on a chart axis, where two `1 Aug` edges a year
@@ -145,16 +120,6 @@ export function formatShortDate(iso: string): string {
 export function formatShortMonth(iso: string): string {
   const d = new Date(iso);
   return `${MONTHS[d.getMonth()] ?? ''} ${String(d.getFullYear() % 100).padStart(2, '0')}`;
-}
-
-/**
- * `23 Jul` from a bare `YYYY-MM-DD` date (check-ins) — parsed as local
- * midnight via `parseLocalDate` rather than `formatShortDate`'s `new
- * Date(iso)`, which would read a date-only string as UTC and can land on the
- * wrong day west of UTC.
- */
-export function formatShortLocalDate(isoDate: string): string {
-  return shortDateLabel(parseLocalDate(isoDate));
 }
 
 /** `1h 12m` / `24m` — elapsed time of a running session. */

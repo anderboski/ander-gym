@@ -13,6 +13,7 @@ import { EXERCISE_NAME_ES } from './translations/exerciseNames';
 import { FACET_DICTIONARIES } from './translations/exerciseFacets';
 import type { FacetKey } from './types';
 import type { Language } from './i18n';
+import { titleCase } from './parse';
 
 /** Untranslated names (custom exercises, or a gap in the dictionary) fall back to English. */
 export function translateExerciseName(language: Language, name: string): string {
@@ -24,4 +25,14 @@ export function translateExerciseName(language: Language, name: string): string 
 export function translateFacetValue(language: Language, key: FacetKey, value: string): string {
   if (language !== 'es') return value;
   return FACET_DICTIONARIES[key][value] ?? value;
+}
+
+/**
+ * The name as rendered anywhere in the UI: translated, then sentence-cased.
+ * The catalogue stores every name lower-case ("barbell bench press"), which
+ * reads as raw data on a card; capitalising the first letter is presentation
+ * only, so search and storage keep the canonical value.
+ */
+export function exerciseDisplayName(language: Language, name: string): string {
+  return titleCase(translateExerciseName(language, name));
 }

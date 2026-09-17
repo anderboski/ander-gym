@@ -20,8 +20,8 @@ import {
   type ExportOutcome,
   type ImportMode,
 } from '../data/backup';
-import { backupStatus, formatDate } from '../data/derive';
-import { useLanguage, type Language, type TranslationKey } from '../data/i18n';
+import { backupStatus } from '../data/derive';
+import { formatDay, useLanguage, type Language, type TranslationKey } from '../data/i18n';
 import { ChangelogSheet } from './Changelog';
 import { ConfirmSheet, Sheet } from './Sheet';
 import { CheckIcon, DownloadIcon, GiftIcon, GitHubIcon, HelpIcon, UploadIcon } from './icons';
@@ -30,9 +30,9 @@ import { navigate } from '../router';
 import '../pages/HomePage.css';
 
 /** Language names are shown as endonyms — always in their own language, never translated. */
-const LANGUAGES: { code: Language; flag: string; name: string }[] = [
-  { code: 'en', flag: '🇬🇧', name: 'English' },
-  { code: 'es', flag: '🇪🇸', name: 'Español' },
+const LANGUAGES: { code: Language; name: string }[] = [
+  { code: 'en', name: 'English' },
+  { code: 'es', name: 'Español' },
 ];
 
 /** BackupError has no hook access to translate itself — mapped here instead. */
@@ -69,7 +69,7 @@ type PendingImport = { name: string; backup: BackupFile; summary: BackupSummary 
 
 export function SettingsSheet({ onClose }: { onClose: () => void }) {
   const { settings, sessions, setWeeklyGoal, exportNow, importFrom } = useGym();
-  const { t, language, setLanguage } = useLanguage();
+  const { t, language, locale, setLanguage } = useLanguage();
 
   const fileInput = useRef<HTMLInputElement>(null);
   const [pendingFile, setPendingFile] = useState<PendingImport | null>(null);
@@ -91,11 +91,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
         const estimate = await sm.estimate();
         const persisted = typeof sm.persisted === 'function' ? await sm.persisted() : null;
         if (cancelled) return;
-        setStorage({
-          usage: estimate.usage ?? null,
-          quota: estimate.quota ?? null,
-          persisted,
-        });
+        setStorage({ usage: estimate.usage ?? null, quota: estimate.quota ?? null, persisted });
       } catch {
         /* An unavailable estimate is not worth surfacing. */
       }
@@ -115,6 +111,11 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
     if (fileInput.current) fileInput.current.value = '';
   }
 
+  function describeImportError(err: unknown): string {
+    if (err instanceof BackupError) return t(BACKUP_ERROR_KEYS[err.code], err.vars);
+    return err instanceof Error ? err.message : t('settings.importFailed');
+  }
+
   /**
    * Parse on pick, not on import. A file that isn't a backup says so here,
    * before Merge/Replace is even offered, and what survives parsing is what
@@ -129,17 +130,12 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
     if (!file) return;
 
     try {
-      const backup = parseBackup(await file.text());
-      setPendingFile({ name: file.name, backup, summary: summariseBackup(backup) });
+      const parsed = parseBackup(await file.text());
+      setPendingFile({ name: file.name, backup: parsed, summary: summariseBackup(parsed) });
     } catch (err) {
       setErrorText(describeImportError(err));
       if (fileInput.current) fileInput.current.value = '';
     }
-  }
-
-  function describeImportError(err: unknown): string {
-    if (err instanceof BackupError) return t(BACKUP_ERROR_KEYS[err.code], err.vars);
-    return err instanceof Error ? err.message : t('settings.importFailed');
   }
 
   async function handleExport() {
@@ -175,91 +171,84 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
 
   return (
     <Sheet title={t('settings.title')} onClose={onClose}>
-      {/* --- weekly goal --------------------------------------------------- */}
+      {/* --- preferences --------------------------------------------------- */}
       <section className="settings-block">
-        <div className="section-title">{t('settings.weeklyGoal')}</div>
-        <div className="settings-row">
-          <span className="settings-row-label">{t('settings.trainingsPerWeek')}</span>
-          <div className="stepper">
-            <button
-              className="stepper-btn"
-              aria-label={t('settings.decreaseGoal')}
-              disabled={goal <= GOAL_MIN || busy}
-              onClick={() => void setWeeklyGoal(goal - 1)}
-            >
-              −
-            </button>
-            <span className="stepper-value num" aria-live="polite">
-              {goal}
-            </span>
-            <button
-              className="stepper-btn"
-              aria-label={t('settings.increaseGoal')}
-              disabled={goal >= GOAL_MAX || busy}
-              onClick={() => void setWeeklyGoal(goal + 1)}
-            >
-              +
-            </button>
+        <div className="settings-group">
+          <div className="settings-row">
+            <span className="settings-row-label">{t('settings.trainingsPerWeek')}</span>
+            <div className="stepper">
+              <button
+                className="stepper-btn"
+                aria-label={t('settings.decreaseGoal')}
+                disabled={goal <= GOAL_MIN || busy}
+                onClick={() => void setWeeklyGoal(goal - 1)}
+              >
+                −
+              </button>
+              <span className="stepper-value num" aria-live="polite">
+                {goal}
+              </span>
+              <button
+                className="stepper-btn"
+                aria-label={t('settings.increaseGoal')}
+                disabled={goal >= GOAL_MAX || busy}
+                onClick={() => void setWeeklyGoal(goal + 1)}
+              >
+                +
+              </button>
+            </div>
+          </div>
+
+          <div className="settings-row">
+            <span className="settings-row-label">{t('settings.language')}</span>
+            <div className="segment" role="group" aria-label={t('settings.language')}>
+              {LANGUAGES.map((l) => (
+                <button
+                  key={l.code}
+                  type="button"
+                  className="segment-btn"
+                  aria-pressed={language === l.code}
+                  onClick={() => setLanguage(l.code)}
+                >
+                  {l.name}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
       </section>
 
-      {/* --- language -------------------------------------------------------- */}
-      <section className="settings-block">
-        <div className="section-title">{t('settings.language')}</div>
-        <div className="settings-lang-row">
-          {LANGUAGES.map((l) => (
-            <button
-              key={l.code}
-              type="button"
-              className="chip settings-lang-chip"
-              aria-pressed={language === l.code}
-              onClick={() => setLanguage(l.code)}
-            >
-              <span aria-hidden="true">{l.flag}</span> {l.name}
-            </button>
-          ))}
-        </div>
-      </section>
-
-      {/* --- export -------------------------------------------------------- */}
+      {/* --- backup ---------------------------------------------------------- */}
       <section className="settings-block">
         <div className="section-title">{t('settings.backup')}</div>
-        <button className="btn btn-block" disabled={busy} onClick={() => void handleExport()}>
-          <DownloadIcon className="settings-btn-icon" />
-          {t('settings.exportData')}
-        </button>
-        <p className="settings-hint">
+        <div className="settings-actions">
+          <button className="btn btn-block" disabled={busy} onClick={() => void handleExport()}>
+            <DownloadIcon />
+            {t('settings.exportData')}
+          </button>
+          <label className="btn btn-block settings-file">
+            <UploadIcon />
+            {pendingFile ? t('settings.chooseDifferentFile') : t('settings.chooseBackupFile')}
+            <input
+              ref={fileInput}
+              className="settings-file-input"
+              type="file"
+              accept="application/json,.json"
+              aria-label={t('settings.chooseBackupFile')}
+              onChange={(e) => void onPickFile(e)}
+            />
+          </label>
+        </div>
+        <p className="hint">
           {t('settings.lastExport')}{' '}
-          <span className="num">
-            {settings.lastExportAt ? formatDate(settings.lastExportAt) : t('common.never')}
-          </span>
+          <span className="num">{settings.lastExportAt ? formatDay(locale, settings.lastExportAt) : t('common.never')}</span>
+          {backup.unsaved > 0 && (
+            <>
+              {' · '}
+              {t(backup.unsaved === 1 ? 'settings.unsavedOne' : 'settings.unsavedOther', { count: backup.unsaved })}
+            </>
+          )}
         </p>
-        {backup.unsaved > 0 && (
-          <p className="settings-hint">
-            {t(backup.unsaved === 1 ? 'settings.unsavedOne' : 'settings.unsavedOther', {
-              count: backup.unsaved,
-            })}
-          </p>
-        )}
-      </section>
-
-      {/* --- import -------------------------------------------------------- */}
-      <section className="settings-block">
-        <div className="section-title">{t('settings.import')}</div>
-
-        <label className="btn btn-block settings-file">
-          <UploadIcon className="settings-btn-icon" />
-          {pendingFile ? t('settings.chooseDifferentFile') : t('settings.chooseBackupFile')}
-          <input
-            ref={fileInput}
-            className="settings-file-input"
-            type="file"
-            accept="application/json,.json"
-            aria-label={t('settings.chooseBackupFile')}
-            onChange={(e) => void onPickFile(e)}
-          />
-        </label>
 
         {pendingFile && (
           <div className="settings-import">
@@ -269,16 +258,12 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
             <button className="btn btn-block" disabled={busy} onClick={() => void runImport('merge')}>
               {t('settings.merge')}
             </button>
-            <p className="settings-hint">{t('settings.mergeHint')}</p>
+            <p className="hint">{t('settings.mergeHint')}</p>
 
-            <button
-              className="btn btn-block btn-danger"
-              disabled={busy}
-              onClick={() => setConfirmReplace(true)}
-            >
+            <button className="btn btn-block btn-danger" disabled={busy} onClick={() => setConfirmReplace(true)}>
               {t('settings.replace')}
             </button>
-            <p className="settings-hint">{t('settings.replaceHint')}</p>
+            <p className="hint">{t('settings.replaceHint')}</p>
 
             <button className="btn btn-block btn-ghost" disabled={busy} onClick={clearFile}>
               {t('sheet.cancel')}
@@ -294,7 +279,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
       )}
       {message && (
         <p className="settings-ok" role="status">
-          <CheckIcon className="settings-btn-icon" />
+          <CheckIcon />
           {message}
         </p>
       )}
@@ -305,20 +290,17 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
         <div className="section-title">{t('settings.storage')}</div>
         {storage ? (
           <>
-            <p className="settings-hint">
-              <span className="num">
-                {storage.usage === null ? t('common.unknown') : formatMb(storage.usage)}
-              </span>{' '}
+            <p className="hint">
+              <span className="num">{storage.usage === null ? t('common.unknown') : formatMb(storage.usage)}</span>{' '}
               {t('settings.used')}
               {storage.quota !== null && (
                 <>
                   {' '}
-                  {t('settings.of')} <span className="num">{formatMb(storage.quota)}</span>{' '}
-                  {t('settings.available')}
+                  {t('settings.of')} <span className="num">{formatMb(storage.quota)}</span> {t('settings.available')}
                 </>
               )}
             </p>
-            <p className="settings-hint">
+            <p className="hint">
               {storage.persisted === null
                 ? t('settings.persistUnavailable')
                 : storage.persisted
@@ -327,40 +309,31 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
             </p>
           </>
         ) : (
-          <p className="settings-hint">{t('settings.storageUnavailable')}</p>
+          <p className="hint">{t('settings.storageUnavailable')}</p>
         )}
       </section>
 
       <div className="settings-footer">
         <p className="settings-version">{t('settings.version', { version: packageJson.version })}</p>
-        <button
-          type="button"
-          className="icon-btn"
-          onClick={() => setChangelogOpen(true)}
-          aria-label={t('changelog.viewAria')}
-        >
-          <GiftIcon />
-        </button>
-        <button
-          type="button"
-          className="icon-btn"
-          onClick={() => {
-            onClose();
-            navigate('/help');
-          }}
-          aria-label={t('settings.howToUse')}
-        >
-          <HelpIcon />
-        </button>
-        <a
-          className="icon-btn"
-          href={GITHUB_URL}
-          target="_blank"
-          rel="noopener noreferrer"
-          aria-label={t('settings.viewSource')}
-        >
-          <GitHubIcon />
-        </a>
+        <div className="settings-links">
+          <button type="button" className="icon-btn" onClick={() => setChangelogOpen(true)} aria-label={t('changelog.viewAria')}>
+            <GiftIcon />
+          </button>
+          <button
+            type="button"
+            className="icon-btn"
+            onClick={() => {
+              onClose();
+              navigate('/help');
+            }}
+            aria-label={t('settings.howToUse')}
+          >
+            <HelpIcon />
+          </button>
+          <a className="icon-btn" href={GITHUB_URL} target="_blank" rel="noopener noreferrer" aria-label={t('settings.viewSource')}>
+            <GitHubIcon />
+          </a>
+        </div>
       </div>
 
       {confirmReplace && (
@@ -384,14 +357,13 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
 
 /**
  * What the picked file holds. Rows with nothing in them are dropped rather
- * than shown as zeros — the same rule the muscle-balance list follows, and it
- * keeps the one number that matters (sessions) from being buried under five
- * empty ones. A file whose every store is empty still renders its own line,
- * because "this backup is empty" is precisely what someone about to tap
- * Replace needs to read.
+ * than shown as zeros — it keeps the one number that matters (sessions) from
+ * being buried under five empty ones. A file whose every store is empty still
+ * renders its own line, because "this backup is empty" is precisely what
+ * someone about to tap Replace needs to read.
  */
 function ImportPreview({ summary }: { summary: BackupSummary }) {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
 
   const all: { one: TranslationKey; other: TranslationKey; count: number }[] = [
     { one: 'settings.previewTrainingOne', other: 'settings.previewTrainingOther', count: summary.trainings },
@@ -405,7 +377,7 @@ function ImportPreview({ summary }: { summary: BackupSummary }) {
   return (
     <div className="settings-preview">
       {rows.length === 0 ? (
-        <p className="settings-hint">{t('settings.previewEmpty')}</p>
+        <p className="hint">{t('settings.previewEmpty')}</p>
       ) : (
         <ul className="settings-preview-list">
           {rows.map((row) => (
@@ -415,9 +387,9 @@ function ImportPreview({ summary }: { summary: BackupSummary }) {
           ))}
         </ul>
       )}
-      <p className="settings-hint">
+      <p className="hint">
         {summary.exportedAt
-          ? t('settings.previewExported', { date: formatDate(summary.exportedAt) })
+          ? t('settings.previewExported', { date: formatDay(locale, summary.exportedAt) })
           : t('settings.previewExportedUnknown')}
       </p>
     </div>

@@ -1,16 +1,22 @@
+/**
+ * One training day — SPEC §5.3 (gym: its exercise list) and §5.8 (sport:
+ * a log form and past logs). Same route, branching on `Training.kind`.
+ */
 import { useEffect, useMemo, useState, type FormEvent } from 'react';
 import { createPortal } from 'react-dom';
+import { BackButton } from '../components/BackButton';
 import { ExerciseBrowser } from '../components/ExerciseBrowser';
 import { ExerciseCard } from '../components/ExerciseCard';
+import { PickRow } from '../components/PickRow';
 import { Sheet, Toast } from '../components/Sheet';
-import { CheckIcon, ChevronLeftIcon, ChevronRightIcon, GripIcon, PlusIcon } from '../components/icons';
-import { titleCase } from '../data/parse';
+import { ChevronRightIcon, GripIcon, PlusIcon } from '../components/icons';
 import { useGym } from '../data/store';
-import { useLanguage } from '../data/i18n';
-import { translateExerciseName, translateFacetValue } from '../data/exerciseI18n';
+import { formatDayWithWeekday, useLanguage } from '../data/i18n';
+import { exerciseDisplayName } from '../data/exerciseI18n';
 import { sportSessionSummary, snowConditionLabel, trainingKindLabel, weatherLabel } from '../data/sportLabels';
-import { dayKey, formatShortLocalDate } from '../data/derive';
+import { dayKey, parseLocalDate, trainingBadge } from '../data/derive';
 import { useDragReorder } from '../hooks/useDragReorder';
+import { useTransient } from '../hooks/useTransient';
 import {
   CLIMB_GRADES,
   SNOW_CONDITIONS,
@@ -27,75 +33,14 @@ import { navigate } from '../router';
 import './TrainingsPage.css';
 import './HistoryPage.css';
 
-/** One row in the "add exercise" picker. */
-function PickerRow({
-  exercise,
-  disabled,
-  onAdd,
-}: {
-  exercise: Exercise;
-  disabled: boolean;
-  onAdd: () => void;
-}) {
-  const { t, language } = useLanguage();
-  const name = translateExerciseName(language, exercise.name);
-
-  return (
-    <button
-      className="tr-pick"
-      onClick={onAdd}
-      disabled={disabled}
-      aria-label={
-        disabled
-          ? t('trainingDetail.alreadyAddedAria', { name })
-          : t('trainingDetail.addAria', { name })
-      }
-    >
-      <span className="tr-pick-thumb">
-        {exercise.imageUrl ? (
-          <img src={exercise.imageUrl} alt="" loading="lazy" decoding="async" />
-        ) : (
-          name.charAt(0).toUpperCase()
-        )}
-      </span>
-      <span className="tr-pick-main">
-        <span className="tr-pick-name">{name}</span>
-        <span className="tr-pick-meta">
-          {disabled
-            ? t('trainingDetail.alreadyAdded')
-            : `${titleCase(translateFacetValue(language, 'equipment', exercise.equipment))} · ${titleCase(
-                translateFacetValue(language, 'target', exercise.target),
-              )}`}
-        </span>
-      </span>
-      <span className="tr-pick-add" aria-hidden="true">
-        {disabled ? <CheckIcon /> : <PlusIcon />}
-      </span>
-    </button>
-  );
-}
-
 export function TrainingDetailPage({ trainingId }: { trainingId: string }) {
-  const {
-    getTraining,
-    getExercise,
-    addExerciseToTraining,
-    removeExerciseFromTraining,
-    reorderTrainingExercises,
-    status,
-  } = useGym();
+  const { getTraining, exerciseById, addExerciseToTraining, removeExerciseFromTraining, reorderTrainingExercises, status } = useGym();
   const { t, language } = useLanguage();
   const [picking, setPicking] = useState(false);
-  const [undo, setUndo] = useState<string | null>(null);
+  // The undo offer expires on its own; the removal is already persisted.
+  const [undo, setUndo] = useTransient<string>(5000);
 
   const training = getTraining(trainingId);
-
-  // The undo offer expires on its own; the removal is already persisted.
-  useEffect(() => {
-    if (!undo) return;
-    const t = setTimeout(() => setUndo(null), 5000);
-    return () => clearTimeout(t);
-  }, [undo]);
 
   const [order, setOrder] = useState<string[]>(() => training?.exerciseIds ?? []);
 
@@ -106,20 +51,12 @@ export function TrainingDetailPage({ trainingId }: { trainingId: string }) {
     setOrder(idsKey.split(',').filter(Boolean));
   }, [idsKey]);
 
-  const exerciseById = useMemo(() => {
-    const map = new Map<string, Exercise>();
-    for (const id of training?.exerciseIds ?? []) {
-      const exercise = getExercise(id);
-      if (exercise) map.set(id, exercise);
-    }
-    return map;
-  }, [idsKey]);
-
-  const drag = useDragReorder(
-    order,
-    setOrder,
-    (next) => void reorderTrainingExercises(trainingId, next),
+  const exercises = useMemo(
+    () => order.map((id) => exerciseById.get(id)).filter((ex): ex is Exercise => ex !== undefined),
+    [order, exerciseById],
   );
+
+  const drag = useDragReorder(order, setOrder, (next) => void reorderTrainingExercises(trainingId, next));
   const draggingExercise = drag.draggingId ? exerciseById.get(drag.draggingId) : undefined;
 
   if (status === 'loading') {
@@ -134,15 +71,14 @@ export function TrainingDetailPage({ trainingId }: { trainingId: string }) {
     return (
       <div className="page">
         <div className="page-header">
+          <BackButton to="/trainings" label={t('trainings.title')} />
           <h1 className="page-title">{t('trainingDetail.notFoundTitle')}</h1>
+          <div className="page-sub">{t('trainingDetail.notFoundBody')}</div>
         </div>
-        <div className="empty">
-          {t('trainingDetail.notFoundBody')}
-          <div style={{ marginTop: 'var(--s4)' }}>
-            <button className="btn" onClick={() => navigate('/trainings')}>
-              {t('trainingDetail.backToTrainings')}
-            </button>
-          </div>
+        <div className="section">
+          <button className="btn btn-primary btn-block" onClick={() => navigate('/trainings')}>
+            {t('trainingDetail.backToTrainings')}
+          </button>
         </div>
       </div>
     );
@@ -152,18 +88,10 @@ export function TrainingDetailPage({ trainingId }: { trainingId: string }) {
     return <SportTrainingDetail training={training} />;
   }
 
-  const exercises = order
-    .map((id) => exerciseById.get(id))
-    .filter((ex): ex is Exercise => ex !== undefined);
-
   return (
     <div className="page">
-      <button className="tr-back" onClick={() => navigate('/trainings')}>
-        <ChevronLeftIcon />
-        {t('trainings.title')}
-      </button>
-
-      <div className="page-header" style={{ paddingTop: 'var(--s2)' }}>
+      <div className="page-header">
+        <BackButton to="/trainings" label={t('trainings.title')} />
         <h1 className="page-title">{training.label}</h1>
         <div className="page-sub">
           {exercises.length} {t(exercises.length === 1 ? 'browser.exerciseOne' : 'browser.exerciseOther')}
@@ -172,15 +100,11 @@ export function TrainingDetailPage({ trainingId }: { trainingId: string }) {
 
       <div className="tr-detail-list">
         {exercises.map((exercise) => (
-          <div
-            key={exercise.id}
-            ref={drag.setItemRef(exercise.id)}
-            className={`tr-detail-row${drag.draggingId === exercise.id ? ' tr-card-dragging' : ''}`}
-          >
+          <div key={exercise.id} ref={drag.setItemRef(exercise.id)} className={`tr-detail-row${drag.draggingId === exercise.id ? ' tr-card-dragging' : ''}`}>
             <button
               type="button"
               className="tr-card-grip"
-              aria-label={t('trainings.reorderAria', { name: translateExerciseName(language, exercise.name) })}
+              aria-label={t('trainings.reorderAria', { name: exerciseDisplayName(language, exercise.name) })}
               onPointerDown={(e) => drag.onGripDown(exercise.id, e)}
               onPointerMove={drag.onGripMove}
               onPointerUp={drag.onGripUp}
@@ -201,8 +125,10 @@ export function TrainingDetailPage({ trainingId }: { trainingId: string }) {
             </div>
           </div>
         ))}
+      </div>
 
-        <button className="tr-add-card" onClick={() => setPicking(true)}>
+      <div className="tr-detail-actions">
+        <button className="btn btn-tinted btn-block" onClick={() => setPicking(true)}>
           <PlusIcon />
           {t('exercises.addExercise')}
         </button>
@@ -211,15 +137,7 @@ export function TrainingDetailPage({ trainingId }: { trainingId: string }) {
       {drag.ghost &&
         draggingExercise &&
         createPortal(
-          <div
-            className="tr-detail-row tr-detail-ghost"
-            style={{
-              top: drag.ghost.top,
-              left: drag.ghost.left,
-              width: drag.ghost.width,
-              height: drag.ghost.height,
-            }}
-          >
+          <div className="tr-detail-row tr-detail-ghost" style={{ top: drag.ghost.top, left: drag.ghost.left, width: drag.ghost.width, height: drag.ghost.height }}>
             <span className="tr-card-grip" aria-hidden="true">
               <GripIcon />
             </span>
@@ -236,10 +154,11 @@ export function TrainingDetailPage({ trainingId }: { trainingId: string }) {
             layout="list"
             disabledIds={training.exerciseIds}
             renderItem={(exercise, { disabled }) => (
-              <PickerRow
+              <PickRow
                 key={exercise.id}
                 exercise={exercise}
                 disabled={disabled}
+                context="training"
                 onAdd={() => {
                   void addExerciseToTraining(training.id, exercise.id);
                   setPicking(false);
@@ -318,15 +237,8 @@ function SportLogSheet({
           avgBpm: avgBpm.trim() ? Number(avgBpm) : null,
         };
       } else if (training.kind === 'climbing') {
-        input = {
-          kind: 'climbing',
-          date,
-          climbsByGrade: {
-            '3': Math.max(0, Math.round(Number(climbsByGrade['3']) || 0)),
-            '4': Math.max(0, Math.round(Number(climbsByGrade['4']) || 0)),
-            '5': Math.max(0, Math.round(Number(climbsByGrade['5']) || 0)),
-          },
-        };
+        const count = (grade: ClimbGrade) => Math.max(0, Math.round(Number(climbsByGrade[grade]) || 0));
+        input = { kind: 'climbing', date, climbsByGrade: { '3': count('3'), '4': count('4'), '5': count('5') } };
       } else {
         input = { kind: 'other', date, comments: comments.trim() };
       }
@@ -338,6 +250,15 @@ function SportLogSheet({
     }
   }
 
+  const commentsField = (id: string) => (
+    <div className="field">
+      <label className="label" htmlFor={id}>
+        {t('sportLog.commentsLabel')}
+      </label>
+      <textarea id={id} className="input" rows={3} value={comments} placeholder={t('sportLog.commentsPlaceholder')} onChange={(e) => setComments(e.target.value)} />
+    </div>
+  );
+
   return (
     <Sheet
       title={t('sportLog.formTitle', { training: training.label })}
@@ -348,14 +269,14 @@ function SportLogSheet({
         </button>
       }
     >
-      <form id={SPORT_LOG_FORM_ID} className="tr-name-form" onSubmit={handleSubmit}>
+      <form id={SPORT_LOG_FORM_ID} onSubmit={handleSubmit}>
         {error && (
-          <div className="tr-name-error" role="alert">
+          <div className="form-error field" role="alert">
             {error}
           </div>
         )}
 
-        <div className="tr-name-field">
+        <div className="field">
           <label className="label" htmlFor="sport-log-date">
             {t('sportLog.dateLabel')}
           </label>
@@ -366,10 +287,8 @@ function SportLogSheet({
             required
             // No autoFocus: focusing a date input opens its native picker
             // immediately, before the sheet has finished appearing — the
-            // picker then eats the next tap intended for Weather, Snow
-            // condition, or a climbing grade field further down. The date
-            // already defaults to today, so nothing is lost by leaving the
-            // form unfocused on open.
+            // picker then eats the next tap intended for a field further
+            // down. The date already defaults to today.
             value={date}
             max={dayKey(new Date())}
             onChange={(e) => setDate(e.target.value)}
@@ -378,16 +297,11 @@ function SportLogSheet({
 
         {training.kind === 'snowboard' && (
           <>
-            <div className="tr-name-field">
+            <div className="field">
               <label className="label" htmlFor="sport-log-weather">
                 {t('sportLog.weatherLabel')}
               </label>
-              <select
-                id="sport-log-weather"
-                className="input"
-                value={weather}
-                onChange={(e) => setWeather(e.target.value as WeatherCondition)}
-              >
+              <select id="sport-log-weather" className="input" value={weather} onChange={(e) => setWeather(e.target.value as WeatherCondition)}>
                 {WEATHER_CONDITIONS.map((w) => (
                   <option key={w} value={w}>
                     {weatherLabel(t, w)}
@@ -395,16 +309,11 @@ function SportLogSheet({
                 ))}
               </select>
             </div>
-            <div className="tr-name-field">
+            <div className="field">
               <label className="label" htmlFor="sport-log-snow">
                 {t('sportLog.snowLabel')}
               </label>
-              <select
-                id="sport-log-snow"
-                className="input"
-                value={snowCondition}
-                onChange={(e) => setSnowCondition(e.target.value as SnowCondition)}
-              >
+              <select id="sport-log-snow" className="input" value={snowCondition} onChange={(e) => setSnowCondition(e.target.value as SnowCondition)}>
                 {SNOW_CONDITIONS.map((s) => (
                   <option key={s} value={s}>
                     {snowConditionLabel(t, s)}
@@ -412,98 +321,44 @@ function SportLogSheet({
                 ))}
               </select>
             </div>
-            <div className="tr-name-field">
-              <label className="label" htmlFor="sport-log-comments">
-                {t('sportLog.commentsLabel')}
-              </label>
-              <textarea
-                id="sport-log-comments"
-                className="input"
-                rows={3}
-                value={comments}
-                placeholder={t('sportLog.commentsPlaceholder')}
-                onChange={(e) => setComments(e.target.value)}
-              />
-            </div>
+            {commentsField('sport-log-comments')}
           </>
         )}
 
         {training.kind === 'cycling' && (
           <>
-            <div className="tr-name-field">
+            <div className="field">
               <label className="label" htmlFor="sport-log-distance">
                 {t('sportLog.distanceLabel')}
               </label>
-              <input
-                id="sport-log-distance"
-                className="input"
-                type="number"
-                inputMode="decimal"
-                min="0"
-                step="0.1"
-                required
-                value={distanceKm}
-                onChange={(e) => setDistanceKm(e.target.value)}
-              />
+              <input id="sport-log-distance" className="input" type="number" inputMode="decimal" min="0" step="0.1" required value={distanceKm} onChange={(e) => setDistanceKm(e.target.value)} />
             </div>
-            <div className="tr-name-field">
+            <div className="field">
               <label className="label" htmlFor="sport-log-elevation">
                 {t('sportLog.elevationLabel')}
               </label>
-              <input
-                id="sport-log-elevation"
-                className="input"
-                type="number"
-                inputMode="numeric"
-                min="0"
-                step="1"
-                value={elevationM}
-                onChange={(e) => setElevationM(e.target.value)}
-              />
+              <input id="sport-log-elevation" className="input" type="number" inputMode="numeric" min="0" step="1" value={elevationM} onChange={(e) => setElevationM(e.target.value)} />
             </div>
-            <div className="tr-name-field">
+            <div className="field">
               <label className="label" htmlFor="sport-log-bpm">
                 {t('sportLog.bpmLabel')}
               </label>
-              <input
-                id="sport-log-bpm"
-                className="input"
-                type="number"
-                inputMode="numeric"
-                min="0"
-                step="1"
-                value={avgBpm}
-                onChange={(e) => setAvgBpm(e.target.value)}
-              />
+              <input id="sport-log-bpm" className="input" type="number" inputMode="numeric" min="0" step="1" value={avgBpm} onChange={(e) => setAvgBpm(e.target.value)} />
             </div>
           </>
         )}
 
         {/* An 'other' training records nothing measurable — the training's own
             name says what the activity was, so the notes are the whole form. */}
-        {training.kind === 'other' && (
-          <div className="tr-name-field">
-            <label className="label" htmlFor="sport-log-other-comments">
-              {t('sportLog.commentsLabel')}
-            </label>
-            <textarea
-              id="sport-log-other-comments"
-              className="input"
-              rows={3}
-              value={comments}
-              placeholder={t('sportLog.commentsPlaceholder')}
-              onChange={(e) => setComments(e.target.value)}
-            />
-          </div>
-        )}
+        {training.kind === 'other' && commentsField('sport-log-other-comments')}
 
         {training.kind === 'climbing' && (
-          <div className="tr-name-field">
+          <div className="field">
             <label className="label">{t('sportLog.climbsLabel')}</label>
             <div className="sportlog-grades">
               {CLIMB_GRADES.map((grade) => (
                 <div className="sportlog-grade-row" key={grade}>
-                  <span className="sportlog-grade-label">{grade}</span>
+                  <span className="sportlog-grade-label">{t('stats.climbGradeLabel', { grade })}</span>
                   <input
                     type="number"
                     inputMode="numeric"
@@ -525,25 +380,26 @@ function SportLogSheet({
   );
 }
 
-function SportLogRow({ session }: { session: SportSession }) {
-  const { t } = useLanguage();
+function SportLogRow({ session, badge }: { session: SportSession; badge: string }) {
+  const { t, locale } = useLanguage();
 
   return (
-    <button className="card card-tappable history-row" onClick={() => navigate(`/history/${session.id}`)}>
+    <button className="history-row card-row" onClick={() => navigate(`/history/${session.id}`)}>
+      <span className="history-row-badge" aria-hidden="true">
+        {badge}
+      </span>
       <span className="history-row-main">
-        <span className="history-row-date num">{formatShortLocalDate(session.date)}</span>
+        <span className="history-row-title">{formatDayWithWeekday(locale, parseLocalDate(session.date))}</span>
         <span className="history-row-summary">{sportSessionSummary(t, session)}</span>
       </span>
-      <span className="history-row-chevron" aria-hidden="true">
-        <ChevronRightIcon />
-      </span>
+      <ChevronRightIcon className="history-row-chevron" />
     </button>
   );
 }
 
 function SportTrainingDetail({ training }: { training: Training }) {
   const { t } = useLanguage();
-  const { sportSessions, logSportSession, status } = useGym();
+  const { sportSessions, logSportSession } = useGym();
   const [logging, setLogging] = useState(false);
 
   const logs = useMemo(
@@ -553,52 +409,36 @@ function SportTrainingDetail({ training }: { training: Training }) {
         .sort((a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt)),
     [sportSessions, training.id],
   );
-
-  if (status === 'loading') {
-    return (
-      <div className="page">
-        <div className="spinner" />
-      </div>
-    );
-  }
+  const badge = trainingBadge(training);
 
   return (
     <div className="page">
-      <button className="tr-back" onClick={() => navigate('/trainings')}>
-        <ChevronLeftIcon />
-        {t('trainings.title')}
-      </button>
-
-      <div className="page-header" style={{ paddingTop: 'var(--s2)' }}>
+      <div className="page-header">
+        <BackButton to="/trainings" label={t('trainings.title')} />
         <h1 className="page-title">{training.label}</h1>
         <div className="page-sub">{trainingKindLabel(t, training.kind ?? 'gym')}</div>
       </div>
 
-      <section className="section">
-        <button className="btn btn-primary btn-block" onClick={() => setLogging(true)}>
+      <div className="tr-sport-log">
+        <button className="btn btn-primary btn-block btn-lg" onClick={() => setLogging(true)}>
+          <PlusIcon />
           {t('sportLog.logButton')}
         </button>
-      </section>
+      </div>
 
       <section className="section">
         {logs.length === 0 ? (
           <div className="empty">{t('sportLog.noLogsYet')}</div>
         ) : (
-          <div className="history-list">
+          <div className="card">
             {logs.map((session) => (
-              <SportLogRow key={session.id} session={session} />
+              <SportLogRow key={session.id} session={session} badge={badge} />
             ))}
           </div>
         )}
       </section>
 
-      {logging && (
-        <SportLogSheet
-          training={training}
-          onClose={() => setLogging(false)}
-          onSubmit={(input) => logSportSession(training.id, input)}
-        />
-      )}
+      {logging && <SportLogSheet training={training} onClose={() => setLogging(false)} onSubmit={(input) => logSportSession(training.id, input)} />}
     </div>
   );
 }

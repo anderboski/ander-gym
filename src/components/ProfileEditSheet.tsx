@@ -1,5 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { useGym } from '../data/store';
+import { dayKey } from '../data/derive';
 import { useLanguage } from '../data/i18n';
 import { Sheet } from './Sheet';
 import type { Profile } from '../data/types';
@@ -13,9 +14,7 @@ export function ProfileEditSheet({ profile, onClose }: { profile: Profile; onClo
 
   const [name, setName] = useState(profile.name);
   const [birthdate, setBirthdate] = useState(profile.birthdate ?? '');
-  const [heightText, setHeightText] = useState(
-    profile.heightCm !== null ? String(profile.heightCm) : '',
-  );
+  const [heightText, setHeightText] = useState(profile.heightCm !== null ? String(profile.heightCm) : '');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -50,43 +49,28 @@ export function ProfileEditSheet({ profile, onClose }: { profile: Profile; onClo
         </button>
       }
     >
-      <form id={FORM_ID} className="profile-form" onSubmit={handleSubmit}>
+      <form id={FORM_ID} onSubmit={handleSubmit}>
         {error && (
-          <div className="profile-form-error" role="alert">
+          <div className="form-error field" role="alert">
             {error}
           </div>
         )}
 
-        <div className="profile-form-field">
+        <div className="field">
           <label className="label" htmlFor="profile-name">
             {t('common.name')}
           </label>
-          <input
-            id="profile-name"
-            className="input"
-            type="text"
-            autoCapitalize="words"
-            autoCorrect="off"
-            value={name}
-            onChange={(e) => setName(e.target.value)}
-          />
+          <input id="profile-name" className="input" type="text" autoCapitalize="words" autoCorrect="off" value={name} onChange={(e) => setName(e.target.value)} />
         </div>
 
-        <div className="profile-form-field">
+        <div className="field">
           <label className="label" htmlFor="profile-birthdate">
             {t('profile.birthdateLabel')}
           </label>
-          <input
-            id="profile-birthdate"
-            className="input"
-            type="date"
-            value={birthdate}
-            max={new Date().toISOString().slice(0, 10)}
-            onChange={(e) => setBirthdate(e.target.value)}
-          />
+          <input id="profile-birthdate" className="input" type="date" value={birthdate} max={dayKey(new Date())} onChange={(e) => setBirthdate(e.target.value)} />
         </div>
 
-        <div className="profile-form-field">
+        <div className="field">
           <label className="label" htmlFor="profile-height">
             {t('profile.heightCmFieldLabel')}
           </label>

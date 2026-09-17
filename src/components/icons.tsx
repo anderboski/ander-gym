@@ -172,3 +172,53 @@ export const GiftIcon = (p: P) => (
     <path d="M12 10c0-3 2.2-5.5 4.3-5.5 1.5 0 2.2.9 2.2 1.8 0 2.1-2.5 3.7-6.5 3.7z" />
   </svg>
 );
+
+/** Bar chart — the Stats entry point. */
+export const ChartIcon = (p: P) => (
+  <svg {...base} {...p}>
+    <path d="M4 20h16M7 16v-5M12 16V6M17 16v-8" />
+  </svg>
+);
+
+/** A flame — the weekly streak. */
+export const FlameIcon = (p: P) => (
+  <svg {...base} {...p}>
+    <path d="M12 3.5c.6 2.6 2.2 4.1 3.9 5.8A6.5 6.5 0 0 1 18 14a6 6 0 0 1-12 0c0-1.6.6-3 1.6-4.1.4 1 1 1.7 1.9 2.2C9.3 9.3 10.5 6.1 12 3.5z" />
+  </svg>
+);
+
+/** A trophy — the personal-record badge. */
+export const TrophyIcon = (p: P) => (
+  <svg {...base} {...p}>
+    <path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H5.5a.5.5 0 0 0-.5.5C5 9 6.3 10.5 8 11M16 6h2.5a.5.5 0 0 1 .5.5c0 2.5-1.3 4-3 5M12 13v3.5M9 20h6M10 16.5h4v3.5h-4z" />
+  </svg>
+);
+
+/** A person in a circle — the profile entry point when no initials are set. */
+export const UserIcon = (p: P) => (
+  <svg {...base} {...p}>
+    <circle cx="12" cy="8.5" r="3.5" />
+    <path d="M5 20a7 7 0 0 1 14 0" />
+  </svg>
+);
+
+/** Kind icons for the Stats switcher — a bicycle, a snowflake, a mountain. */
+export const BikeIcon = (p: P) => (
+  <svg {...base} {...p}>
+    <circle cx="6" cy="16.5" r="3.5" />
+    <circle cx="18" cy="16.5" r="3.5" />
+    <path d="M6 16.5 9.5 9h4l4.5 7.5M9.5 9h-2M12.5 5.5h2.5l1 3.5M13.5 9l-2.5 5H6" />
+  </svg>
+);
+
+export const SnowflakeIcon = (p: P) => (
+  <svg {...base} {...p}>
+    <path d="M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9M12 3l-2.5 2.5M12 3l2.5 2.5M12 21l-2.5-2.5M12 21l2.5-2.5M4.2 7.5l3.4.4M4.2 7.5l.4 3.4M19.8 16.5l-3.4-.4M19.8 16.5l-.4-3.4M4.2 16.5l.4-3.4M4.2 16.5l3.4-.4M19.8 7.5l-.4 3.4M19.8 7.5l-3.4.4" />
+  </svg>
+);
+
+export const MountainIcon = (p: P) => (
+  <svg {...base} {...p}>
+    <path d="M3 19 9.5 6.5 13 12.5l2-2.5L21 19zM7.5 10.5 9.5 12l2-1.5" />
+  </svg>
+);

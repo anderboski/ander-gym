@@ -9,37 +9,19 @@
  */
 import { useState } from 'react';
 import { useGym } from '../data/store';
-import { formatDateTime, formatElapsed, formatShortLocalDate, setCount, totalVolume } from '../data/derive';
+import { formatElapsed, parseLocalDate, setCount, totalVolume } from '../data/derive';
 import { formatWeight } from '../data/parse';
 import { navigate } from '../router';
+import { BackButton } from '../components/BackButton';
 import { SetMatrix } from '../components/ExerciseCard';
+import { ExerciseThumb } from '../components/ExerciseThumb';
 import { ConfirmSheet } from '../components/Sheet';
-import { ChevronLeftIcon } from '../components/icons';
-import { useLanguage } from '../data/i18n';
-import { translateExerciseName } from '../data/exerciseI18n';
+import { StatRow, StatTile } from '../components/StatTile';
+import { formatDayTime, formatDayWithWeekday, useLanguage } from '../data/i18n';
+import { exerciseDisplayName } from '../data/exerciseI18n';
 import { snowConditionLabel, trainingKindLabel, weatherLabel } from '../data/sportLabels';
 import { CLIMB_GRADES, type Exercise, type Session, type SessionEntry, type SportSession } from '../data/types';
 import './HistoryPage.css';
-
-function BackButton() {
-  const { t } = useLanguage();
-
-  return (
-    <button className="history-back" onClick={() => navigate('/history')} aria-label={t('historyDetail.backAria')}>
-      <ChevronLeftIcon />
-      <span>{t('tabbar.history')}</span>
-    </button>
-  );
-}
-
-function Stat({ value, label }: { value: string; label: string }) {
-  return (
-    <div className="history-stat">
-      <div className="history-stat-value num">{value}</div>
-      <div className="history-stat-label">{label}</div>
-    </div>
-  );
-}
 
 /**
  * One logged exercise. Names and images are resolved at render time from the
@@ -48,36 +30,15 @@ function Stat({ value, label }: { value: string; label: string }) {
  */
 function EntryRow({ entry, exercise }: { entry: SessionEntry; exercise: Exercise | undefined }) {
   const { t, language } = useLanguage();
-  const name = exercise ? translateExerciseName(language, exercise.name) : entry.exerciseId;
+  const name = exercise ? exerciseDisplayName(language, exercise.name) : entry.exerciseId;
   const logged = entry.sets.length > 0;
 
   return (
-    <div className={logged ? 'card history-entry' : 'card history-entry history-entry-empty'}>
-      <div className="history-entry-thumb">
-        {exercise?.imageUrl ? (
-          <img
-            src={exercise.imageUrl}
-            alt=""
-            loading="lazy"
-            decoding="async"
-            // Images are cached lazily by the SW; a miss while offline should
-            // leave the tile blank, not break the row.
-            onError={(e) => {
-              e.currentTarget.style.visibility = 'hidden';
-            }}
-          />
-        ) : (
-          <div className="history-entry-letter">{name.charAt(0).toUpperCase()}</div>
-        )}
-      </div>
-
+    <div className={logged ? 'history-entry card-row' : 'history-entry card-row history-entry-empty'}>
+      <ExerciseThumb exercise={exercise} name={name} />
       <div className="history-entry-body">
         <div className="history-entry-name">{name}</div>
-        {logged ? (
-          <SetMatrix sets={entry.sets} />
-        ) : (
-          <div className="history-entry-none">{t('historyDetail.notLogged')}</div>
-        )}
+        {logged ? <SetMatrix sets={entry.sets} /> : <div className="history-entry-none">{t('historyDetail.notLogged')}</div>}
       </div>
     </div>
   );
@@ -89,7 +50,7 @@ function NotFound() {
   return (
     <div className="page">
       <div className="page-header">
-        <BackButton />
+        <BackButton to="/history" label={t('tabbar.history')} ariaLabel={t('historyDetail.backAria')} />
         <h1 className="page-title">{t('historyDetail.notFoundTitle')}</h1>
         <div className="page-sub">{t('historyDetail.notFoundBody')}</div>
       </div>
@@ -102,13 +63,51 @@ function NotFound() {
   );
 }
 
+/** The shared frame: back, title, subtitle, tiles, then the kind-specific body and the delete action. */
+function DetailShell({
+  title,
+  subtitle,
+  tiles,
+  deleteLabel,
+  onDelete,
+  children,
+}: {
+  title: string;
+  subtitle: string;
+  tiles?: React.ReactNode;
+  deleteLabel: string;
+  onDelete: () => void;
+  children?: React.ReactNode;
+}) {
+  const { t } = useLanguage();
+  return (
+    <div className="page">
+      <div className="page-header history-detail-header">
+        <BackButton to="/history" label={t('tabbar.history')} ariaLabel={t('historyDetail.backAria')} />
+        <h1 className="page-title">{title}</h1>
+        <div className="page-sub">{subtitle}</div>
+        {tiles && <StatRow>{tiles}</StatRow>}
+      </div>
+
+      {children}
+
+      <section className="section history-detail-danger">
+        <button className="btn btn-danger btn-block" onClick={onDelete}>
+          {deleteLabel}
+        </button>
+      </section>
+    </div>
+  );
+}
+
 function SessionDetail({ session, onDeleted }: { session: Session; onDeleted: () => void }) {
   const { getExercise, deleteSession } = useGym();
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const [confirming, setConfirming] = useState(false);
 
   const sets = setCount(session);
   const volume = Math.round(totalVolume(session));
+  const when = formatDayTime(locale, session.startedAt);
 
   async function onDelete() {
     setConfirming(false);
@@ -120,59 +119,45 @@ function SessionDetail({ session, onDeleted }: { session: Session; onDeleted: ()
   }
 
   return (
-    <div className="page">
-      <div className="page-header history-detail-header">
-        <BackButton />
-        <h1 className="page-title num">{formatDateTime(session.startedAt)}</h1>
-        <div className="page-sub">{session.trainingLabel}</div>
-
-        <div className="history-stats">
-          <Stat value={String(sets)} label={t(sets === 1 ? 'common.setOne' : 'common.setsOther')} />
-          <Stat value={volume > 0 ? `${formatWeight(volume)} kg` : '—'} label={t('historyDetail.volumeLabel')} />
-          <Stat
-            value={formatElapsed(session.startedAt, new Date(session.savedAt))}
-            label={t('historyDetail.durationLabel')}
-          />
-        </div>
-      </div>
-
-      <section className="section">
-        <h2 className="section-title">{t('tabbar.exercises')}</h2>
-        {session.entries.length === 0 ? (
-          <div className="empty">{t('historyDetail.noExercises')}</div>
-        ) : (
-          <div className="history-entries">
-            {session.entries.map((entry, i) => (
-              <EntryRow
-                key={`${entry.exerciseId}-${i}`}
-                entry={entry}
-                exercise={getExercise(entry.exerciseId)}
-              />
-            ))}
-          </div>
-        )}
-      </section>
-
-      <section className="section history-detail-danger">
-        <button className="btn btn-danger btn-block" onClick={() => setConfirming(true)}>
-          {t('historyDetail.deleteSessionButton')}
-        </button>
-      </section>
+    <>
+      <DetailShell
+        title={session.trainingLabel}
+        subtitle={when}
+        tiles={
+          <>
+            <StatTile value={String(sets)} label={t(sets === 1 ? 'common.setOne' : 'common.setsOther')} />
+            <StatTile value={volume > 0 ? `${formatWeight(volume)} kg` : '—'} label={t('historyDetail.volumeLabel')} />
+            <StatTile value={formatElapsed(session.startedAt, new Date(session.savedAt))} label={t('historyDetail.durationLabel')} />
+          </>
+        }
+        deleteLabel={t('historyDetail.deleteSessionButton')}
+        onDelete={() => setConfirming(true)}
+      >
+        <section className="section">
+          <h2 className="section-title">{t('tabbar.exercises')}</h2>
+          {session.entries.length === 0 ? (
+            <div className="empty">{t('historyDetail.noExercises')}</div>
+          ) : (
+            <div className="card">
+              {session.entries.map((entry, i) => (
+                <EntryRow key={`${entry.exerciseId}-${i}`} entry={entry} exercise={getExercise(entry.exerciseId)} />
+              ))}
+            </div>
+          )}
+        </section>
+      </DetailShell>
 
       {confirming && (
         <ConfirmSheet
           title={t('historyDetail.deleteSessionTitle')}
-          message={t(sets === 1 ? 'historyDetail.deleteMessageOne' : 'historyDetail.deleteMessageOther', {
-            date: formatDateTime(session.startedAt),
-            count: sets,
-          })}
+          message={t(sets === 1 ? 'historyDetail.deleteMessageOne' : 'historyDetail.deleteMessageOther', { date: when, count: sets })}
           confirmLabel={t('common.delete')}
           danger
           onConfirm={() => void onDelete()}
           onCancel={() => setConfirming(false)}
         />
       )}
-    </div>
+    </>
   );
 }
 
@@ -183,8 +168,9 @@ function SessionDetail({ session, onDeleted }: { session: Session; onDeleted: ()
  */
 function SportSessionDetail({ session, onDeleted }: { session: SportSession; onDeleted: () => void }) {
   const { deleteSportSession } = useGym();
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   const [confirming, setConfirming] = useState(false);
+  const when = formatDayWithWeekday(locale, parseLocalDate(session.date));
 
   async function onDelete() {
     setConfirming(false);
@@ -193,66 +179,56 @@ function SportSessionDetail({ session, onDeleted }: { session: SportSession; onD
     navigate('/history');
   }
 
+  // An 'other' log has no measurements at all, so it gets no tile row —
+  // an empty one would leave a gap under the header.
+  const tiles =
+    session.kind === 'snowboard' ? (
+      <>
+        <StatTile value={weatherLabel(t, session.weather)} label={t('sportLog.weatherLabel')} />
+        <StatTile value={snowConditionLabel(t, session.snowCondition)} label={t('sportLog.snowLabel')} />
+      </>
+    ) : session.kind === 'cycling' ? (
+      <>
+        <StatTile value={`${session.distanceKm.toFixed(1)} km`} label={t('sportLog.distanceLabel')} />
+        <StatTile value={`${Math.round(session.elevationM)} m`} label={t('sportLog.elevationLabel')} />
+        {session.avgBpm !== null && <StatTile value={`${Math.round(session.avgBpm)}`} label={t('sportLog.bpmLabel')} />}
+      </>
+    ) : session.kind === 'climbing' ? (
+      <>
+        {CLIMB_GRADES.map((grade) => (
+          <StatTile key={grade} value={String(session.climbsByGrade[grade])} label={t('stats.climbGradeLabel', { grade })} />
+        ))}
+      </>
+    ) : undefined;
+
   return (
-    <div className="page">
-      <div className="page-header history-detail-header">
-        <BackButton />
-        <h1 className="page-title num">{formatShortLocalDate(session.date)}</h1>
-        <div className="page-sub">
-          {session.trainingLabel} · {trainingKindLabel(t, session.kind)}
-        </div>
-
-        {/* An 'other' log has no measurements at all, so it gets no tile row —
-            an empty one would leave a gap under the header. */}
-        {session.kind !== 'other' && (
-          <div className="history-stats">
-            {session.kind === 'snowboard' && (
-              <>
-                <Stat value={weatherLabel(t, session.weather)} label={t('sportLog.weatherLabel')} />
-                <Stat value={snowConditionLabel(t, session.snowCondition)} label={t('sportLog.snowLabel')} />
-              </>
-            )}
-            {session.kind === 'cycling' && (
-              <>
-                <Stat value={`${session.distanceKm.toFixed(1)} km`} label={t('sportLog.distanceLabel')} />
-                <Stat value={`${Math.round(session.elevationM)} m`} label={t('sportLog.elevationLabel')} />
-                {session.avgBpm !== null && (
-                  <Stat value={`${Math.round(session.avgBpm)}`} label={t('sportLog.bpmLabel')} />
-                )}
-              </>
-            )}
-            {session.kind === 'climbing' &&
-              CLIMB_GRADES.map((grade) => (
-                <Stat key={grade} value={String(session.climbsByGrade[grade])} label={grade} />
-              ))}
-          </div>
+    <>
+      <DetailShell
+        title={session.trainingLabel}
+        subtitle={`${when} · ${trainingKindLabel(t, session.kind)}`}
+        tiles={tiles}
+        deleteLabel={t('sportLog.deleteLogButton')}
+        onDelete={() => setConfirming(true)}
+      >
+        {(session.kind === 'snowboard' || session.kind === 'other') && session.comments && (
+          <section className="section">
+            <h2 className="section-title">{t('sportLog.commentsLabel')}</h2>
+            <p className="card card-pad history-comments">{session.comments}</p>
+          </section>
         )}
-      </div>
-
-      {(session.kind === 'snowboard' || session.kind === 'other') && session.comments && (
-        <section className="section">
-          <h2 className="section-title">{t('sportLog.commentsLabel')}</h2>
-          <p className="card card-pad">{session.comments}</p>
-        </section>
-      )}
-
-      <section className="section history-detail-danger">
-        <button className="btn btn-danger btn-block" onClick={() => setConfirming(true)}>
-          {t('sportLog.deleteLogButton')}
-        </button>
-      </section>
+      </DetailShell>
 
       {confirming && (
         <ConfirmSheet
           title={t('sportLog.deleteLogTitle')}
-          message={t('sportLog.deleteLogMessage', { date: formatShortLocalDate(session.date) })}
+          message={t('sportLog.deleteLogMessage', { date: when })}
           confirmLabel={t('common.delete')}
           danger
           onConfirm={() => void onDelete()}
           onCancel={() => setConfirming(false)}
         />
       )}
-    </div>
+    </>
   );
 }
 

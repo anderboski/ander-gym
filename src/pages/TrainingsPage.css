@@ -7,30 +7,40 @@
   gap: var(--s3);
 }
 
-/* Pull the trailing 44px hit area back so its ink lines up with the page padding. */
-.tr-header .icon-btn {
+.tr-header-actions {
+  display: flex;
+  gap: var(--s2);
   flex: none;
-  margin-right: calc(-1 * var(--s3));
+  padding-top: 2px;
+}
+
+.tr-add-btn {
+  background: var(--accent);
+  color: var(--accent-fg);
 }
 
 .tr-list {
   display: flex;
   flex-direction: column;
-  gap: var(--s3);
+  gap: var(--s2);
   padding: 0 var(--s4);
-  margin-bottom: var(--s5);
+  margin-bottom: var(--s6);
 }
 
-/* One row: a drag handle, the tappable body, and a rename button. */
+.tr-list .btn {
+  margin-top: var(--s2);
+}
+
+/* One row: an optional drag handle, the badge, the tappable body, and an edit button. */
 .tr-card {
   width: 100%;
   display: flex;
   align-items: center;
   gap: var(--s1);
-  padding: 0 var(--s2);
+  padding: 0 var(--s1) 0 var(--s2);
   background: var(--bg-raised);
-  border: 1px solid var(--border);
   border-radius: var(--r-lg);
+  box-shadow: var(--shadow-card);
 }
 
 /* The row currently being dragged stays in its slot, dimmed — the ghost
@@ -41,7 +51,7 @@
 
 .tr-card-grip {
   flex: none;
-  width: 44px;
+  width: 36px;
   height: 44px;
   display: inline-flex;
   align-items: center;
@@ -55,15 +65,24 @@
   height: 20px;
 }
 
-.tr-card-emoji {
+/* No grip on a row: push the badge to the row's leading edge instead. */
+.tr-card > .tr-card-badge:first-child {
+  margin-left: var(--s2);
+}
+
+.tr-card-badge {
   flex: none;
   width: 44px;
   height: 44px;
-  margin-right: var(--s2);
+  margin-right: var(--s1);
   display: inline-flex;
   align-items: center;
   justify-content: center;
+  border-radius: var(--r-md);
+  background: var(--bg-raised-2);
   font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
 }
 
 .tr-card-main {
@@ -86,29 +105,25 @@
 }
 
 .tr-card-label {
+  display: block;
   font-size: 17px;
-  font-weight: 650;
-  letter-spacing: -0.01em;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  line-height: 1.2;
   overflow-wrap: anywhere;
 }
 
 .tr-card-sub {
-  margin-top: 2px;
+  display: block;
+  margin-top: 3px;
   font-size: 13px;
   color: var(--text-dim);
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s2);
-}
-
-.tr-card-sub .sep {
-  color: var(--text-faint);
 }
 
 .tr-card-chevron {
   flex: none;
-  width: 20px;
-  height: 20px;
+  width: 18px;
+  height: 18px;
   color: var(--text-faint);
 }
 
@@ -116,11 +131,11 @@
   flex: none;
   width: 44px;
   height: 44px;
-  margin-right: var(--s1);
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--text-faint);
+  border-radius: var(--r-full);
+  color: var(--text-dim);
 }
 
 .tr-card-edit svg {
@@ -137,71 +152,34 @@
 .tr-card-ghost {
   position: fixed;
   z-index: 60;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  box-shadow: var(--shadow);
   pointer-events: none;
 }
 
-/* --- add-training form ----------------------------------------------------- */
-
-.tr-name-form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s4);
+.tr-sports .section-title {
+  margin-bottom: 0;
 }
 
-.tr-name-field {
-  display: flex;
-  flex-direction: column;
+.tr-sports-hint {
+  margin: 0 0 var(--s3) var(--s1);
 }
 
-.tr-name-error {
-  padding: var(--s3);
-  border-radius: var(--r-md);
-  background: var(--danger-soft);
-  color: var(--danger);
-  font-size: 14px;
+.tr-sports .tr-list {
+  padding: 0;
+  margin-bottom: 0;
 }
+
+/* --- sheets --------------------------------------------------------------- */
 
 .tr-emoji-input {
   font-size: 22px;
 }
 
-.tr-emoji-hint {
-  margin-top: var(--s2);
-  font-size: 13px;
-  color: var(--text-dim);
-}
-
 .tr-archive-btn {
   margin-top: var(--s5);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--s2);
-}
-
-.tr-archive-btn svg {
-  width: 18px;
-  height: 18px;
 }
 
 /* --- detail -------------------------------------------------------------- */
-
-.tr-back {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--s1);
-  min-height: 44px;
-  padding: 0 var(--s4);
-  color: var(--accent);
-  font-size: 16px;
-  font-weight: 500;
-}
-
-.tr-back svg {
-  width: 20px;
-  height: 20px;
-}
 
 .tr-detail-list {
   display: flex;
@@ -214,7 +192,8 @@
 .tr-detail-row {
   display: flex;
   align-items: flex-start;
-  gap: var(--s1);
+  gap: 0;
+  margin-left: calc(-1 * var(--s2));
 }
 
 .tr-detail-row-card {
@@ -226,135 +205,21 @@
 .tr-detail-ghost {
   position: fixed;
   z-index: 60;
-  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.35);
+  margin-left: 0;
+  filter: drop-shadow(0 12px 24px rgba(0, 0, 0, 0.35));
   pointer-events: none;
 }
 
-/* The trailing "+" card that opens the exercise picker. */
-.tr-add-card {
-  width: 100%;
-  min-height: 96px;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--s1);
-  border: 1px dashed var(--border-strong);
-  border-radius: var(--r-lg);
-  background: transparent;
-  color: var(--text-dim);
-  font-size: 15px;
-  font-weight: 600;
+.tr-detail-actions {
+  padding: 0 var(--s4);
+  margin-top: var(--s4);
 }
 
-.tr-add-card:active {
-  background: var(--bg-raised);
-}
+/* --- sport detail --------------------------------------------------------- */
 
-.tr-add-card svg {
-  width: 24px;
-  height: 24px;
-}
-
-/* A single row instead of the stacked icon-over-label default — the default
-   height matches ExerciseCard's taller rows in the training detail view;
-   here it sits under much shorter training rows, so the tall centred block
-   read as oversized. */
-.tr-add-card-compact {
-  min-height: 52px;
-  flex-direction: row;
-  gap: var(--s2);
-}
-
-.tr-add-card-compact svg {
-  width: 20px;
-  height: 20px;
-}
-
-/* --- picker rows --------------------------------------------------------- */
-
-.tr-pick {
-  display: flex;
-  align-items: center;
-  gap: var(--s3);
-  width: 100%;
-  padding: var(--s2);
-  background: var(--bg-raised);
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-  text-align: left;
-}
-
-.tr-pick:active {
-  background: var(--bg-raised-2);
-}
-
-/* Already in this training — kept in the results, but unpickable (SPEC §5.3). */
-.tr-pick:disabled {
-  background: var(--bg-sunken);
-  color: var(--text-faint);
-}
-
-.tr-pick:disabled .tr-pick-add {
-  background: transparent;
-  color: var(--text-faint);
-}
-
-.tr-pick-thumb {
-  flex: none;
-  width: 52px;
-  height: 52px;
-  border-radius: var(--r-sm);
-  background: var(--bg-sunken);
-  overflow: hidden;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--text-faint);
-}
-
-.tr-pick-thumb img {
-  width: 100%;
-  height: 100%;
-  object-fit: contain;
-}
-
-.tr-pick-main {
-  flex: 1;
-  min-width: 0;
-}
-
-.tr-pick-name {
-  font-size: 15px;
-  font-weight: 600;
-  line-height: 1.25;
-}
-
-.tr-pick-meta {
-  /* A span by default: without this the meta line runs into the name. */
-  display: block;
-  margin-top: 2px;
-  font-size: 12px;
-  color: var(--text-dim);
-}
-
-.tr-pick-add {
-  flex: none;
-  width: 44px;
-  height: 44px;
-  border-radius: var(--r-full);
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  background: var(--accent-soft);
-  color: var(--accent);
-}
-
-.tr-pick-add svg {
-  width: 22px;
-  height: 22px;
+.tr-sport-log {
+  padding: 0 var(--s4);
+  margin-bottom: var(--s6);
 }
 
 /* --- sport log form: climbing grade steppers ----------------------------- */
@@ -373,10 +238,11 @@
 
 .sportlog-grade-label {
   flex: none;
-  width: 32px;
+  width: 40px;
   font-size: 15px;
-  font-weight: 650;
+  font-weight: 600;
   color: var(--text-dim);
+  padding-left: var(--s1);
 }
 
 .sportlog-grade-row .input {

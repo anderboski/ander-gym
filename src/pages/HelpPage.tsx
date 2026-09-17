@@ -2,14 +2,12 @@
  * Help — SPEC §5.9.
  *
  * A push view off Home rather than a sixth tab, same arrangement as Stats and
- * Profile (D1 locks the navigation at five). Static: no `useGym()` beyond
- * `t()`/language, nothing stored, just a walkthrough pairing a real
- * screenshot with a short caption for each of the five tabs, in the order
- * someone would actually hit them tapping across the bar.
+ * Profile (D1 locks the navigation at five). Static: nothing stored, just a
+ * walkthrough pairing a real screenshot with a short caption for each of the
+ * five tabs, in the order someone would actually hit them.
  */
 import { useLanguage, type TranslationKey } from '../data/i18n';
-import { ChevronLeftIcon } from '../components/icons';
-import { navigate } from '../router';
+import { BackButton } from '../components/BackButton';
 import homeShot from '../assets/help/home.png';
 import exercisesShot from '../assets/help/exercises.png';
 import trainingsShot from '../assets/help/trainings.png';
@@ -31,19 +29,17 @@ export function HelpPage() {
   return (
     <div className="page">
       <div className="page-header">
-        <button className="help-back" onClick={() => navigate('/home')} aria-label={t('help.backToHomeAria')}>
-          <ChevronLeftIcon />
-          <span>{t('tabbar.home')}</span>
-        </button>
+        <BackButton to="/home" label={t('tabbar.home')} ariaLabel={t('help.backToHomeAria')} />
         <h1 className="page-title">{t('help.title')}</h1>
         <div className="page-sub">{t('help.subtitle')}</div>
       </div>
 
-      {SECTIONS.map((section) => (
+      {SECTIONS.map((section, i) => (
         <section className="section" key={section.titleKey}>
           <div className="card help-card">
             <img className="help-shot" src={section.image} alt="" />
             <div className="card-pad">
+              <div className="help-card-step">{i + 1}</div>
               <h2 className="help-card-title">{t(section.titleKey)}</h2>
               <p className="help-card-body">{t(section.bodyKey)}</p>
             </div>

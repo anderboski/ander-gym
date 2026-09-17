@@ -6,9 +6,9 @@
  * stays lit on Home while it is open — the same arrangement as a training or
  * a session detail.
  *
- * A training-kind switcher (top right of the header) picks which stats show:
- * gym is the default and the only kind with real depth today; snowboard has
- * its own season-comparison chart; cycling and climbing are placeholders.
+ * A training-kind switcher (under the header) picks which stats show: gym is
+ * the default; snowboard has its own season-comparison chart; cycling and
+ * climbing each have a single ranked list.
  * Everything here is derived from `sessions`/`sportSessions`; nothing new is
  * stored. Every aggregate is memoised on its inputs and on a `now` captured
  * once, so a re-render never re-scans the history.
@@ -25,9 +25,8 @@ import {
   dayKey,
   defaultStatsView,
   formatMinutesOfDay,
-  formatShortDate,
-  formatShortLocalDate,
   formatShortMonth,
+  parseLocalDate,
   resolveStatsRange,
   STATS_PERIOD_DAYS,
   STATS_PERIODS,
@@ -53,7 +52,7 @@ import {
 } from '../data/derive';
 import { formatDurationEstimate } from '../data/derive';
 import { formatCompact, titleCase } from '../data/parse';
-import { translateExerciseName, translateFacetValue } from '../data/exerciseI18n';
+import { exerciseDisplayName, translateFacetValue } from '../data/exerciseI18n';
 import { snowConditionLabel, sportSessionSummary, trainingKindLabel, weatherLabel } from '../data/sportLabels';
 import {
   BarList,
@@ -65,9 +64,9 @@ import {
   TimeOfWeekPlot,
   type TimeMarker,
 } from '../components/Chart';
-import { ChevronLeftIcon } from '../components/icons';
-import { navigate } from '../router';
-import { useLanguage, type Language, type TranslationKey } from '../data/i18n';
+import { BackButton } from '../components/BackButton';
+import { BikeIcon, DumbbellIcon, MountainIcon, SnowflakeIcon } from '../components/icons';
+import { formatDay, useLanguage, type Language, type TranslationKey } from '../data/i18n';
 import {
   SNOW_CONDITIONS,
   WEATHER_CONDITIONS,
@@ -82,21 +81,21 @@ import {
 import './StatsPage.css';
 
 /**
- * Top-right switcher order — gym first (the default), then the sports that
- * have charts. `'other'` is deliberately absent: an 'other' log records
- * nothing but a date and notes, and no two 'other' trainings measure the same
- * thing, so there is nothing to aggregate (SPEC §5.7). Narrowed to its own
- * literal union rather than `TrainingKind[]` so a future kind has to opt into
- * this page instead of silently needing an emoji here.
+ * Switcher order — gym first (the default), then the sports that have charts.
+ * `'other'` is deliberately absent: an 'other' log records nothing but a date
+ * and notes, and no two 'other' trainings measure the same thing, so there is
+ * nothing to aggregate (SPEC §5.7). Narrowed to its own literal union rather
+ * than `TrainingKind[]` so a future kind has to opt into this page instead of
+ * silently needing an icon here.
  */
 const KIND_ORDER = ['gym', 'cycling', 'snowboard', 'climbing'] as const satisfies readonly TrainingKind[];
 type StatsKind = (typeof KIND_ORDER)[number];
 
-const KIND_EMOJI: Record<StatsKind, string> = {
-  gym: '🏋️',
-  cycling: '🚴',
-  snowboard: '🏂',
-  climbing: '🧗',
+const KIND_ICON: Record<StatsKind, (p: { className?: string }) => React.ReactElement> = {
+  gym: DumbbellIcon,
+  cycling: BikeIcon,
+  snowboard: SnowflakeIcon,
+  climbing: MountainIcon,
 };
 
 const TOP_EXERCISES_LIMIT = 10;
@@ -174,29 +173,30 @@ export function StatsPage() {
   return (
     <div className="page">
       <div className="page-header">
-        <button className="stats-back" onClick={() => navigate('/home')} aria-label={t('stats.backToHomeAria')}>
-          <ChevronLeftIcon />
-          <span>{t('tabbar.home')}</span>
-        </button>
-        <div className="stats-title-row">
-          <h1 className="page-title">{t('stats.title')}</h1>
-          <div className="stats-kind-switcher" role="tablist" aria-label={t('stats.kindSwitcherAria')}>
-            {KIND_ORDER.map((k) => (
+        <BackButton to="/home" label={t('tabbar.home')} ariaLabel={t('stats.backToHomeAria')} />
+        <h1 className="page-title">{t('stats.title')}</h1>
+      </div>
+
+      <section className="section">
+        <div className="segment stats-kind-switcher" role="tablist" aria-label={t('stats.kindSwitcherAria')}>
+          {KIND_ORDER.map((k) => {
+            const Icon = KIND_ICON[k];
+            return (
               <button
                 key={k}
                 type="button"
                 role="tab"
                 aria-selected={kind === k}
                 aria-label={trainingKindLabel(t, k)}
-                className="stats-kind-btn"
+                className="segment-btn stats-kind-btn"
                 onClick={() => setKind(k)}
               >
-                <span aria-hidden="true">{KIND_EMOJI[k]}</span>
+                <Icon />
               </button>
-            ))}
-          </div>
+            );
+          })}
         </div>
-      </div>
+      </section>
 
       {scoped && hasLogs && (
         <section className="section">
@@ -231,7 +231,7 @@ export function StatsPage() {
               exerciseById={exerciseById}
               weeklyGoal={settings.weeklyGoal}
               range={range}
-              rangeLabel={rangeLabel(t, period, range)}
+              rangeLabel={rangeLabel(t, locale, period, range)}
               view={activeView}
               now={now}
               locale={locale}
@@ -246,7 +246,7 @@ export function StatsPage() {
           <EmptyKind message={t('stats.cyclingEmptyState')} />
         ) : (
           range && (
-            <CyclingStats sportSessions={sportSessions} range={range} rangeLabel={rangeLabel(t, period, range)} />
+            <CyclingStats sportSessions={sportSessions} range={range} rangeLabel={rangeLabel(t, locale, period, range)} />
           )
         ))}
 
@@ -255,7 +255,7 @@ export function StatsPage() {
           <EmptyKind message={t('stats.climbingEmptyState')} />
         ) : (
           range && (
-            <ClimbingStats sportSessions={sportSessions} range={range} rangeLabel={rangeLabel(t, period, range)} />
+            <ClimbingStats sportSessions={sportSessions} range={range} rangeLabel={rangeLabel(t, locale, period, range)} />
           )
         ))}
     </div>
@@ -320,7 +320,7 @@ function RangeControls({
           </label>
           <select
             id="stats-period"
-            className="input stats-select"
+            className="input"
             value={period}
             onChange={(e) => onPeriod(e.target.value as StatsPeriod)}
           >
@@ -339,7 +339,7 @@ function RangeControls({
             </label>
             <select
               id="stats-view"
-              className="input stats-select"
+              className="input"
               value={view}
               // An unusable custom range offers no bucket size at all; the
               // select still names the one in effect rather than going blank.
@@ -395,10 +395,10 @@ function RangeControls({
  * ones, the two dates for a custom window — "Last 3 months" says more than
  * "90 days", and a custom range has no such name to fall back on.
  */
-function rangeLabel(t: (key: TranslationKey) => string, period: StatsPeriod, range: StatsRange): string {
+function rangeLabel(t: (key: TranslationKey) => string, locale: string, period: StatsPeriod, range: StatsRange): string {
   if (period !== 'custom') return t(PERIOD_LABEL_KEY[period]);
   const lastDay = new Date(range.end.getTime() - 1);
-  return `${formatShortDate(range.start.toISOString())} – ${formatShortDate(lastDay.toISOString())}`;
+  return `${formatDay(locale, range.start)} – ${formatDay(locale, lastDay)}`;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -438,19 +438,19 @@ function GymStats({
     <>
       <section className="section">
         <div className="card card-pad">
-          <SessionsChart buckets={buckets} view={view} goal={weeklyGoal} current={includesToday} />
+          <SessionsChart buckets={buckets} view={view} goal={weeklyGoal} current={includesToday} locale={locale} />
         </div>
       </section>
 
       <section className="section">
         <div className="card card-pad">
-          <VolumeChart buckets={buckets} view={view} />
+          <VolumeChart buckets={buckets} view={view} locale={locale} />
         </div>
       </section>
 
       <section className="section">
         <div className="card card-pad">
-          <DurationChart buckets={buckets} view={view} />
+          <DurationChart buckets={buckets} view={view} locale={locale} />
         </div>
       </section>
 
@@ -488,8 +488,8 @@ function GymStats({
  * rather than a day: a year of them starts and ends in the same month, and
  * two identical `1 Aug` edges say nothing about the span between them.
  */
-function edgeLabels(buckets: { start: string }[], view: StatsView): [string, string] | undefined {
-  const format = view === 'monthly' ? formatShortMonth : formatShortDate;
+function edgeLabels(buckets: { start: string }[], view: StatsView, locale: string): [string, string] | undefined {
+  const format = (iso: string) => (view === 'monthly' ? formatShortMonth(iso) : formatDay(locale, iso));
   const first = buckets[0];
   const last = buckets[buckets.length - 1];
   return first && last ? [format(first.start), format(last.start)] : undefined;
@@ -506,12 +506,14 @@ function SessionsChart({
   view,
   goal,
   current: includesToday,
+  locale,
 }: {
   buckets: PeriodStat[];
   view: StatsView;
   goal: number;
   /** Whether the last bucket is the one running now — "3 this week" is a lie about a window that ended in March. */
   current: boolean;
+  locale: string;
 }) {
   const { t } = useLanguage();
   const values = buckets.map((b) => b.sessions);
@@ -538,7 +540,7 @@ function SessionsChart({
         emphasisFrom={reference}
         reference={reference}
         formatTick={(v) => String(v)}
-        xLabels={edgeLabels(buckets, view)}
+        xLabels={edgeLabels(buckets, view, locale)}
         ariaLabel={
           met !== undefined
             ? t('stats.consistencyAria', { weeks: buckets.length, total, current, goal, met })
@@ -565,7 +567,7 @@ function SessionsChart({
  * Bodyweight-only buckets legitimately read zero — no load is no load — so
  * unlike duration there is no null case to distinguish.
  */
-function VolumeChart({ buckets, view }: { buckets: PeriodStat[]; view: StatsView }) {
+function VolumeChart({ buckets, view, locale }: { buckets: PeriodStat[]; view: StatsView; locale: string }) {
   const { t } = useLanguage();
   const unit = t(VIEW_UNIT_KEY[view]);
   const values = buckets.map((b) => b.volume);
@@ -594,7 +596,7 @@ function VolumeChart({ buckets, view }: { buckets: PeriodStat[]; view: StatsView
         // No "kg" on the ticks: `formatCompact` is sized for the ~4 characters
         // a phone axis gutter has, and the unit is already in the caption.
         formatTick={formatCompact}
-        xLabels={edgeLabels(buckets, view)}
+        xLabels={edgeLabels(buckets, view, locale)}
         ariaLabel={
           total > 0
             ? t('stats.volumeAria', { unit, total: kg(total), best: kg(best) })
@@ -611,7 +613,7 @@ function VolumeChart({ buckets, view }: { buckets: PeriodStat[]; view: StatsView
  * already draws an empty bucket as a flat stub rather than a gap or a
  * misleading zero-minute point — the same treatment `SessionsChart` gets.
  */
-function DurationChart({ buckets, view }: { buckets: PeriodStat[]; view: StatsView }) {
+function DurationChart({ buckets, view, locale }: { buckets: PeriodStat[]; view: StatsView; locale: string }) {
   const { t } = useLanguage();
   const values = buckets.map((b) => b.avgMinutes ?? 0);
   const withData = buckets.map((b) => b.avgMinutes).filter((m): m is number => m !== null);
@@ -632,7 +634,7 @@ function DurationChart({ buckets, view }: { buckets: PeriodStat[]; view: StatsVi
       <BarStrip
         values={values}
         formatTick={(v) => `${Math.round(v)}m`}
-        xLabels={edgeLabels(buckets, view)}
+        xLabels={edgeLabels(buckets, view, locale)}
         ariaLabel={
           withData.length > 0
             ? t('stats.durationAria', {
@@ -829,7 +831,7 @@ function TopExercises({
           const exercise = exerciseById.get(row.exerciseId);
           return {
             key: row.exerciseId,
-            label: exercise ? translateExerciseName(language, exercise.name) : t('stats.removedExercises'),
+            label: exercise ? exerciseDisplayName(language, exercise.name) : t('stats.removedExercises'),
             value: row.count,
             valueLabel: row.count === 1 ? t('stats.timesOne') : t('stats.timesOther', { count: row.count }),
           };
@@ -879,16 +881,11 @@ function SnowboardStats({ sportSessions }: { sportSessions: SportSession[] }) {
     });
 
   const toggle = (
-    <div className="stats-segment" role="group" aria-label={t('stats.seasonSplitAria')}>
-      <button type="button" className="stats-segment-btn" aria-pressed={split === 'snow'} onClick={() => setSplit('snow')}>
+    <div className="segment" role="group" aria-label={t('stats.seasonSplitAria')}>
+      <button type="button" className="segment-btn" aria-pressed={split === 'snow'} onClick={() => setSplit('snow')}>
         {t('stats.seasonSplitBySnow')}
       </button>
-      <button
-        type="button"
-        className="stats-segment-btn"
-        aria-pressed={split === 'weather'}
-        onClick={() => setSplit('weather')}
-      >
+      <button type="button" className="segment-btn" aria-pressed={split === 'weather'} onClick={() => setSplit('weather')}>
         {t('stats.seasonSplitByWeather')}
       </button>
     </div>
@@ -968,7 +965,7 @@ function CyclingRides({
   rides: CyclingRide[];
   rangeLabel: string;
 }) {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
 
   if (rides.length === 0) {
     return (
@@ -990,7 +987,7 @@ function CyclingRides({
       <BarList
         rows={rides.map((ride) => ({
           key: ride.id,
-          label: formatShortLocalDate(ride.date),
+          label: formatDay(locale, parseLocalDate(ride.date)),
           value: ride.distanceKm,
           valueLabel: sportSessionSummary(t, ride),
           note: ride.elevationPerKm !== null ? t('stats.cyclingElevationPerKm', { value: Math.round(ride.elevationPerKm) }) : undefined,

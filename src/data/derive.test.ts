@@ -27,9 +27,7 @@ import {
   formatCountdown,
   formatDurationEstimate,
   formatElapsed,
-  formatShortDate,
   formatMinutesOfDay,
-  formatShortLocalDate,
   greetingBucket,
   historyFor,
   lastSessionForTraining,
@@ -143,12 +141,6 @@ describe('daysBetween', () => {
 describe('parseLocalDate', () => {
   it('parses YYYY-MM-DD as local midnight, not UTC', () => {
     expect(parseLocalDate('2026-08-02')).toEqual(new Date(2026, 7, 2));
-  });
-});
-
-describe('formatShortLocalDate', () => {
-  it('formats a bare YYYY-MM-DD without a UTC-parsing day shift', () => {
-    expect(formatShortLocalDate('2026-08-02')).toBe('2 Aug');
   });
 });
 
@@ -1372,7 +1364,7 @@ describe('calendar', () => {
     expect(addMonths(new Date(2026, 0, 15), -1)).toEqual(new Date(2025, 11, 1));
   });
 
-  it('dayKey formats local-time YYYY-MM-DD, matching formatDate', () => {
+  it('dayKey formats local-time YYYY-MM-DD', () => {
     expect(dayKey(new Date(2026, 7, 4))).toBe('2026-08-04');
   });
 
@@ -1569,11 +1561,6 @@ describe("the 'other' sport kind", () => {
 });
 
 describe('display helpers', () => {
-  it('formats a short axis date without depending on the locale', () => {
-    expect(formatShortDate(at(2026, 7, 23))).toBe('23 Jul');
-    expect(formatShortDate(at(2026, 1, 5))).toBe('5 Jan');
-  });
-
   it('formats elapsed time', () => {
     const start = at(2026, 8, 1, 10, 0);
     expect(formatElapsed(start, new Date(2026, 7, 1, 10, 24))).toBe('24m');

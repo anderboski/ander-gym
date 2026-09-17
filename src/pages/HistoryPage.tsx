@@ -1,108 +1,68 @@
 /**
- * History — reverse-chronological list of saved sessions (SPEC §5.5).
+ * History — reverse-chronological list of everything logged (SPEC §5.5).
  *
- * `sessions` arrives newest-first from the store; rows are grouped under month
- * headings so a long history stays scannable without any extra sorting.
+ * `sessions` and `sportSessions` arrive newest-first from the store and are
+ * interleaved by `mergedHistory`; rows are grouped under month headings so a
+ * long history stays scannable.
  */
 import { useMemo } from 'react';
 import { useGym } from '../data/store';
-import { formatDateTime, formatShortLocalDate, mergedHistory, setCount, totalVolume, type HistoryItem } from '../data/derive';
+import { groupHistoryByMonth, mergedHistory, parseLocalDate, setCount, totalVolume, trainingBadge } from '../data/derive';
 import { navigate } from '../router';
 import { ChevronRightIcon } from '../components/icons';
-import { useLanguage, type TFunc } from '../data/i18n';
+import { formatDayTime, formatDayWithWeekday, formatMonthYear, useLanguage, type TFunc } from '../data/i18n';
 import { sportSessionSummary } from '../data/sportLabels';
 import type { Session, SportSession, Training } from '../data/types';
 import './HistoryPage.css';
 
-/**
- * Same fallback as the Home calendar dot and the Trainings row: the
- * training's own emoji, else the label's first letter — a session's
- * `trainingId` can point at an archived or (for a zero-history training)
- * already-deleted training, so this never assumes a hit.
- */
-function trainingEmoji(training: Training | undefined, label: string): string {
-  return training?.emoji ?? label.charAt(0).toUpperCase();
-}
-
 /** `12 sets · 1240 kg`, or just the sets for an all-bodyweight session. */
-export function sessionSummary(session: Session, t: TFunc): string {
+function sessionSummary(session: Session, t: TFunc): string {
   const sets = setCount(session);
   const volume = Math.round(totalVolume(session));
   const setsLabel = `${sets} ${t(sets === 1 ? 'common.setOne' : 'common.setsOther')}`;
   return volume > 0 ? `${setsLabel} · ${volume} kg` : setsLabel;
 }
 
-type MonthGroup = { key: string; label: string; items: HistoryItem[] };
-
-/** `August 2026`, in the app's chosen locale. */
-function monthLabel(d: Date, locale: string): string {
-  return d.toLocaleDateString(locale, { month: 'long', year: 'numeric' });
-}
-
-/**
- * Split an already-sorted, merged list into consecutive month runs. Because
- * the input is newest-first (`mergedHistory`), a simple run-length pass is
- * enough — no map, no re-sort.
- */
-function groupByMonth(items: HistoryItem[], locale: string): MonthGroup[] {
-  const groups: MonthGroup[] = [];
-
-  for (const item of items) {
-    const d = item.at;
-    const key = `${d.getFullYear()}-${d.getMonth()}`;
-    const last = groups[groups.length - 1];
-
-    if (last && last.key === key) last.items.push(item);
-    else groups.push({ key, label: monthLabel(d, locale), items: [item] });
-  }
-  return groups;
-}
-
-function SessionRow({ session, training }: { session: Session; training: Training | undefined }) {
-  const { t } = useLanguage();
-
+function HistoryRow({ id, badge, title, label, summary }: { id: string; badge: string; title: string; label: string; summary: string }) {
   return (
-    <button
-      className="card card-tappable history-row"
-      onClick={() => navigate(`/history/${session.id}`)}
-      aria-label={`${session.trainingLabel}, ${formatDateTime(session.startedAt)}, ${sessionSummary(session, t)}`}
-    >
-      <span className="history-row-emoji" aria-hidden="true">
-        {trainingEmoji(training, session.trainingLabel)}
+    <button className="history-row card-row" onClick={() => navigate(`/history/${id}`)} aria-label={`${label}, ${title}, ${summary}`}>
+      <span className="history-row-badge" aria-hidden="true">
+        {badge}
       </span>
       <span className="history-row-main">
-        <span className="history-row-date num">{formatDateTime(session.startedAt)}</span>
-        <span className="history-row-training">{session.trainingLabel}</span>
-        <span className="history-row-summary">{sessionSummary(session, t)}</span>
+        <span className="history-row-title">{label}</span>
+        <span className="history-row-summary">
+          {title} · {summary}
+        </span>
       </span>
-      <span className="history-row-chevron" aria-hidden="true">
-        <ChevronRightIcon />
-      </span>
+      <ChevronRightIcon className="history-row-chevron" />
     </button>
   );
 }
 
-function SportHistoryRow({ session, training }: { session: SportSession; training: Training | undefined }) {
-  const { t } = useLanguage();
-
+function SessionRow({ session, training, now }: { session: Session; training: Training | undefined; now: Date }) {
+  const { t, locale } = useLanguage();
   return (
-    <button
-      className="card card-tappable history-row"
-      onClick={() => navigate(`/history/${session.id}`)}
-      aria-label={`${session.trainingLabel}, ${formatShortLocalDate(session.date)}, ${sportSessionSummary(t, session)}`}
-    >
-      <span className="history-row-emoji" aria-hidden="true">
-        {trainingEmoji(training, session.trainingLabel)}
-      </span>
-      <span className="history-row-main">
-        <span className="history-row-date num">{formatShortLocalDate(session.date)}</span>
-        <span className="history-row-training">{session.trainingLabel}</span>
-        <span className="history-row-summary">{sportSessionSummary(t, session)}</span>
-      </span>
-      <span className="history-row-chevron" aria-hidden="true">
-        <ChevronRightIcon />
-      </span>
-    </button>
+    <HistoryRow
+      id={session.id}
+      badge={trainingBadge(training, session.trainingLabel)}
+      title={formatDayTime(locale, session.startedAt, now)}
+      label={session.trainingLabel}
+      summary={sessionSummary(session, t)}
+    />
+  );
+}
+
+function SportHistoryRow({ session, training, now }: { session: SportSession; training: Training | undefined; now: Date }) {
+  const { t, locale } = useLanguage();
+  return (
+    <HistoryRow
+      id={session.id}
+      badge={trainingBadge(training, session.trainingLabel)}
+      title={formatDayWithWeekday(locale, parseLocalDate(session.date), now)}
+      label={session.trainingLabel}
+      summary={sportSessionSummary(t, session)}
+    />
   );
 }
 
@@ -110,9 +70,10 @@ export function HistoryPage() {
   const { sessions, sportSessions, trainings, status } = useGym();
   const { t, locale } = useLanguage();
   const items = useMemo(() => mergedHistory(sessions, sportSessions), [sessions, sportSessions]);
-  const groups = useMemo(() => groupByMonth(items, locale), [items, locale]);
+  const groups = useMemo(() => groupHistoryByMonth(items), [items]);
   const trainingsById = useMemo(() => new Map(trainings.map((tr) => [tr.id, tr])), [trainings]);
   const total = items.length;
+  const now = new Date();
 
   return (
     <div className="page">
@@ -127,25 +88,20 @@ export function HistoryPage() {
 
       {status === 'loading' && <div className="spinner" />}
 
-      {status !== 'loading' && total === 0 && (
-        <div className="empty">{t('history.emptyState')}</div>
-      )}
+      {status !== 'loading' && total === 0 && <div className="empty">{t('history.emptyState')}</div>}
 
       {groups.map((group) => (
         <section className="section" key={group.key}>
-          <h2 className="section-title">{group.label}</h2>
-          <div className="history-list">
+          <h2 className="section-title history-month">{formatMonthYear(locale, group.anchor)}</h2>
+          <div className="card">
             {group.items.map((item) =>
               item.kind === 'gym' ? (
-                <SessionRow
-                  session={item.session}
-                  training={trainingsById.get(item.session.trainingId)}
-                  key={item.session.id}
-                />
+                <SessionRow session={item.session} training={trainingsById.get(item.session.trainingId)} now={now} key={item.session.id} />
               ) : (
                 <SportHistoryRow
                   session={item.sportSession}
                   training={trainingsById.get(item.sportSession.trainingId)}
+                  now={now}
                   key={item.sportSession.id}
                 />
               ),

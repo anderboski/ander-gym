@@ -16,35 +16,33 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useGym } from '../data/store';
 import { daysAgoLabel, useLanguage } from '../data/i18n';
-import { translateExerciseName, translateFacetValue } from '../data/exerciseI18n';
+import { exerciseDisplayName } from '../data/exerciseI18n';
 import {
   adjustRest,
   beatsPersonalRecord,
+  diffExerciseIds,
   formatCountdown,
   formatElapsed,
-  latestFor,
+  lastSetFor,
   personalRecords,
   remainingSeconds,
   restPhase,
   restProgress,
   startRest,
+  trainingBadge,
   type ExerciseRecord,
   type RestTimer,
 } from '../data/derive';
-import { formatSet, formatWeight, summariseSets, titleCase } from '../data/parse';
-import {
-  DEFAULT_REST_SECONDS,
-  REST_PRESETS,
-  type ActiveSession,
-  type Exercise,
-  type SessionEntry,
-  type Session,
-  type Training,
-} from '../data/types';
+import { formatSet, formatWeight, summariseSets } from '../data/parse';
+import { DEFAULT_REST_SECONDS, REST_PRESETS, type ActiveSession, type Exercise, type SessionEntry, type Session, type Training } from '../data/types';
 import { ExerciseBrowser } from '../components/ExerciseBrowser';
 import { ExerciseHistorySheet } from '../components/ExerciseCard';
+import { ExerciseThumb } from '../components/ExerciseThumb';
+import { PickRow } from '../components/PickRow';
 import { ConfirmSheet, Sheet, Toast } from '../components/Sheet';
-import { CheckIcon, ChevronRightIcon, ClockIcon, PlusIcon, TrashIcon } from '../components/icons';
+import { ChevronRightIcon, ClockIcon, PlusIcon, TrashIcon } from '../components/icons';
+import { useClock } from '../hooks/useClock';
+import { useTransient } from '../hooks/useTransient';
 import { navigate } from '../router';
 import './SessionPage.css';
 
@@ -65,30 +63,29 @@ export function SessionPage() {
   const { t, language } = useLanguage();
   const [pendingSync, setPendingSync] = useState<PendingTrainingSync | null>(null);
 
-  if (status === 'loading') return <div className="page"><div className="spinner" /></div>;
+  if (status === 'loading') {
+    return (
+      <div className="page">
+        <div className="spinner" />
+      </div>
+    );
+  }
 
   // Lifted above the active/no-active switch: `active` clears the instant the
   // session saves, which would unmount this confirmation if it lived in ActiveView.
   const onSaved = (session: Session, originalExerciseIds: string[]) => {
-    const finalIds = [...new Set(session.entries.map((e) => e.exerciseId))];
-    const addedIds = finalIds.filter((id) => !originalExerciseIds.includes(id));
-    const removedIds = originalExerciseIds.filter((id) => !finalIds.includes(id));
+    const { addedIds, removedIds } = diffExerciseIds(originalExerciseIds, session);
     if (addedIds.length === 0 && removedIds.length === 0) {
       navigate('/history');
       return;
     }
-    setPendingSync({
-      trainingId: session.trainingId,
-      trainingLabel: session.trainingLabel,
-      addedIds,
-      removedIds,
-    });
+    setPendingSync({ trainingId: session.trainingId, trainingLabel: session.trainingLabel, addedIds, removedIds });
   };
 
   const syncMessage = (sync: PendingTrainingSync): string => {
     const nameOf = (id: string) => {
       const name = getExercise(id)?.name;
-      return name ? translateExerciseName(language, name) : id;
+      return name ? exerciseDisplayName(language, name) : id;
     };
     const parts: string[] = [];
     if (sync.addedIds.length > 0) parts.push(t('session.syncAdd', { names: sync.addedIds.map(nameOf).join(', ') }));
@@ -98,11 +95,7 @@ export function SessionPage() {
 
   return (
     <>
-      {active ? (
-        <ActiveView active={active} onSaved={onSaved} />
-      ) : (
-        <NewSessionView trainings={trainings} />
-      )}
+      {active ? <ActiveView active={active} onSaved={onSaved} /> : <NewSessionView trainings={trainings} />}
 
       {pendingSync && (
         <ConfirmSheet
@@ -136,10 +129,9 @@ function NewSessionView({ trainings }: { trainings: Training[] }) {
   const [starting, setStarting] = useState(false);
 
   // A session here is the live, set-by-set gym flow — it has no shape for a
-  // sport day's after-the-fact summary (weather/snow, distance, climbs per
-  // grade). Those are logged from the training's own detail page instead
-  // (TrainingDetailPage's sportLog form), never started from here.
-  const gymTrainings = trainings.filter((tr) => (tr.kind ?? 'gym') === 'gym');
+  // sport day's after-the-fact summary. Those are logged from the training's
+  // own detail page instead (TrainingDetailPage's sportLog form).
+  const gymTrainings = trainings.filter((tr) => !tr.archived && (tr.kind ?? 'gym') === 'gym');
   const sportOnly = gymTrainings.length === 0 && trainings.length > 0;
 
   const start = (id: string) => {
@@ -156,36 +148,30 @@ function NewSessionView({ trainings }: { trainings: Training[] }) {
         <div className="page-sub">{t('session.nothingInProgress')}</div>
       </div>
 
-      <div className="section sess-centre">
-        <div className="card sess-new">
-          <div className="sess-new-head">
-            <div className="sess-new-title">{t('session.newSession')}</div>
-            <div className="sess-new-sub">{t('session.pickTrainingDay')}</div>
+      <div className="section">
+        <div className="section-title">{t('session.pickTrainingDay')}</div>
+        {gymTrainings.length === 0 ? (
+          <div className="card">
+            <div className="empty">{sportOnly ? t('session.gymOnlyHint') : t('session.noTrainingDaysFound')}</div>
           </div>
-
-          {gymTrainings.length === 0 ? (
-            <div className="empty">
-              {sportOnly ? t('session.gymOnlyHint') : t('session.noTrainingDaysFound')}
-            </div>
-          ) : (
-            gymTrainings.map((tr) => (
-              <button
-                key={tr.id}
-                className="sess-new-row card-tappable"
-                onClick={() => start(tr.id)}
-                disabled={starting}
-              >
-                <span className="sess-new-row-text">
-                  <span className="sess-new-label">{tr.label}</span>
+        ) : (
+          <div className="card">
+            {gymTrainings.map((tr) => (
+              <button key={tr.id} className="sess-new-row card-row" onClick={() => start(tr.id)} disabled={starting}>
+                <span className="sess-new-badge" aria-hidden="true">
+                  {trainingBadge(tr)}
                 </span>
-                <span className="sess-new-count num">
-                  {tr.exerciseIds.length} {t(tr.exerciseIds.length === 1 ? 'browser.exerciseOne' : 'browser.exerciseOther')}
+                <span className="sess-new-text">
+                  <span className="sess-new-label">{tr.label}</span>
+                  <span className="sess-new-count">
+                    {tr.exerciseIds.length} {t(tr.exerciseIds.length === 1 ? 'browser.exerciseOne' : 'browser.exerciseOther')}
+                  </span>
                 </span>
                 <ChevronRightIcon className="sess-new-chevron" />
               </button>
-            ))
-          )}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -195,58 +181,9 @@ function NewSessionView({ trainings }: { trainings: Training[] }) {
 /* State B — active session                                                    */
 /* -------------------------------------------------------------------------- */
 
-/** Ticks every 30 s — a minute-resolution clock does not need a 1 s interval. */
-function useNow(intervalMs: number): Date {
-  const [now, setNow] = useState(() => new Date());
-
-  useEffect(() => {
-    const tick = () => setNow(new Date());
-    const id = window.setInterval(tick, intervalMs);
-    // iOS throttles timers in the background; resync the moment we come back.
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') tick();
-    };
-    document.addEventListener('visibilitychange', onVisible);
-    return () => {
-      window.clearInterval(id);
-      document.removeEventListener('visibilitychange', onVisible);
-    };
-  }, [intervalMs]);
-
-  return now;
-}
-
-/* -------------------------------------------------------------------------- */
-/* Rest timer                                                                  */
-/* -------------------------------------------------------------------------- */
-
 /** Present on Android Chrome, absent on iOS. Feature-detected, never depended on. */
 function buzz(): void {
   if (typeof navigator.vibrate === 'function') navigator.vibrate(180);
-}
-
-/** Wall-clock milliseconds, re-read once a second while `running`. */
-function useNowMs(running: boolean): number {
-  const [nowMs, setNowMs] = useState(() => Date.now());
-
-  useEffect(() => {
-    if (!running) return;
-    const tick = () => setNowMs(Date.now());
-    tick();
-    const id = window.setInterval(tick, 1000);
-    // iOS suspends the interval in a backgrounded tab. Nothing is being counted
-    // down — the deadline is absolute — so one read on the way back catches up.
-    const onVisible = () => {
-      if (document.visibilityState === 'visible') tick();
-    };
-    document.addEventListener('visibilitychange', onVisible);
-    return () => {
-      window.clearInterval(id);
-      document.removeEventListener('visibilitychange', onVisible);
-    };
-  }, [running]);
-
-  return nowMs;
 }
 
 /**
@@ -269,7 +206,7 @@ function RestBar({
   onPickDefault: (seconds: number) => void;
 }) {
   const { t } = useLanguage();
-  const nowMs = useNowMs(rest !== null);
+  const nowMs = useClock(1000, rest !== null);
   const phase = rest ? restPhase(rest, nowMs) : null;
   const done = phase === 'done';
 
@@ -289,7 +226,7 @@ function RestBar({
   }, [phase, onDismiss]);
 
   return (
-    <div className="sess-rest">
+    <div className={rest ? 'sess-rest sess-rest-running' : 'sess-rest'}>
       <div className="sess-rest-main">
         {rest ? (
           <>
@@ -297,43 +234,23 @@ function RestBar({
               {done ? t('session.restDone') : formatCountdown(remainingSeconds(rest.targetMs, nowMs))}
             </div>
             <div className="sess-rest-controls">
-              <button
-                className="btn btn-sm sess-rest-btn num"
-                disabled={done}
-                aria-label={t('session.restMinus30Aria')}
-                onClick={() => onAdjust(-30)}
-              >
+              <button className="btn btn-sm sess-rest-btn num" disabled={done} aria-label={t('session.restMinus30Aria')} onClick={() => onAdjust(-30)}>
                 −30
               </button>
-              <button
-                className="btn btn-sm sess-rest-btn num"
-                aria-label={t('session.restPlus30Aria')}
-                onClick={() => onAdjust(30)}
-              >
+              <button className="btn btn-sm sess-rest-btn num" aria-label={t('session.restPlus30Aria')} onClick={() => onAdjust(30)}>
                 +30
               </button>
-              <button className="btn btn-sm sess-rest-btn" onClick={onDismiss}>
+              <button className="btn btn-sm sess-rest-btn sess-rest-skip" onClick={onDismiss}>
                 {done ? t('session.clear') : t('session.skip')}
               </button>
             </div>
           </>
         ) : (
           <>
-            <div className="sess-rest-time sess-rest-idle">
-              {t('session.restLabel')} <span className="num">{defaultSeconds}s</span>
-            </div>
-            <div
-              className="sess-rest-controls"
-              role="group"
-              aria-label={t('session.restLengthAria')}
-            >
+            <div className="sess-rest-time sess-rest-idle">{t('session.restLabel')}</div>
+            <div className="segment sess-rest-presets" role="group" aria-label={t('session.restLengthAria')}>
               {REST_PRESETS.map((seconds) => (
-                <button
-                  key={seconds}
-                  className="chip sess-rest-preset num"
-                  aria-pressed={seconds === defaultSeconds}
-                  onClick={() => onPickDefault(seconds)}
-                >
+                <button key={seconds} className="segment-btn num" aria-pressed={seconds === defaultSeconds} onClick={() => onPickDefault(seconds)}>
                   {seconds}s
                 </button>
               ))}
@@ -343,10 +260,7 @@ function RestBar({
       </div>
 
       <div className="sess-rest-track" aria-hidden="true">
-        <div
-          className="sess-rest-fill"
-          style={{ width: `${(rest ? restProgress(rest, nowMs) : 0) * 100}%` }}
-        />
+        <div className="sess-rest-fill" style={{ width: `${(rest ? restProgress(rest, nowMs) : 0) * 100}%` }} />
       </div>
     </div>
   );
@@ -358,13 +272,7 @@ type PendingRemoveExercise = { exerciseId: string; name: string; setCount: numbe
 /** The set that just took a record, announced once and then forgotten. */
 type NewRecord = { reps: number; weight: number };
 
-function ActiveView({
-  active,
-  onSaved,
-}: {
-  active: ActiveSession;
-  onSaved: (session: Session, originalExerciseIds: string[]) => void;
-}) {
+function ActiveView({ active, onSaved }: { active: ActiveSession; onSaved: (session: Session, originalExerciseIds: string[]) => void }) {
   const {
     sessions,
     exerciseLatest,
@@ -379,17 +287,17 @@ function ActiveView({
     setTrainingRest,
   } = useGym();
   const { t, language } = useLanguage();
-  const now = useNow(30_000);
+  // A minute-resolution clock does not need a 1 s interval.
+  const now = new Date(useClock(30_000));
 
   const [addingTo, setAddingTo] = useState<string | null>(null);
   const [pickingExercise, setPickingExercise] = useState(false);
   const [pendingDelete, setPendingDelete] = useState<PendingDelete | null>(null);
-  const [pendingRemoveExercise, setPendingRemoveExercise] = useState<PendingRemoveExercise | null>(
-    null,
-  );
+  const [pendingRemoveExercise, setPendingRemoveExercise] = useState<PendingRemoveExercise | null>(null);
   const [confirmDiscard, setConfirmDiscard] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
-  const [newRecord, setNewRecord] = useState<NewRecord | null>(null);
+  // A fresh object per record, so back-to-back records restart the timer.
+  const [newRecord, setNewRecord] = useTransient<NewRecord>(4000);
   const [rest, setRest] = useState<RestTimer | null>(null);
 
   // The training can be renamed or re-timed mid-session; read the default at
@@ -398,20 +306,9 @@ function ActiveView({
   const restSeconds = training?.restSeconds ?? DEFAULT_REST_SECONDS;
 
   const dismissRest = useCallback(() => setRest(null), []);
-  const adjustRestBy = useCallback(
-    (delta: number) => setRest((r) => (r ? adjustRest(r, delta, Date.now()) : r)),
-    [],
-  );
+  const adjustRestBy = useCallback((delta: number) => setRest((r) => (r ? adjustRest(r, delta, Date.now()) : r)), []);
 
   const totalSets = active.entries.reduce((n, e) => n + e.sets.length, 0);
-
-  // A fresh object per PR, so back-to-back records restart the timer instead of
-  // inheriting the first one's remaining time.
-  useEffect(() => {
-    if (!newRecord) return;
-    const t = setTimeout(() => setNewRecord(null), 4000);
-    return () => clearTimeout(t);
-  }, [newRecord]);
 
   const onSave = () => {
     const originalExerciseIds = training?.exerciseIds ?? [];
@@ -429,24 +326,24 @@ function ActiveView({
   }, []);
 
   const addingExercise = addingTo === null ? null : getExercise(addingTo);
-  const addingName =
-    addingTo === null
-      ? ''
-      : addingExercise
-        ? translateExerciseName(language, addingExercise.name)
-        : addingTo;
+  const addingName = addingTo === null ? '' : addingExercise ? exerciseDisplayName(language, addingExercise.name) : addingTo;
 
   return (
     <div className="page sess-page">
       <div className="sess-fixed">
         <div className="page-header sess-head">
-          <div>
+          <div className="sess-head-text">
+            <div className="sess-elapsed num" aria-label={t('session.elapsedAria')}>
+              <ClockIcon />
+              {formatElapsed(active.startedAt, now)}
+              <span className="sess-elapsed-sep">·</span>
+              {t(totalSets === 1 ? 'session.setsLoggedOne' : 'session.setsLoggedOther', { count: totalSets })}
+            </div>
             <h1 className="page-title">{active.trainingLabel}</h1>
           </div>
-          <div className="sess-elapsed num" aria-label={t('session.elapsedAria')}>
-            <ClockIcon />
-            {formatElapsed(active.startedAt, now)}
-          </div>
+          <button className="icon-btn icon-btn-filled sess-discard-btn" aria-label={t('session.discardSession')} onClick={() => setConfirmDiscard(true)}>
+            <TrashIcon />
+          </button>
         </div>
 
         <RestBar
@@ -464,9 +361,6 @@ function ActiveView({
             <div className="card card-pad sess-hint">
               <p className="sess-hint-title">{t('session.noExercisesYet')}</p>
               <p className="sess-hint-body">{t('session.addFromTrainingsHint')}</p>
-              <button className="btn btn-sm" onClick={() => navigate('/trainings')}>
-                {t('home.goToTrainings')}
-              </button>
             </div>
           ) : (
             <div className="card sess-table">
@@ -477,16 +371,8 @@ function ActiveView({
                   exercise={getExercise(entry.exerciseId)}
                   latest={exerciseLatest.get(entry.exerciseId)}
                   onAdd={() => openAdd(entry.exerciseId)}
-                  onPickSet={(index, name, label) =>
-                    setPendingDelete({ exerciseId: entry.exerciseId, index, name, label })
-                  }
-                  onRemove={(name) =>
-                    setPendingRemoveExercise({
-                      exerciseId: entry.exerciseId,
-                      name,
-                      setCount: entry.sets.length,
-                    })
-                  }
+                  onPickSet={(index, name, label) => setPendingDelete({ exerciseId: entry.exerciseId, index, name, label })}
+                  onRemove={(name) => setPendingRemoveExercise({ exerciseId: entry.exerciseId, name, setCount: entry.sets.length })}
                 />
               ))}
             </div>
@@ -499,20 +385,14 @@ function ActiveView({
               {notice}
             </p>
           )}
-          <button
-            className="btn sess-add-exercise btn-block"
-            onClick={() => setPickingExercise(true)}
-          >
+          <button className="btn btn-tinted btn-block" onClick={() => setPickingExercise(true)}>
             <PlusIcon />
             {t('exercises.addExercise')}
           </button>
           <button className="btn btn-primary btn-lg btn-block" onClick={onSave}>
             {t('session.saveSession')}
           </button>
-          <div className="sess-summary num">
-            {t(totalSets === 1 ? 'session.setsLoggedOne' : 'session.setsLoggedOther', { count: totalSets })}
-          </div>
-          <button className="btn btn-danger btn-sm" onClick={() => setConfirmDiscard(true)}>
+          <button className="btn btn-ghost btn-sm sess-discard" onClick={() => setConfirmDiscard(true)}>
             {t('session.discardSession')}
           </button>
         </div>
@@ -528,7 +408,7 @@ function ActiveView({
             setAddingTo(null);
             // The baseline includes this session's own sets — `active` still
             // holds the pre-save entries here — so three ascending sets report
-            // three distinct PRs instead of the same one three times.
+            // three distinct records instead of the same one three times.
             if (beatsPersonalRecord({ reps, weight }, personalRecords(id, [...sessions, active]))) {
               setNewRecord({ reps, weight });
             }
@@ -545,10 +425,11 @@ function ActiveView({
             layout="list"
             disabledIds={active.entries.map((e) => e.exerciseId)}
             renderItem={(exercise, { disabled }) => (
-              <SessPickRow
+              <PickRow
                 key={exercise.id}
                 exercise={exercise}
                 disabled={disabled}
+                context="session"
                 onAdd={() => {
                   void addExerciseToSession(exercise.id);
                   setPickingExercise(false);
@@ -564,11 +445,7 @@ function ActiveView({
       {pendingDelete && (
         <ConfirmSheet
           title={t('session.deleteSetTitle')}
-          message={t('session.deleteSetMessage', {
-            label: pendingDelete.label,
-            index: pendingDelete.index + 1,
-            name: pendingDelete.name,
-          })}
+          message={t('session.deleteSetMessage', { label: pendingDelete.label, index: pendingDelete.index + 1, name: pendingDelete.name })}
           confirmLabel={t('common.delete')}
           danger
           onCancel={() => setPendingDelete(null)}
@@ -586,12 +463,10 @@ function ActiveView({
           message={
             pendingRemoveExercise.setCount === 0
               ? t('session.removeExerciseNoSets', { name: pendingRemoveExercise.name })
-              : t(
-                  pendingRemoveExercise.setCount === 1
-                    ? 'session.removeExerciseWithSetsOne'
-                    : 'session.removeExerciseWithSetsOther',
-                  { name: pendingRemoveExercise.name, count: pendingRemoveExercise.setCount },
-                )
+              : t(pendingRemoveExercise.setCount === 1 ? 'session.removeExerciseWithSetsOne' : 'session.removeExerciseWithSetsOther', {
+                  name: pendingRemoveExercise.name,
+                  count: pendingRemoveExercise.setCount,
+                })
           }
           confirmLabel={t('session.remove')}
           danger
@@ -610,9 +485,7 @@ function ActiveView({
           message={
             totalSets === 0
               ? t('session.discardEmpty')
-              : t(totalSets === 1 ? 'session.discardWithSetsOne' : 'session.discardWithSetsOther', {
-                  count: totalSets,
-                })
+              : t(totalSets === 1 ? 'session.discardWithSetsOne' : 'session.discardWithSetsOther', { count: totalSets })
           }
           confirmLabel={t('session.discard')}
           danger
@@ -630,72 +503,6 @@ function ActiveView({
 /* -------------------------------------------------------------------------- */
 /* Row                                                                         */
 /* -------------------------------------------------------------------------- */
-
-function RowThumb({ exercise, name }: { exercise: Exercise | undefined; name: string }) {
-  const [broken, setBroken] = useState(false);
-  const url = exercise?.imageUrl ?? null;
-
-  // No photo (custom exercise), or the image is not in the offline cache.
-  if (!url || broken) {
-    return <div className="sess-thumb sess-thumb-letter">{name.charAt(0).toUpperCase()}</div>;
-  }
-  return (
-    <img
-      className="sess-thumb"
-      src={url}
-      alt=""
-      loading="lazy"
-      decoding="async"
-      onError={() => setBroken(true)}
-    />
-  );
-}
-
-/** One row in the mid-session "add exercise" picker — appends to the session, not the training. */
-function SessPickRow({
-  exercise,
-  disabled,
-  onAdd,
-}: {
-  exercise: Exercise;
-  disabled: boolean;
-  onAdd: () => void;
-}) {
-  const { t, language } = useLanguage();
-  const name = translateExerciseName(language, exercise.name);
-
-  return (
-    <button
-      className="sess-pick"
-      onClick={onAdd}
-      disabled={disabled}
-      aria-label={
-        disabled ? t('session.alreadyAddedAria', { name }) : t('trainingDetail.addAria', { name })
-      }
-    >
-      <span className="sess-pick-thumb">
-        {exercise.imageUrl ? (
-          <img src={exercise.imageUrl} alt="" loading="lazy" decoding="async" />
-        ) : (
-          name.charAt(0).toUpperCase()
-        )}
-      </span>
-      <span className="sess-pick-main">
-        <span className="sess-pick-name">{name}</span>
-        <span className="sess-pick-meta">
-          {disabled
-            ? t('session.alreadyAdded')
-            : `${titleCase(translateFacetValue(language, 'equipment', exercise.equipment))} · ${titleCase(
-                translateFacetValue(language, 'target', exercise.target),
-              )}`}
-        </span>
-      </span>
-      <span className="sess-pick-add" aria-hidden="true">
-        {disabled ? <CheckIcon /> : <PlusIcon />}
-      </span>
-    </button>
-  );
-}
 
 /** Sets from the previous session shown inline; the rest are counted as "+N". */
 const LAST_TIME_MAX_SETS = 3;
@@ -720,78 +527,55 @@ function SessionRow({
 }) {
   const { t, language } = useLanguage();
   // An id with no catalogue entry can survive an import; show it rather than crash.
-  const name = exercise ? translateExerciseName(language, exercise.name) : entry.exerciseId;
+  const name = exercise ? exerciseDisplayName(language, exercise.name) : entry.exerciseId;
   const [showHistory, setShowHistory] = useState(false);
 
   return (
-    <div className="sess-row">
+    <div className="sess-row card-row">
       {exercise ? (
-        <button
-          className="sess-thumb-btn"
-          onClick={() => setShowHistory(true)}
-          aria-label={t('exerciseCard.historyForAria', { name })}
-        >
-          <RowThumb exercise={exercise} name={name} />
+        <button className="sess-thumb-btn" onClick={() => setShowHistory(true)} aria-label={t('exerciseCard.historyForAria', { name })}>
+          <ExerciseThumb exercise={exercise} name={name} />
         </button>
       ) : (
-        <RowThumb exercise={exercise} name={name} />
+        <ExerciseThumb exercise={exercise} name={name} />
       )}
 
-      <div className="sess-name">{name}</div>
-
-      <div className="sess-sets">
-        {entry.sets.length === 0 ? (
-          <span className="sess-sets-empty" aria-label={t('session.noSetsLoggedAria', { name })}>
-            —
-          </span>
-        ) : (
-          entry.sets.map((set, i) => {
-            const label = formatSet(set.reps, set.weight);
-            return (
-              <button
-                key={`${set.at}-${i}`}
-                className="sess-set num"
-                onClick={() => onPickSet(i, name, label)}
-                aria-label={t('session.setAria', { index: i + 1, name, label })}
-              >
-                {label}
-              </button>
-            );
-          })
+      <div className="sess-main">
+        <div className="sess-name">{name}</div>
+        {latest && <LastTime latest={latest} />}
+        {entry.sets.length > 0 && (
+          <div className="sess-sets">
+            {entry.sets.map((set, i) => {
+              const label = formatSet(set.reps, set.weight);
+              return (
+                <button key={`${set.at}-${i}`} className="sess-set num" onClick={() => onPickSet(i, name, label)} aria-label={t('session.setAria', { index: i + 1, name, label })}>
+                  <span className="sess-set-index">{i + 1}</span>
+                  {label}
+                </button>
+              );
+            })}
+          </div>
         )}
       </div>
 
-      <button
-        className="icon-btn icon-btn-danger sess-remove"
-        onClick={() => onRemove(name)}
-        aria-label={t('session.removeFromSessionAria', { name })}
-      >
-        <TrashIcon />
-      </button>
+      <div className="sess-row-actions">
+        <button className="sess-add" onClick={onAdd} aria-label={t('session.addSetAria', { name })}>
+          <PlusIcon />
+        </button>
+        <button className="sess-remove" onClick={() => onRemove(name)} aria-label={t('session.removeFromSessionAria', { name })}>
+          <TrashIcon />
+        </button>
+      </div>
 
-      <button className="icon-btn sess-add" onClick={onAdd} aria-label={t('session.addSetAria', { name })}>
-        <PlusIcon />
-      </button>
-
-      {/* Last in the DOM so grid auto-placement drops it onto the row's
-          second line, where it gets the full width instead of the name
-          column's ~150px. */}
-      {latest && <LastTime latest={latest} />}
-
-      {showHistory && exercise && (
-        <ExerciseHistorySheet exercise={exercise} onClose={() => setShowHistory(false)} />
-      )}
+      {showHistory && exercise && <ExerciseHistorySheet exercise={exercise} onClose={() => setShowHistory(false)} />}
     </div>
   );
 }
 
 /**
- * What this exercise was last logged at, under its name — SPEC §5.4.
- *
- * The same lookup already prefills the add-set sheet, but only once "+" has
- * been tapped: before that the row is blank, and the number you are trying to
- * match is two taps away in the history sheet. Read off `useGym().exerciseLatest`
- * (one pass over history for the whole app) rather than `latestFor` per row.
+ * What this exercise was last logged at, under its name — SPEC §5.4. Read off
+ * `useGym().exerciseLatest` (one pass over history for the whole app) rather
+ * than `latestFor` per row.
  */
 function LastTime({ latest }: { latest: ExerciseRecord }) {
   const { t } = useLanguage();
@@ -799,11 +583,7 @@ function LastTime({ latest }: { latest: ExerciseRecord }) {
   const ago = daysAgoLabel(t, latest.daysAgo);
 
   return (
-    <div
-      className="sess-last"
-      role="note"
-      aria-label={t('session.lastTimeAria', { ago, sets: text })}
-    >
+    <div className="sess-last" role="note" aria-label={t('session.lastTimeAria', { ago, sets: text })}>
       <span className="sess-last-ago">{ago}</span>
       <span className="sess-last-sets num">{text}</span>
       {more > 0 && <span className="num">{t('session.lastTimeMore', { count: more })}</span>}
@@ -817,19 +597,10 @@ function LastTime({ latest }: { latest: ExerciseRecord }) {
 
 type Prefill = { reps: string; weight: string };
 
-/**
- * Previous set of this exercise in this session, else its most recent logged
- * set ever, else empty.
- */
+/** Previous set of this exercise in this session, else its most recent logged set ever, else empty. */
 function prefillFor(exerciseId: string, active: ActiveSession, sessions: Session[]): Prefill {
-  const entry = active.entries.find((e) => e.exerciseId === exerciseId);
-  const inSession = entry?.sets.at(-1);
-  if (inSession) return { reps: String(inSession.reps), weight: formatWeight(inSession.weight) };
-
-  const historic = latestFor(exerciseId, sessions)?.sets.at(-1);
-  if (historic) return { reps: String(historic.reps), weight: formatWeight(historic.weight) };
-
-  return { reps: '', weight: '' };
+  const last = lastSetFor(exerciseId, active, sessions);
+  return last ? { reps: String(last.reps), weight: formatWeight(last.weight) } : { reps: '', weight: '' };
 }
 
 function SetSheet({
@@ -871,7 +642,7 @@ function SetSheet({
       title={exerciseName}
       onClose={onClose}
       footer={
-        <button className="btn btn-primary btn-block" onClick={submit}>
+        <button className="btn btn-primary btn-block btn-lg" onClick={submit}>
           {t('session.saveSet')}
         </button>
       }
@@ -890,7 +661,7 @@ function SetSheet({
             </label>
             <input
               id="set-reps"
-              className="input num"
+              className="input sess-input num"
               type="text"
               inputMode="numeric"
               autoComplete="off"
@@ -908,7 +679,7 @@ function SetSheet({
             </label>
             <input
               id="set-weight"
-              className="input num"
+              className="input sess-input num"
               type="text"
               inputMode="decimal"
               autoComplete="off"
@@ -927,7 +698,7 @@ function SetSheet({
             {error}
           </p>
         ) : (
-          <p className="sess-form-hint">{t('session.bodyweightHint')}</p>
+          <p className="hint">{t('session.bodyweightHint')}</p>
         )}
 
         {/* Lets the iOS keyboard "go" key submit the form. */}
