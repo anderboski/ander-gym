@@ -22,6 +22,7 @@ import {
 import {
   allLatestFor,
   allPersonalRecords,
+  sortSessions,
   type LatestByExercise,
   type RecordsByExercise,
 } from './derive';
@@ -197,12 +198,6 @@ const INITIAL: GymState = {
   sportSessions: [],
 };
 
-function byNewest(sessions: Session[]): Session[] {
-  return [...sessions].sort(
-    (a, b) => new Date(b.startedAt).getTime() - new Date(a.startedAt).getTime(),
-  );
-}
-
 /** `date` is `YYYY-MM-DD`, so a plain string sort is already chronological. */
 function byNewestCheckin(checkins: WeightCheckin[]): WeightCheckin[] {
   return [...checkins].sort((a, b) => b.date.localeCompare(a.date));
@@ -213,6 +208,15 @@ function byNewestSport(sportSessions: SportSession[]): SportSession[] {
   return [...sportSessions].sort(
     (a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt),
   );
+}
+
+function byOrder(trainings: Training[]): Training[] {
+  return [...trainings].sort((a, b) => a.order - b.order);
+}
+
+/** The state updater every per-training mutation ends in: swap one record by id. */
+function replaceTraining(s: GymState, updated: Training): GymState {
+  return { ...s, trainings: s.trainings.map((t) => (t.id === updated.id ? updated : t)) };
 }
 
 export function GymProvider({ children }: { children: React.ReactNode }) {
@@ -249,7 +253,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       exercises,
       exerciseById: new Map(exercises.map((e) => [e.id, e])),
       trainings,
-      sessions: byNewest(sessions),
+      sessions: sortSessions(sessions),
       active,
       settings,
       profile,
@@ -288,8 +292,8 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
     [],
   );
 
-  const mutations = useMemo<Mutations>(
-    () => ({
+  const mutations = useMemo<Mutations>(() => {
+    const m: Mutations = {
       async addCustomExercise(input, photo) {
         const imageBlob = photo ? await downscaleImage(photo) : null;
         const record = {
@@ -314,55 +318,30 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       },
 
       async addExerciseToTraining(trainingId, exerciseId) {
-        const training = (await db.getTrainings()).find((t) => t.id === trainingId);
-        if (!training || training.exerciseIds.includes(exerciseId)) return;
-
-        const updated = { ...training, exerciseIds: [...training.exerciseIds, exerciseId] };
-        await db.putTraining(updated);
-        setState((s) => ({
-          ...s,
-          trainings: s.trainings.map((t) => (t.id === trainingId ? updated : t)),
-        }));
+        await m.syncTrainingExercises(trainingId, [exerciseId], []);
       },
 
       async removeExerciseFromTraining(trainingId, exerciseId) {
-        const training = (await db.getTrainings()).find((t) => t.id === trainingId);
-        if (!training) return;
-
-        const updated = {
-          ...training,
-          exerciseIds: training.exerciseIds.filter((id) => id !== exerciseId),
-        };
-        await db.putTraining(updated);
-        setState((s) => ({
-          ...s,
-          trainings: s.trainings.map((t) => (t.id === trainingId ? updated : t)),
-        }));
+        await m.syncTrainingExercises(trainingId, [], [exerciseId]);
       },
 
       async syncTrainingExercises(trainingId, addedIds, removedIds) {
-        const training = (await db.getTrainings()).find((t) => t.id === trainingId);
-        if (!training) return;
-
         const removed = new Set(removedIds);
-        const kept = training.exerciseIds.filter((id) => !removed.has(id));
-        const additions = addedIds.filter((id) => !kept.includes(id));
-        const updated = { ...training, exerciseIds: [...kept, ...additions] };
-        await db.putTraining(updated);
-        setState((s) => ({
-          ...s,
-          trainings: s.trainings.map((t) => (t.id === trainingId ? updated : t)),
-        }));
+        const updated = await db.updateTraining(trainingId, (t) => {
+          const kept = t.exerciseIds.filter((id) => !removed.has(id));
+          const seen = new Set(kept);
+          // Duplicates within one training are rejected (SPEC §5.3).
+          const additions = addedIds.filter((id) => !seen.has(id) && seen.add(id));
+          return { ...t, exerciseIds: [...kept, ...additions] };
+        });
+        if (updated) setState((s) => replaceTraining(s, updated));
       },
 
       async addTraining(label, kind) {
         const trimmed = label.trim();
         if (!trimmed) throw new Error('Name is required.');
         const training = await db.createTraining(trimmed, kind);
-        setState((s) => ({
-          ...s,
-          trainings: [...s.trainings, training].sort((a, b) => a.order - b.order),
-        }));
+        setState((s) => ({ ...s, trainings: byOrder([...s.trainings, training]) }));
         return training;
       },
 
@@ -370,57 +349,38 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
         const trimmed = label.trim();
         if (!trimmed) throw new Error('Name is required.');
         const updated = await db.renameTraining(trainingId, trimmed);
-        if (!updated) return;
-        setState((s) => ({
-          ...s,
-          trainings: s.trainings.map((t) => (t.id === trainingId ? updated : t)),
-        }));
+        if (updated) setState((s) => replaceTraining(s, updated));
       },
 
       async setTrainingRest(trainingId, seconds) {
         const restSeconds = parseRestSeconds(seconds);
         if (restSeconds === null) return;
         const updated = await db.setTrainingRest(trainingId, restSeconds);
-        if (!updated) return;
-        setState((s) => ({
-          ...s,
-          trainings: s.trainings.map((t) => (t.id === trainingId ? updated : t)),
-        }));
+        if (updated) setState((s) => replaceTraining(s, updated));
       },
 
       async setTrainingEmoji(trainingId, emoji) {
         const value = firstGrapheme(emoji.trim()) || null;
         const updated = await db.setTrainingEmoji(trainingId, value);
-        if (!updated) return;
-        setState((s) => ({
-          ...s,
-          trainings: s.trainings.map((t) => (t.id === trainingId ? updated : t)),
-        }));
+        if (updated) setState((s) => replaceTraining(s, updated));
       },
 
       async archiveTraining(trainingId, archived) {
         const updated = await db.archiveTraining(trainingId, archived);
-        if (!updated) return;
-        setState((s) => ({
-          ...s,
-          trainings: s.trainings.map((t) => (t.id === trainingId ? updated : t)),
-        }));
+        if (updated) setState((s) => replaceTraining(s, updated));
       },
 
       async deleteTraining(trainingId) {
-        const training = (await db.getTrainings()).find((t) => t.id === trainingId);
-        if (!training) return null;
+        const record = await (await db.getDB()).get('trainings', trainingId);
+        if (!record) return null;
         await db.deleteTraining(trainingId);
         setState((s) => ({ ...s, trainings: s.trainings.filter((t) => t.id !== trainingId) }));
-        return training;
+        return record;
       },
 
       async restoreTraining(training) {
         await db.putTraining(training);
-        setState((s) => ({
-          ...s,
-          trainings: [...s.trainings, training].sort((a, b) => a.order - b.order),
-        }));
+        setState((s) => ({ ...s, trainings: byOrder([...s.trainings, training]) }));
       },
 
       async reorderTrainings(orderedIds) {
@@ -430,15 +390,11 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
 
       async reorderTrainingExercises(trainingId, orderedExerciseIds) {
         const updated = await db.reorderTrainingExercises(trainingId, orderedExerciseIds);
-        if (!updated) return;
-        setState((s) => ({
-          ...s,
-          trainings: s.trainings.map((t) => (t.id === trainingId ? updated : t)),
-        }));
+        if (updated) setState((s) => replaceTraining(s, updated));
       },
 
       async startSession(trainingId) {
-        const training = (await db.getTrainings()).find((t) => t.id === trainingId);
+        const training = await (await db.getDB()).get('trainings', trainingId);
         if (!training) throw new Error(`Unknown training: ${trainingId}`);
 
         const active: ActiveSession = {
@@ -503,7 +459,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
         await db.clearActiveSession();
         void db.requestPersistence();
 
-        setState((s) => ({ ...s, active: null, sessions: byNewest([session, ...s.sessions]) }));
+        setState((s) => ({ ...s, active: null, sessions: sortSessions([session, ...s.sessions]) }));
         return session;
       },
 
@@ -551,9 +507,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       },
 
       async setProfile(profile) {
-        await db.putProfileField('name', profile.name);
-        await db.putProfileField('birthdate', profile.birthdate);
-        await db.putProfileField('heightCm', profile.heightCm);
+        await db.putProfile(profile);
         setState((s) => ({ ...s, profile }));
       },
 
@@ -576,7 +530,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       },
 
       async logSportSession(trainingId, input) {
-        const training = (await db.getTrainings()).find((t) => t.id === trainingId);
+        const training = await (await db.getDB()).get('trainings', trainingId);
         if (!training) throw new Error(`Unknown training: ${trainingId}`);
 
         const record = {
@@ -595,9 +549,9 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
         await db.deleteSportSession(id);
         setState((s) => ({ ...s, sportSessions: s.sportSessions.filter((x) => x.id !== id) }));
       },
-    }),
-    [mutateActive, reload],
-  );
+    };
+    return m;
+  }, [mutateActive, reload]);
 
   /**
    * Records and latest-occurrence live here rather than in the components

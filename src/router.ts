@@ -4,6 +4,9 @@
  * Hash routing (rather than history/pushState) is deliberate: GitHub Pages has
  * no server-side rewrite, so a deep link like /ander-gym/trainings/leg-abs would
  * 404 on reload. With `#/trainings/leg-abs` every URL resolves to index.html.
+ *
+ * `parseRoute` and `tabOf` are pure and unit-tested; the hooks below are the
+ * only place the window is touched.
  */
 import { useSyncExternalStore } from 'react';
 
@@ -87,27 +90,13 @@ function getSnapshot(): string {
   return window.location.hash.slice(1) || '/';
 }
 
-/** Current path, e.g. `/trainings/leg-abs`. Re-renders on navigation. */
-export function usePath(): string {
-  return useSyncExternalStore(subscribe, getSnapshot, () => '/');
-}
-
+/** The current route. Re-renders on navigation. */
 export function useRoute(): Route {
-  return parseRoute(usePath());
+  return parseRoute(useSyncExternalStore(subscribe, getSnapshot, () => '/'));
 }
 
 /** Push a new entry. `navigate('/trainings/leg-abs')` */
 export function navigate(path: string): void {
   if (getSnapshot() === path) return;
   window.location.hash = path;
-}
-
-/** Replace the current entry — use when a redirect shouldn't be re-enterable. */
-export function replace(path: string): void {
-  window.history.replaceState(null, '', `#${path}`);
-  window.dispatchEvent(new HashChangeEvent('hashchange'));
-}
-
-export function back(): void {
-  window.history.back();
 }

@@ -253,8 +253,6 @@ export const es: Record<TranslationKey, string> = {
   'sportLog.deleteLogButton': 'Eliminar registro',
   'sportLog.deleteLogTitle': '¿Eliminar este registro?',
   'sportLog.deleteLogMessage': 'Esto elimina definitivamente la entrada del {date}.',
-  'sportLog.notFoundTitle': 'Registro no encontrado',
-  'sportLog.notFoundBody': 'Puede que se haya eliminado, o que el enlace esté desactualizado.',
 
   'trainingDetail.addAria': 'Añadir {name}',
   'trainingDetail.alreadyAdded': 'Ya está en este entrenamiento',

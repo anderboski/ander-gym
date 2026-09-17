@@ -8,6 +8,7 @@ import {
   CLIMB_GRADES,
   SNOW_CONDITIONS,
   WEATHER_CONDITIONS,
+  type ActiveSession,
   type ClimbGrade,
   type CyclingSession,
   type Exercise,
@@ -21,7 +22,7 @@ import {
 /* Dates                                                                       */
 /* -------------------------------------------------------------------------- */
 
-export function startOfDay(d: Date): Date {
+function startOfDay(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
 
@@ -156,13 +157,6 @@ export function formatShortLocalDate(isoDate: string): string {
   return shortDateLabel(parseLocalDate(isoDate));
 }
 
-/** `today`, `-1 day`, `-9 days` */
-export function formatDaysAgo(days: number): string {
-  if (days <= 0) return 'today';
-  if (days === 1) return '-1 day';
-  return `-${days} days`;
-}
-
 /** `1h 12m` / `24m` — elapsed time of a running session. */
 export function formatElapsed(fromIso: string, now: Date): string {
   const mins = Math.max(0, Math.floor((now.getTime() - new Date(fromIso).getTime()) / 60_000));
@@ -254,7 +248,7 @@ export function sortSessions(sessions: Session[]): Session[] {
   );
 }
 
-export function mostRecentSession(sessions: Session[]): Session | null {
+function mostRecentSession(sessions: Session[]): Session | null {
   let best: Session | null = null;
   for (const s of sessions) {
     if (!best || new Date(s.startedAt).getTime() > new Date(best.startedAt).getTime()) best = s;
@@ -337,7 +331,7 @@ export function lifetimeStats(sessions: Session[]): LifetimeStats {
 /* -------------------------------------------------------------------------- */
 
 /** A backup older than this many calendar days is stale enough to nag about. */
-export const BACKUP_MAX_AGE_DAYS = 30;
+const BACKUP_MAX_AGE_DAYS = 30;
 
 /**
  * Sessions logged since the last export that are worth nagging about on their
@@ -425,6 +419,18 @@ export function nextTraining(trainings: Training[], sessions: Session[]): Traini
   return first;
 }
 
+/**
+ * The one-glyph badge a training is drawn with everywhere — the Trainings list,
+ * the Home calendar, History rows, the Stats time map: its chosen emoji, else
+ * the first letter of its label. `label` is the fallback for a training that no
+ * longer resolves (a session's own `trainingLabel` snapshot), so the badge is
+ * never blank.
+ */
+export function trainingBadge(training: Pick<Training, 'emoji' | 'label'> | undefined, label = ''): string {
+  if (training?.emoji) return training.emoji;
+  return (training?.label ?? label).charAt(0).toUpperCase();
+}
+
 export function lastSessionForTraining(trainingId: string, sessions: Session[]): Session | null {
   return mostRecentSession(sessions.filter((s) => s.trainingId === trainingId));
 }
@@ -508,6 +514,25 @@ export function mergedHistory(sessions: Session[], sportSessions: SportSession[]
   return items.sort((a, b) => b.at.getTime() - a.at.getTime());
 }
 
+/** A run of consecutive history items from the same calendar month. */
+export type HistoryMonth = { key: string; anchor: Date; items: HistoryItem[] };
+
+/**
+ * Splits an already newest-first `mergedHistory` list into month runs. The
+ * input is sorted, so a single run-length pass is enough — no map, no re-sort.
+ * `anchor` is the first item's date, for the caller to format a heading from.
+ */
+export function groupHistoryByMonth(items: HistoryItem[]): HistoryMonth[] {
+  const groups: HistoryMonth[] = [];
+  for (const item of items) {
+    const key = `${item.at.getFullYear()}-${item.at.getMonth()}`;
+    const last = groups[groups.length - 1];
+    if (last && last.key === key) last.items.push(item);
+    else groups.push({ key, anchor: item.at, items: [item] });
+  }
+  return groups;
+}
+
 export type CalendarDay = { date: Date; inMonth: boolean };
 
 /**
@@ -532,6 +557,38 @@ export function monthGrid(monthAnchor: Date): CalendarDay[] {
 export function completedToday(sessions: Session[], now: Date): Session | null {
   const last = mostRecentSession(sessions);
   return last && isSameDay(new Date(last.startedAt), now) ? last : null;
+}
+
+/**
+ * What a saved session added to, and dropped from, the training it was started
+ * against — the two lists the post-save "update the training?" prompt names.
+ * Order follows the session for additions and the training for removals.
+ */
+export function diffExerciseIds(
+  originalIds: readonly string[],
+  session: Pick<Session, 'entries'>,
+): { addedIds: string[]; removedIds: string[] } {
+  const finalIds = [...new Set(session.entries.map((e) => e.exerciseId))];
+  const original = new Set(originalIds);
+  const final = new Set(finalIds);
+  return {
+    addedIds: finalIds.filter((id) => !original.has(id)),
+    removedIds: originalIds.filter((id) => !final.has(id)),
+  };
+}
+
+/**
+ * The set to prefill the add-set sheet with: the exercise's previous set in
+ * this session, else its most recent logged set ever, else null.
+ */
+export function lastSetFor(
+  exerciseId: string,
+  active: Pick<ActiveSession, 'entries'>,
+  sessions: Session[],
+): SetEntry | null {
+  const inSession = active.entries.find((e) => e.exerciseId === exerciseId)?.sets.at(-1);
+  if (inSession) return inSession;
+  return latestFor(exerciseId, sessions)?.sets.at(-1) ?? null;
 }
 
 /* -------------------------------------------------------------------------- */
@@ -768,43 +825,6 @@ export function exerciseProgress(
 /* Volume and consistency                                                      */
 /* -------------------------------------------------------------------------- */
 
-/** One ISO week's totals. `start` is the local Monday 00:00 of that week. */
-export type WeekStat = {
-  start: string;
-  sessions: number;
-  volume: number;
-};
-
-/**
- * The last `weeks` ISO weeks ending with the one containing `now`, oldest
- * first. Weeks with nothing logged are present with zeros: a gap is the whole
- * point of a consistency chart, and dropping empty weeks would silently
- * compress a month off training into a flat line.
- */
-export function weeklySummary(sessions: Session[], weeks: number, now: Date): WeekStat[] {
-  const buckets = new Map<number, { sessions: number; volume: number }>();
-  for (const s of sessions) {
-    const key = startOfWeek(new Date(s.startedAt)).getTime();
-    const bucket = buckets.get(key) ?? { sessions: 0, volume: 0 };
-    bucket.sessions += 1;
-    bucket.volume += totalVolume(s);
-    buckets.set(key, bucket);
-  }
-
-  const out: WeekStat[] = [];
-  const thisWeek = startOfWeek(now);
-  for (let i = weeks - 1; i >= 0; i -= 1) {
-    const start = addWeeks(thisWeek, -i);
-    const bucket = buckets.get(start.getTime());
-    out.push({
-      start: start.toISOString(),
-      sessions: bucket?.sessions ?? 0,
-      volume: bucket?.volume ?? 0,
-    });
-  }
-  return out;
-}
-
 /** Bucket for sets whose exercise id resolves to nothing in the catalogue. */
 export const UNKNOWN_TARGET = 'unknown';
 
@@ -861,8 +881,7 @@ export function volumeByTarget(
 export const STATS_PERIODS = ['month', 'threeMonths', 'year', 'custom'] as const;
 export type StatsPeriod = (typeof STATS_PERIODS)[number];
 
-export const STATS_VIEWS = ['daily', 'weekly', 'monthly'] as const;
-export type StatsView = (typeof STATS_VIEWS)[number];
+export type StatsView = 'daily' | 'weekly' | 'monthly';
 
 /** Trailing calendar days each fixed period covers. `custom` has none — its span comes from the two picked dates. */
 export const STATS_PERIOD_DAYS: Record<Exclude<StatsPeriod, 'custom'>, number> = {
@@ -1068,11 +1087,6 @@ export type TrainingTimeMap = {
   axis: [number, number];
 };
 
-/** Fallback badge for a training that no longer resolves — the session's own label snapshot is all that's left. */
-function badgeOf(label: string): string {
-  return label.charAt(0).toUpperCase();
-}
-
 const HOUR = 60;
 /** Below this the markers of a normal training week stack into an unreadable strip, so the axis is padded out to it. */
 const MIN_AXIS_SPAN = 6 * HOUR;
@@ -1105,7 +1119,7 @@ export function trainingTimeOfDay(sessions: Session[], trainings: Training[], ra
       trainingId: s.trainingId,
       weekday: (at.getDay() + 6) % 7,
       minutes: at.getHours() * 60 + at.getMinutes(),
-      badge: training?.emoji ?? badgeOf(training?.label ?? s.trainingLabel),
+      badge: trainingBadge(training, s.trainingLabel),
       label: training?.label ?? s.trainingLabel,
     });
   }

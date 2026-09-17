@@ -2,19 +2,7 @@
  * Manual JSON backup. This is the only defence against device loss and against
  * Safari evicting IndexedDB, so the format is deliberately plain and complete.
  */
-import {
-  SCHEMA_VERSION,
-  clearAll,
-  getDB,
-  putCheckin,
-  putCustomExercise,
-  putProfileField,
-  putSession,
-  putSetting,
-  putSportSession,
-  putTraining,
-  readAll,
-} from './db';
+import { SCHEMA_VERSION, clearAll, readAll, writeAll } from './db';
 import { firstGrapheme, parseRestSeconds } from './parse';
 import type {
   CustomExercise,
@@ -56,7 +44,7 @@ export type ImportMode = 'merge' | 'replace';
 /* base64 <-> Blob (works in both the browser and Node test env)                */
 /* -------------------------------------------------------------------------- */
 
-export async function blobToDataUrl(blob: Blob): Promise<string> {
+async function blobToDataUrl(blob: Blob): Promise<string> {
   const bytes = new Uint8Array(await blob.arrayBuffer());
   let binary = '';
   // Chunked to stay clear of the argument-count limit on large photos.
@@ -123,7 +111,7 @@ function backupBlob(backup: BackupFile): Blob {
  * Trigger a file download. Uses an object URL + synthetic click, which is what
  * iOS Safari supports — there is no File System Access API on iOS.
  */
-export function downloadBackup(backup: BackupFile, filename = backupFilename()): void {
+function downloadBackup(backup: BackupFile, filename = backupFilename()): void {
   const blob = backupBlob(backup);
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
@@ -280,7 +268,7 @@ export function parseBackup(text: string): BackupFile {
     schemaVersion: b.schemaVersion,
     exportedAt: typeof b.exportedAt === 'string' ? b.exportedAt : null,
     trainings: b.trainings.map(withValidRest).map(withValidEmoji),
-    sessions: b.sessions,
+    sessions: b.sessions as Session[],
     customExercises: Array.isArray(b.customExercises) ? b.customExercises : [],
     settings: {
       weeklyGoal:
@@ -311,31 +299,29 @@ export function parseBackup(text: string): BackupFile {
  * `replace` wipes first; `merge` unions by id with the incoming file winning.
  * The active session is intentionally not part of a backup — a half-finished
  * workout is not something you restore onto another device.
+ *
+ * Photos are decoded before the transaction opens: `dataUrlToBlob` is
+ * synchronous CPU work, and an IndexedDB transaction auto-commits the moment
+ * no request is pending, so anything slow has to happen outside it.
  */
 export async function applyBackup(backup: BackupFile, mode: ImportMode): Promise<void> {
+  const customExercises: CustomExercise[] = backup.customExercises.map(({ image, ...rest }) => ({
+    ...rest,
+    imageBlob: image ? dataUrlToBlob(image) : null,
+  }));
+  const checkins: WeightCheckin[] = backup.checkins.map(({ photos, ...rest }) => ({
+    ...rest,
+    photoBlobs: photos.map(dataUrlToBlob),
+  }));
+
   if (mode === 'replace') await clearAll();
-
-  await getDB(); // ensure the schema exists before the writes below
-
-  for (const t of backup.trainings) await putTraining(t);
-  for (const s of backup.sessions) await putSession(s as Session);
-  for (const s of backup.sportSessions) await putSportSession(s);
-
-  for (const c of backup.customExercises) {
-    const { image, ...rest } = c;
-    await putCustomExercise({ ...rest, imageBlob: image ? dataUrlToBlob(image) : null });
-  }
-
-  for (const c of backup.checkins) {
-    const { photos, ...rest } = c;
-    await putCheckin({ ...rest, photoBlobs: photos.map(dataUrlToBlob) });
-  }
-
-  await putSetting('weeklyGoal', backup.settings.weeklyGoal);
-  await putSetting('lastExportAt', backup.settings.lastExportAt);
-  await putSetting('favoriteExerciseIds', backup.settings.favoriteExerciseIds);
-
-  await putProfileField('name', backup.profile.name);
-  await putProfileField('birthdate', backup.profile.birthdate);
-  await putProfileField('heightCm', backup.profile.heightCm);
+  await writeAll({
+    trainings: backup.trainings,
+    sessions: backup.sessions,
+    customExercises,
+    settings: backup.settings,
+    profile: backup.profile,
+    checkins,
+    sportSessions: backup.sportSessions,
+  });
 }

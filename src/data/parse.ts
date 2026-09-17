@@ -46,6 +46,16 @@ export function formatWeight(weight: number): string {
   return String(Math.round(weight * 100) / 100);
 }
 
+/** `72.5 kg` — a headline or delta figure, rounded to a tenth so a chart mean never shows float noise. */
+export function formatKg(value: number): string {
+  return `${formatWeight(Math.round(value * 10) / 10)} kg`;
+}
+
+/** `+2.5 kg` / `-0.5 kg` — a change, with the sign always written. */
+export function formatKgDelta(delta: number): string {
+  return `${delta > 0 ? '+' : ''}${formatKg(delta)}`;
+}
+
 /**
  * `840` / `4.2k` / `12k` — a weekly volume in kg is a five-digit number, and a
  * chart axis on a phone has room for about four characters.

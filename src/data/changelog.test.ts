@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import packageJson from '../../package.json';
 import { CHANGELOG, compareVersions, unseenEntries } from './changelog';
 
 describe('compareVersions', () => {
@@ -28,5 +29,33 @@ describe('unseenEntries', () => {
   it('returns nothing once the newest version has been seen', () => {
     const latest = CHANGELOG[CHANGELOG.length - 1]!.version;
     expect(unseenEntries(latest)).toEqual([]);
+  });
+});
+
+/**
+ * The discipline CLAUDE.md asks for — every version bump ships with a
+ * changelog entry — enforced rather than remembered. A bump without notes is
+ * a "What's new" popup with nothing in it.
+ */
+describe('CHANGELOG', () => {
+  it('ends on the version in package.json', () => {
+    expect(CHANGELOG[CHANGELOG.length - 1]?.version).toBe(packageJson.version);
+  });
+
+  it('is strictly ascending by version and never goes back in time', () => {
+    for (let i = 1; i < CHANGELOG.length; i += 1) {
+      const prev = CHANGELOG[i - 1]!;
+      const next = CHANGELOG[i]!;
+      expect(compareVersions(next.version, prev.version), `${prev.version} -> ${next.version}`).toBeGreaterThan(0);
+      expect(next.date >= prev.date, `${prev.version} -> ${next.version}`).toBe(true);
+    }
+  });
+
+  it('has both languages filled in for every entry', () => {
+    for (const entry of CHANGELOG) {
+      expect(entry.en.length, entry.version).toBeGreaterThan(0);
+      expect(entry.es.length, entry.version).toBe(entry.en.length);
+      expect(entry.date).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+    }
   });
 });

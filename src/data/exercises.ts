@@ -6,7 +6,7 @@ const BASE = import.meta.env.BASE_URL;
 export const CUSTOM_ID_PREFIX = 'c-';
 
 /** `images/0001-x.jpg` (relative to data/) -> `/ander-gym/data/images/0001-x.jpg` */
-export function exerciseImageUrl(relativeToData: string): string {
+function exerciseImageUrl(relativeToData: string): string {
   return `${BASE}data/${relativeToData.replace(/^\/+/, '')}`;
 }
 

@@ -33,7 +33,7 @@ export const LANGUAGE_STORAGE_KEY = 'ander-gym-language';
 
 /** BCP-47 tag for `toLocaleDateString` calls, keyed by app language — not the
  *  device locale, so date formatting follows the in-app choice, not the OS. */
-export const LOCALE: Record<Language, string> = { en: 'en-US', es: 'es-ES' };
+const LOCALE: Record<Language, string> = { en: 'en-US', es: 'es-ES' };
 
 const DICTIONARIES: Record<Language, Record<TranslationKey, string>> = { en, es };
 
@@ -44,13 +44,13 @@ function systemLanguage(): Language {
 }
 
 /** The language currently in effect: the stored override, or the OS preference. */
-export function getLanguage(): Language {
+function getLanguage(): Language {
   const stored = localStorage.getItem(LANGUAGE_STORAGE_KEY);
   return stored === 'en' || stored === 'es' ? stored : systemLanguage();
 }
 
 /** Applies a language to the document without persisting it. */
-export function applyLanguage(language: Language): void {
+function applyLanguage(language: Language): void {
   document.documentElement.lang = language;
 }
 

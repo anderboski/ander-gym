@@ -2,6 +2,8 @@ import { describe, expect, it } from 'vitest';
 import {
   firstGrapheme,
   formatCompact,
+  formatKg,
+  formatKgDelta,
   formatSet,
   formatWeight,
   parseRestSeconds,
@@ -23,6 +25,14 @@ describe('formatting', () => {
   it('trims float noise from weights', () => {
     expect(formatWeight(25.0)).toBe('25');
     expect(formatWeight(22.5)).toBe('22.5');
+  });
+
+  it('formats a kilogram figure to a tenth, with an explicit sign for deltas', () => {
+    expect(formatKg(77.94)).toBe('77.9 kg');
+    expect(formatKg(80)).toBe('80 kg');
+    expect(formatKgDelta(2.5)).toBe('+2.5 kg');
+    expect(formatKgDelta(-0.5)).toBe('-0.5 kg');
+    expect(formatKgDelta(0)).toBe('0 kg');
   });
 
   it('compacts axis numbers to four characters', () => {

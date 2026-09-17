@@ -254,8 +254,6 @@ export const en = {
   'sportLog.deleteLogButton': 'Delete log',
   'sportLog.deleteLogTitle': 'Delete this log?',
   'sportLog.deleteLogMessage': 'This removes the {date} entry for good.',
-  'sportLog.notFoundTitle': 'Log not found',
-  'sportLog.notFoundBody': 'It may have been deleted, or the link is out of date.',
 
   'trainingDetail.addAria': 'Add {name}',
   'trainingDetail.alreadyAdded': 'Already in this training',
