@@ -39,7 +39,8 @@ export type BackupWeightCheckin = Omit<WeightCheckin, 'photoBlobs'> & {
 
 export type BackupFile = {
   schemaVersion: number;
-  exportedAt: string;
+  /** Null for a hand-made or truncated file that carries no usable timestamp. */
+  exportedAt: string | null;
   trainings: Training[];
   sessions: Session[];
   customExercises: BackupCustomExercise[];
@@ -114,12 +115,16 @@ export function backupFilename(now = new Date()): string {
   return `ander-gym-${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}.json`;
 }
 
+function backupBlob(backup: BackupFile): Blob {
+  return new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+}
+
 /**
  * Trigger a file download. Uses an object URL + synthetic click, which is what
  * iOS Safari supports — there is no File System Access API on iOS.
  */
 export function downloadBackup(backup: BackupFile, filename = backupFilename()): void {
-  const blob = new Blob([JSON.stringify(backup, null, 2)], { type: 'application/json' });
+  const blob = backupBlob(backup);
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
@@ -129,6 +134,72 @@ export function downloadBackup(backup: BackupFile, filename = backupFilename()):
   a.remove();
   // Give Safari a moment to start the download before the URL disappears.
   setTimeout(() => URL.revokeObjectURL(url), 10_000);
+}
+
+export type ExportOutcome = 'shared' | 'downloaded' | 'cancelled';
+
+/**
+ * Hand the backup to the OS, preferring the share sheet.
+ *
+ * The download path drops the file into Downloads, which on a phone is the
+ * one place a "this is your only copy" file is least likely to outlive the
+ * device — the whole point of the export. The share sheet reaches Files,
+ * iCloud Drive, Mail: somewhere that survives the phone. Everything else
+ * (desktop browsers, older WebKit, anything that refuses a file payload)
+ * falls back to the download, so nothing is lost by trying.
+ *
+ * `canShare({ files })` is the only honest feature test — Safari exposed
+ * `navigator.share` for years before it would accept a file.
+ */
+export async function deliverBackup(
+  backup: BackupFile,
+  filename = backupFilename(),
+): Promise<ExportOutcome> {
+  const file = new File([backupBlob(backup)], filename, { type: 'application/json' });
+
+  if (typeof navigator.canShare === 'function' && navigator.canShare({ files: [file] })) {
+    try {
+      await navigator.share({ files: [file], title: filename });
+      return 'shared';
+    } catch (e) {
+      // Dismissing the share sheet is a cancel, not a failure: the caller must
+      // not record an export for a file that never left the device.
+      if (e instanceof DOMException && e.name === 'AbortError') return 'cancelled';
+      // Anything else — a stale user gesture, a share target that refused the
+      // file — still has the download below to fall through to.
+    }
+  }
+
+  downloadBackup(backup, filename);
+  return 'downloaded';
+}
+
+/** What an import is about to bring in, for the preview shown before Merge/Replace. */
+export type BackupSummary = {
+  trainings: number;
+  sessions: number;
+  sportSessions: number;
+  customExercises: number;
+  checkins: number;
+  /** When the file was written, or null when it does not say. */
+  exportedAt: string | null;
+};
+
+/**
+ * Counts for the import preview. Replace wipes the device, so what the file
+ * actually holds has to be readable *before* that choice is made — a backup
+ * that turns out to be an empty or months-old export is exactly the mistake
+ * a confirmation dialog alone cannot catch.
+ */
+export function summariseBackup(backup: BackupFile): BackupSummary {
+  return {
+    trainings: backup.trainings.length,
+    sessions: backup.sessions.length,
+    sportSessions: backup.sportSessions.length,
+    customExercises: backup.customExercises.length,
+    checkins: backup.checkins.length,
+    exportedAt: backup.exportedAt,
+  };
 }
 
 /**
@@ -207,7 +278,7 @@ export function parseBackup(text: string): BackupFile {
 
   return {
     schemaVersion: b.schemaVersion,
-    exportedAt: typeof b.exportedAt === 'string' ? b.exportedAt : new Date().toISOString(),
+    exportedAt: typeof b.exportedAt === 'string' ? b.exportedAt : null,
     trainings: b.trainings.map(withValidRest).map(withValidEmoji),
     sessions: b.sessions,
     customExercises: Array.isArray(b.customExercises) ? b.customExercises : [],

@@ -12,6 +12,7 @@ import { useGym } from '../data/store';
 import {
   addMonths,
   averageSessionMinutes,
+  backupStatus,
   completedToday,
   currentWeekCount,
   dayKey,
@@ -30,6 +31,7 @@ import {
   weeklyStreak,
 } from '../data/derive';
 import { formatCompact } from '../data/parse';
+import type { ExportOutcome } from '../data/backup';
 import { navigate } from '../router';
 import {
   AlertIcon,
@@ -48,13 +50,20 @@ import { daysAgoLabel, useLanguage, type TranslationKey } from '../data/i18n';
 import type { Session, SportSession, Training } from '../data/types';
 import './HomePage.css';
 
-/** A backup older than this is stale enough to nag about. */
-const BACKUP_MAX_AGE_MS = 30 * 86_400_000;
-
 const GREETING_KEYS: Record<ReturnType<typeof greetingBucket>, TranslationKey> = {
   morning: 'home.greetingMorning',
   day: 'home.greetingDay',
   evening: 'home.greetingEvening',
+};
+
+/**
+ * What to tell the user after an export. A share sheet may have put the file
+ * in iCloud Drive, in Mail, anywhere — "downloaded" would be wrong, and a
+ * cancelled share gets no toast at all (handled by the caller).
+ */
+const EXPORT_TOAST_KEY: Record<Exclude<ExportOutcome, 'cancelled'>, TranslationKey> = {
+  shared: 'common.backupShared',
+  downloaded: 'common.backupDownloaded',
 };
 
 export function HomePage() {
@@ -106,10 +115,7 @@ export function HomePage() {
   const lifetime = lifetimeStats(sessions);
 
   const lastExportAt = settings.lastExportAt;
-  const exportAge = lastExportAt ? now.getTime() - new Date(lastExportAt).getTime() : null;
-  const backupDue =
-    (lastExportAt === null && sessions.length > 0) ||
-    (exportAge !== null && exportAge > BACKUP_MAX_AGE_MS);
+  const backup = backupStatus(sessions, lastExportAt, now);
 
   async function handleStart(trainingId: string) {
     if (busy) return;
@@ -128,8 +134,8 @@ export function HomePage() {
     if (busy) return;
     setBusy(true);
     try {
-      await exportNow();
-      setToast(t('common.backupDownloaded'));
+      const outcome = await exportNow();
+      if (outcome !== 'cancelled') setToast(t(EXPORT_TOAST_KEY[outcome]));
     } catch (e) {
       setToast(e instanceof Error ? e.message : t('common.exportFailed'));
     } finally {
@@ -308,7 +314,7 @@ export function HomePage() {
           )}
 
           {/* --- backup reminder ------------------------------------------ */}
-          {backupDue && !bannerDismissed && (
+          {backup.due && !bannerDismissed && (
             <section className="section">
               <div className="home-banner">
                 <button
@@ -321,7 +327,16 @@ export function HomePage() {
                     <span className="home-banner-title">
                       {lastExportAt ? t('home.backupOutdated') : t('home.backupFirst')}
                     </span>
-                    <span className="home-banner-body">{t('home.backupBody')}</span>
+                    <span className="home-banner-body">
+                      {backup.unsaved > 0
+                        ? t(
+                            backup.unsaved === 1
+                              ? 'home.backupUnsavedOne'
+                              : 'home.backupUnsavedOther',
+                            { count: backup.unsaved },
+                          )
+                        : t('home.backupBody')}
+                    </span>
                   </span>
                 </button>
                 <button

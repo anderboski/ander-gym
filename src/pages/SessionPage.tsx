@@ -15,7 +15,7 @@
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { useGym } from '../data/store';
-import { useLanguage } from '../data/i18n';
+import { daysAgoLabel, useLanguage } from '../data/i18n';
 import { translateExerciseName, translateFacetValue } from '../data/exerciseI18n';
 import {
   adjustRest,
@@ -28,9 +28,10 @@ import {
   restPhase,
   restProgress,
   startRest,
+  type ExerciseRecord,
   type RestTimer,
 } from '../data/derive';
-import { formatSet, formatWeight, titleCase } from '../data/parse';
+import { formatSet, formatWeight, summariseSets, titleCase } from '../data/parse';
 import {
   DEFAULT_REST_SECONDS,
   REST_PRESETS,
@@ -366,6 +367,7 @@ function ActiveView({
 }) {
   const {
     sessions,
+    exerciseLatest,
     getExercise,
     getTraining,
     addExerciseToSession,
@@ -473,6 +475,7 @@ function ActiveView({
                   key={entry.exerciseId}
                   entry={entry}
                   exercise={getExercise(entry.exerciseId)}
+                  latest={exerciseLatest.get(entry.exerciseId)}
                   onAdd={() => openAdd(entry.exerciseId)}
                   onPickSet={(index, name, label) =>
                     setPendingDelete({ exerciseId: entry.exerciseId, index, name, label })
@@ -694,15 +697,21 @@ function SessPickRow({
   );
 }
 
+/** Sets from the previous session shown inline; the rest are counted as "+N". */
+const LAST_TIME_MAX_SETS = 3;
+
 function SessionRow({
   entry,
   exercise,
+  latest,
   onAdd,
   onPickSet,
   onRemove,
 }: {
   entry: SessionEntry;
   exercise: Exercise | undefined;
+  /** The last session this exercise was logged in, or undefined with no history. */
+  latest: ExerciseRecord | undefined;
   onAdd: () => void;
   /** index, exercise name and the formatted set, for the delete confirmation. */
   onPickSet: (index: number, name: string, label: string) => void;
@@ -764,9 +773,40 @@ function SessionRow({
         <PlusIcon />
       </button>
 
+      {/* Last in the DOM so grid auto-placement drops it onto the row's
+          second line, where it gets the full width instead of the name
+          column's ~150px. */}
+      {latest && <LastTime latest={latest} />}
+
       {showHistory && exercise && (
         <ExerciseHistorySheet exercise={exercise} onClose={() => setShowHistory(false)} />
       )}
+    </div>
+  );
+}
+
+/**
+ * What this exercise was last logged at, under its name — SPEC §5.4.
+ *
+ * The same lookup already prefills the add-set sheet, but only once "+" has
+ * been tapped: before that the row is blank, and the number you are trying to
+ * match is two taps away in the history sheet. Read off `useGym().exerciseLatest`
+ * (one pass over history for the whole app) rather than `latestFor` per row.
+ */
+function LastTime({ latest }: { latest: ExerciseRecord }) {
+  const { t } = useLanguage();
+  const { text, more } = summariseSets(latest.sets, LAST_TIME_MAX_SETS);
+  const ago = daysAgoLabel(t, latest.daysAgo);
+
+  return (
+    <div
+      className="sess-last"
+      role="note"
+      aria-label={t('session.lastTimeAria', { ago, sets: text })}
+    >
+      <span className="sess-last-ago">{ago}</span>
+      <span className="sess-last-sets num">{text}</span>
+      {more > 0 && <span className="num">{t('session.lastTimeMore', { count: more })}</span>}
     </div>
   );
 }

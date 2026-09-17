@@ -215,14 +215,32 @@ Only a phone can tell you whether a 320-unit chart is legible in a hand.
 
 ## 7. Backup
 
-- [ ] Home → gear → **Export data**. Safari offers to save the JSON file.
+**The share-sheet export is iOS-only behaviour** — desktop and Android browsers fall
+back to the old download path, so the first three boxes below can only be ticked on
+a real iPhone.
+
+- [ ] Home → gear → **Export data**. iOS opens the **share sheet** (not a download):
+      *Save to Files*, *Mail*, *AirDrop* and the rest, with the file named
+      `ander-gym-YYYY-MM-DD.json`.
+- [ ] Save it to Files. The file is there, and opening it shows real JSON.
+- [ ] Export again and **dismiss** the share sheet without choosing anything. No
+      "saved" toast appears, and **Last export** in Settings is unchanged — a
+      cancelled share must never count as a backup.
 - [ ] Open the file: it contains `schemaVersion`, your trainings, your sessions,
       and any custom exercises with their photos inlined as base64.
-- [ ] Gear → **Import** the same file with **Merge**. Nothing is duplicated.
-- [ ] Import a deliberately corrupted file (delete a brace). You get a readable
-      error message, not a blank screen.
-- [ ] Import with **Replace**. It asks for a second confirmation before wiping.
+- [ ] Gear → **Import**, pick the file. Before Merge/Replace is offered, the sheet
+      lists what is in it (trainings, gym sessions, activity logs, custom
+      exercises, check-ins) and the date it was exported.
+- [ ] Import a deliberately corrupted file (delete a brace). The error appears
+      **immediately on picking the file**, and no Merge/Replace buttons are shown
+      at all — not a blank screen, and not an error after choosing a mode.
+- [ ] **Merge** the same file. Nothing is duplicated.
+- [ ] Import with **Replace**. It asks for a second confirmation, and that
+      confirmation names the file's training and session counts.
 - [ ] After a save, check the backup banner disappears from Home.
+- [ ] Log 5 sessions without exporting. The Home banner returns, and its body
+      counts them ("5 sessions logged since your last backup…") rather than
+      showing the generic warning.
 
 ## 8. Custom exercises
 

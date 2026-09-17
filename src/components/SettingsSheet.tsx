@@ -1,13 +1,26 @@
 /**
  * Settings sheet — SPEC §5.1 (gear icon) and §3 (export / import).
  *
- * Import is deliberately two-step: pick a file, then choose Merge or Replace.
- * Replace wipes the device's data, so it asks a second time before running.
+ * Import is deliberately three-step: pick a file, read what is actually in it,
+ * then choose Merge or Replace. The preview is not decoration — Replace wipes
+ * the device, and the mistake worth catching (an empty file, last year's
+ * export, the wrong file entirely) is one a confirmation dialog cannot see.
+ * Parsing on pick also moves a malformed file's error to before that choice
+ * rather than after it.
  */
 import { useEffect, useRef, useState } from 'react';
 import { useGym } from '../data/store';
-import { BackupError, type BackupErrorCode, type ImportMode } from '../data/backup';
-import { formatDate } from '../data/derive';
+import {
+  BackupError,
+  parseBackup,
+  summariseBackup,
+  type BackupErrorCode,
+  type BackupFile,
+  type BackupSummary,
+  type ExportOutcome,
+  type ImportMode,
+} from '../data/backup';
+import { backupStatus, formatDate } from '../data/derive';
 import { useLanguage, type Language, type TranslationKey } from '../data/i18n';
 import { ChangelogSheet } from './Changelog';
 import { ConfirmSheet, Sheet } from './Sheet';
@@ -30,6 +43,12 @@ const BACKUP_ERROR_KEYS: Record<BackupErrorCode, TranslationKey> = {
   'missing-data': 'backup.missingData',
 };
 
+/** Same mapping as Home's: a shared backup did not "download" anywhere. */
+const EXPORT_MESSAGE_KEYS: Record<Exclude<ExportOutcome, 'cancelled'>, TranslationKey> = {
+  shared: 'common.backupShared',
+  downloaded: 'common.backupDownloaded',
+};
+
 const GOAL_MIN = 1;
 const GOAL_MAX = 14;
 
@@ -45,12 +64,15 @@ function formatMb(bytes: number): string {
   return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
 }
 
+/** A picked file that parsed, held with its counts until a mode is chosen. */
+type PendingImport = { name: string; backup: BackupFile; summary: BackupSummary };
+
 export function SettingsSheet({ onClose }: { onClose: () => void }) {
-  const { settings, setWeeklyGoal, exportNow, importFrom } = useGym();
+  const { settings, sessions, setWeeklyGoal, exportNow, importFrom } = useGym();
   const { t, language, setLanguage } = useLanguage();
 
   const fileInput = useRef<HTMLInputElement>(null);
-  const [pendingFile, setPendingFile] = useState<File | null>(null);
+  const [pendingFile, setPendingFile] = useState<PendingImport | null>(null);
   const [confirmReplace, setConfirmReplace] = useState(false);
   const [busy, setBusy] = useState(false);
   const [message, setMessage] = useState<string | null>(null);
@@ -85,6 +107,7 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
   }, []);
 
   const goal = settings.weeklyGoal;
+  const backup = backupStatus(sessions, settings.lastExportAt, new Date());
 
   function clearFile() {
     setPendingFile(null);
@@ -92,12 +115,31 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
     if (fileInput.current) fileInput.current.value = '';
   }
 
-  function onPickFile(e: React.ChangeEvent<HTMLInputElement>) {
+  /**
+   * Parse on pick, not on import. A file that isn't a backup says so here,
+   * before Merge/Replace is even offered, and what survives parsing is what
+   * gets applied — the preview and the import can't disagree.
+   */
+  async function onPickFile(e: React.ChangeEvent<HTMLInputElement>) {
     const file = e.target.files?.[0] ?? null;
     setErrorText(null);
     setMessage(null);
-    setPendingFile(file);
     setConfirmReplace(false);
+    setPendingFile(null);
+    if (!file) return;
+
+    try {
+      const backup = parseBackup(await file.text());
+      setPendingFile({ name: file.name, backup, summary: summariseBackup(backup) });
+    } catch (err) {
+      setErrorText(describeImportError(err));
+      if (fileInput.current) fileInput.current.value = '';
+    }
+  }
+
+  function describeImportError(err: unknown): string {
+    if (err instanceof BackupError) return t(BACKUP_ERROR_KEYS[err.code], err.vars);
+    return err instanceof Error ? err.message : t('settings.importFailed');
   }
 
   async function handleExport() {
@@ -105,8 +147,8 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
     setBusy(true);
     setErrorText(null);
     try {
-      await exportNow();
-      setMessage(t('common.backupDownloaded'));
+      const outcome = await exportNow();
+      if (outcome !== 'cancelled') setMessage(t(EXPORT_MESSAGE_KEYS[outcome]));
     } catch (e) {
       setErrorText(e instanceof Error ? e.message : t('common.exportFailed'));
     } finally {
@@ -120,18 +162,12 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
     setErrorText(null);
     setMessage(null);
     try {
-      await importFrom(pendingFile, mode);
+      await importFrom(pendingFile.backup, mode);
       clearFile();
       setMessage(mode === 'replace' ? t('settings.dataReplaced') : t('settings.backupMerged'));
     } catch (e) {
       setConfirmReplace(false);
-      setErrorText(
-        e instanceof BackupError
-          ? t(BACKUP_ERROR_KEYS[e.code], e.vars)
-          : e instanceof Error
-            ? e.message
-            : t('settings.importFailed'),
-      );
+      setErrorText(describeImportError(e));
     } finally {
       setBusy(false);
     }
@@ -199,6 +235,13 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
             {settings.lastExportAt ? formatDate(settings.lastExportAt) : t('common.never')}
           </span>
         </p>
+        {backup.unsaved > 0 && (
+          <p className="settings-hint">
+            {t(backup.unsaved === 1 ? 'settings.unsavedOne' : 'settings.unsavedOther', {
+              count: backup.unsaved,
+            })}
+          </p>
+        )}
       </section>
 
       {/* --- import -------------------------------------------------------- */}
@@ -214,13 +257,14 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
             type="file"
             accept="application/json,.json"
             aria-label={t('settings.chooseBackupFile')}
-            onChange={onPickFile}
+            onChange={(e) => void onPickFile(e)}
           />
         </label>
 
         {pendingFile && (
           <div className="settings-import">
             <div className="settings-file-name">{pendingFile.name}</div>
+            <ImportPreview summary={pendingFile.summary} />
 
             <button className="btn btn-block" disabled={busy} onClick={() => void runImport('merge')}>
               {t('settings.merge')}
@@ -322,7 +366,10 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
       {confirmReplace && (
         <ConfirmSheet
           title={t('settings.confirmReplaceTitle')}
-          message={t('settings.confirmReplaceMessage')}
+          message={`${t('settings.confirmReplaceMessage')} ${t('settings.confirmReplaceCounts', {
+            trainings: pendingFile?.summary.trainings ?? 0,
+            sessions: pendingFile?.summary.sessions ?? 0,
+          })}`}
           confirmLabel={t('settings.confirmReplaceLabel')}
           danger
           onConfirm={() => void runImport('replace')}
@@ -332,5 +379,47 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
 
       {changelogOpen && <ChangelogSheet onClose={() => setChangelogOpen(false)} />}
     </Sheet>
+  );
+}
+
+/**
+ * What the picked file holds. Rows with nothing in them are dropped rather
+ * than shown as zeros — the same rule the muscle-balance list follows, and it
+ * keeps the one number that matters (sessions) from being buried under five
+ * empty ones. A file whose every store is empty still renders its own line,
+ * because "this backup is empty" is precisely what someone about to tap
+ * Replace needs to read.
+ */
+function ImportPreview({ summary }: { summary: BackupSummary }) {
+  const { t } = useLanguage();
+
+  const all: { one: TranslationKey; other: TranslationKey; count: number }[] = [
+    { one: 'settings.previewTrainingOne', other: 'settings.previewTrainingOther', count: summary.trainings },
+    { one: 'settings.previewSessionOne', other: 'settings.previewSessionOther', count: summary.sessions },
+    { one: 'settings.previewSportOne', other: 'settings.previewSportOther', count: summary.sportSessions },
+    { one: 'settings.previewCustomOne', other: 'settings.previewCustomOther', count: summary.customExercises },
+    { one: 'settings.previewCheckinOne', other: 'settings.previewCheckinOther', count: summary.checkins },
+  ];
+  const rows = all.filter((row) => row.count > 0);
+
+  return (
+    <div className="settings-preview">
+      {rows.length === 0 ? (
+        <p className="settings-hint">{t('settings.previewEmpty')}</p>
+      ) : (
+        <ul className="settings-preview-list">
+          {rows.map((row) => (
+            <li key={row.one}>
+              <span className="num">{row.count}</span> {t(row.count === 1 ? row.one : row.other)}
+            </li>
+          ))}
+        </ul>
+      )}
+      <p className="settings-hint">
+        {summary.exportedAt
+          ? t('settings.previewExported', { date: formatDate(summary.exportedAt) })
+          : t('settings.previewExportedUnknown')}
+      </p>
+    </div>
   );
 }

@@ -444,6 +444,12 @@ function GymStats({
 
       <section className="section">
         <div className="card card-pad">
+          <VolumeChart buckets={buckets} view={view} />
+        </div>
+      </section>
+
+      <section className="section">
+        <div className="card card-pad">
           <DurationChart buckets={buckets} view={view} />
         </div>
       </section>
@@ -542,6 +548,57 @@ function SessionsChart({
                 current,
                 unit: t(VIEW_UNIT_KEY[view]),
               })
+        }
+      />
+    </ChartFigure>
+  );
+}
+
+/**
+ * Total volume lifted per bucket — reps × kg, summed. `statsBuckets` has
+ * carried this figure since it was written; until now only the lifetime
+ * footer on Home ever rendered a volume, so the one number that says whether
+ * the training is getting harder was the one thing Stats could not show.
+ *
+ * A `BarStrip` for the same reason the other two are: an untrained bucket is
+ * a flat stub rather than a gap, which is exactly what a volume gap means.
+ * Bodyweight-only buckets legitimately read zero — no load is no load — so
+ * unlike duration there is no null case to distinguish.
+ */
+function VolumeChart({ buckets, view }: { buckets: PeriodStat[]; view: StatsView }) {
+  const { t } = useLanguage();
+  const unit = t(VIEW_UNIT_KEY[view]);
+  const values = buckets.map((b) => b.volume);
+  const total = values.reduce((a, b) => a + b, 0);
+  const best = values.reduce((m, v) => Math.max(m, v), 0);
+  // Averaged over the buckets that were actually trained, not the window: a
+  // fortnight off would otherwise read as a drop in how hard the sessions were.
+  const lifted = values.filter((v) => v > 0);
+  const average = lifted.length > 0 ? lifted.reduce((a, b) => a + b, 0) / lifted.length : 0;
+
+  return (
+    <ChartFigure
+      title={t('stats.volumeTitle')}
+      // The window's total, not the last bucket's. Unlike a session count,
+      // where "0 this week" is the honest reading on a Monday, a headline of
+      // "0 kg" over a window holding 24 tonnes says the wrong thing entirely.
+      value={total > 0 ? kg(total) : undefined}
+      caption={
+        total > 0
+          ? t('stats.volumeCaption', { best: kg(best), average: kg(average), unit })
+          : t('stats.volumeNoData')
+      }
+    >
+      <BarStrip
+        values={values}
+        // No "kg" on the ticks: `formatCompact` is sized for the ~4 characters
+        // a phone axis gutter has, and the unit is already in the caption.
+        formatTick={formatCompact}
+        xLabels={edgeLabels(buckets, view)}
+        ariaLabel={
+          total > 0
+            ? t('stats.volumeAria', { unit, total: kg(total), best: kg(best) })
+            : t('stats.volumeNoData')
         }
       />
     </ChartFigure>

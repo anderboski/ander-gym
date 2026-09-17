@@ -6,6 +6,8 @@ import {
   allLatestFor,
   allPersonalRecords,
   averageSessionMinutes,
+  backupStatus,
+  BACKUP_MAX_UNSAVED_SESSIONS,
   beatsPersonalRecord,
   bmi,
   climbGradePyramid,
@@ -1310,6 +1312,62 @@ describe('lifetimeStats', () => {
       totalVolumeKg: 10 * 25 + 8 * 30,
       since: at(2026, 7, 20),
     });
+  });
+});
+
+describe('backupStatus', () => {
+  const now = new Date(2026, 7, 2, 10);
+
+  /** A session saved at the same moment it started, so `savedAt` is the knob under test. */
+  function saved(startedAt: string, savedAt = startedAt): Session {
+    return { ...session(startedAt), savedAt };
+  }
+
+  it('is not due on a fresh install with nothing logged', () => {
+    expect(backupStatus([], null, now)).toEqual({ due: false, unsaved: 0, daysSince: null });
+  });
+
+  it('is due as soon as there is a session and no export has ever run', () => {
+    expect(backupStatus([saved(at(2026, 8, 1))], null, now)).toEqual({
+      due: true,
+      unsaved: 1,
+      daysSince: null,
+    });
+  });
+
+  it('counts only sessions saved after the export', () => {
+    const exportedAt = at(2026, 7, 15, 12);
+    const sessions = [
+      saved(at(2026, 7, 10)), // before
+      saved(at(2026, 7, 20)), // after
+      saved(at(2026, 7, 25)), // after
+    ];
+    expect(backupStatus(sessions, exportedAt, now).unsaved).toBe(2);
+  });
+
+  it('counts a session started before the export but saved after it', () => {
+    const exportedAt = at(2026, 7, 15, 12);
+    const overnight = saved(at(2026, 7, 15, 8), at(2026, 7, 15, 18));
+    expect(backupStatus([overnight], exportedAt, now).unsaved).toBe(1);
+  });
+
+  it('is not due for a recent export with little logged since', () => {
+    const status = backupStatus([saved(at(2026, 8, 1))], at(2026, 7, 30), now);
+    expect(status).toEqual({ due: false, unsaved: 1, daysSince: 3 });
+  });
+
+  it('is due past 30 days even with nothing logged since', () => {
+    expect(backupStatus([], at(2026, 6, 25), now)).toMatchObject({ due: true, unsaved: 0 });
+    expect(backupStatus([], at(2026, 7, 3), now)).toMatchObject({ due: false, daysSince: 30 });
+  });
+
+  it('is due on unsaved sessions alone, well inside the 30 days', () => {
+    const exportedAt = at(2026, 7, 30);
+    const sessions = Array.from({ length: BACKUP_MAX_UNSAVED_SESSIONS }, (_, i) =>
+      saved(at(2026, 8, 1, 8 + i)),
+    );
+    expect(backupStatus(sessions, exportedAt, now)).toMatchObject({ due: true, daysSince: 3 });
+    expect(backupStatus(sessions.slice(1), exportedAt, now).due).toBe(false);
   });
 });
 

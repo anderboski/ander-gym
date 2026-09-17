@@ -1,7 +1,15 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { deleteDB, openDB } from 'idb';
 import * as db from './db';
-import { applyBackup, backupFilename, buildBackup, dataUrlToBlob, parseBackup, BackupError } from './backup';
+import {
+  applyBackup,
+  backupFilename,
+  buildBackup,
+  dataUrlToBlob,
+  parseBackup,
+  summariseBackup,
+  BackupError,
+} from './backup';
 import type { Session } from './types';
 
 beforeEach(async () => {
@@ -656,6 +664,43 @@ describe('parseBackup validation', () => {
     const parsed = parseBackup('{"schemaVersion":1,"trainings":[],"sessions":[]}');
     expect(parsed.customExercises).toEqual([]);
     expect(parsed.settings.weeklyGoal).toBe(3);
+  });
+
+  // The import preview shows this date; inventing "today" for a file that
+  // never said would make a hand-made file look like a fresh export.
+  it('leaves exportedAt null when the file does not carry one', () => {
+    expect(parseBackup('{"schemaVersion":1,"trainings":[],"sessions":[]}').exportedAt).toBeNull();
+    expect(
+      parseBackup('{"schemaVersion":1,"exportedAt":"2026-08-01T00:00:00.000Z","trainings":[],"sessions":[]}')
+        .exportedAt,
+    ).toBe('2026-08-01T00:00:00.000Z');
+  });
+});
+
+describe('summariseBackup', () => {
+  it('counts every store in a real export', async () => {
+    await db.createTraining('Leg-abs');
+    await db.putSession(session('s1'));
+    await db.putCheckin({ id: 'ck-1', date: '2026-08-01', weightKg: 80, photoBlobs: [] });
+
+    expect(summariseBackup(await buildBackup())).toMatchObject({
+      trainings: 1,
+      sessions: 1,
+      sportSessions: 0,
+      customExercises: 0,
+      checkins: 1,
+    });
+  });
+
+  it('reports zeros and a null date for an empty hand-made file', () => {
+    expect(summariseBackup(parseBackup('{"schemaVersion":1,"trainings":[],"sessions":[]}'))).toEqual({
+      trainings: 0,
+      sessions: 0,
+      sportSessions: 0,
+      customExercises: 0,
+      checkins: 0,
+      exportedAt: null,
+    });
   });
 });
 

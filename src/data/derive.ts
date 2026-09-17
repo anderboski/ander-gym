@@ -333,6 +333,61 @@ export function lifetimeStats(sessions: Session[]): LifetimeStats {
 }
 
 /* -------------------------------------------------------------------------- */
+/* Backup staleness                                                            */
+/* -------------------------------------------------------------------------- */
+
+/** A backup older than this many calendar days is stale enough to nag about. */
+export const BACKUP_MAX_AGE_DAYS = 30;
+
+/**
+ * Sessions logged since the last export that are worth nagging about on their
+ * own, regardless of the calendar. A month with nothing logged is not urgent;
+ * five real workouts sitting in an IndexedDB that Safari is free to evict is,
+ * and waiting out the other 25 days to say so would be waiting out the risk.
+ */
+export const BACKUP_MAX_UNSAVED_SESSIONS = 5;
+
+export type BackupStatus = {
+  /** Whether the Home banner should nag. */
+  due: boolean;
+  /**
+   * Sessions saved since the last export — everything ever logged when there
+   * has never been one. Keyed on `savedAt`, not `startedAt`: a session started
+   * yesterday and saved after this morning's export is not in that file.
+   */
+  unsaved: number;
+  /** Calendar days since the last export, or null when there has never been one. */
+  daysSince: number | null;
+};
+
+/**
+ * How exposed the device's data currently is. Replaces a pure age check: an
+ * export from 29 days ago says nothing about the twelve sessions logged since,
+ * which is the number that actually measures what a wipe would cost.
+ */
+export function backupStatus(
+  sessions: Session[],
+  lastExportAt: string | null,
+  now: Date,
+): BackupStatus {
+  if (lastExportAt === null) {
+    // Nothing to lose before the first session, so a fresh install is not nagged.
+    return { due: sessions.length > 0, unsaved: sessions.length, daysSince: null };
+  }
+
+  const exported = new Date(lastExportAt);
+  const exportedMs = exported.getTime();
+  const unsaved = sessions.filter((s) => new Date(s.savedAt).getTime() > exportedMs).length;
+  const daysSince = daysBetween(exported, now);
+
+  return {
+    due: daysSince > BACKUP_MAX_AGE_DAYS || unsaved >= BACKUP_MAX_UNSAVED_SESSIONS,
+    unsaved,
+    daysSince,
+  };
+}
+
+/* -------------------------------------------------------------------------- */
 /* Rotation                                                                    */
 /* -------------------------------------------------------------------------- */
 
