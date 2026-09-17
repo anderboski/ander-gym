@@ -138,8 +138,14 @@ Reachable from a gear icon on Home (Settings sheet).
 
 - **Export** — one JSON file, `ander-gym-YYYY-MM-DD.json`, containing every store plus
   `{ schemaVersion, exportedAt }`. Custom-exercise blobs and check-in photo blobs are both inlined as
-  base64 data URLs (same technique, `blobToDataUrl`/`dataUrlToBlob`). Delivered via `Blob` + `<a download>`
-  (works in iOS Safari and standalone mode). On success, write `lastExportAt`.
+  base64 data URLs (same technique, `blobToDataUrl`/`dataUrlToBlob`). Delivered by `deliverBackup`, which
+  prefers the **share sheet** (`navigator.share({ files })`, gated on `navigator.canShare({ files })` —
+  Safari exposed `share` years before it accepted a file payload) and falls back to `Blob` + `<a download>`
+  everywhere that is unavailable. The share sheet is the point: a download lands in Downloads, which is
+  the least likely place on a phone for the user's only copy to outlive the device, while the share sheet
+  reaches Files, iCloud Drive and Mail. `deliverBackup` returns `'shared' | 'downloaded' | 'cancelled'`;
+  on the first two, write `lastExportAt`. **A dismissed share sheet writes nothing** — stamping an export
+  that never produced a file would silence the backup banner over a backup that does not exist.
 - `profile`/`checkins` are absent entirely from a `schemaVersion: 1` backup (written before they existed) —
   a missing `profile` defaults to `{ name: '', birthdate: null, heightCm: null }` and a missing `checkins`
   defaults to `[]`, same "default rather than reject" handling as an old backup missing `favoriteExerciseIds`.
@@ -149,10 +155,19 @@ Reachable from a gear icon on Home (Settings sheet).
 - `restSeconds` travels inside the trainings array, so it needs no format change. On import a value
   that could not run a countdown (non-numeric, zero, negative, `NaN`) is dropped rather than
   corrected — the training falls back to the default, which is what an absent field already means.
-- **Import** — file input, validate `schemaVersion`, then ask **Merge** (union by id, incoming wins on
-  conflict) or **Replace** (wipe then load). Replace goes through a second, destructive confirmation
-  stating what will be lost. (v1 uses a confirm dialog rather than a typed confirmation; revisit if a
-  mis-tap ever actually happens.)
+- **Import** — file input, parse and validate `schemaVersion` **on pick**, show what the file holds, then
+  ask **Merge** (union by id, incoming wins on conflict) or **Replace** (wipe then load). Replace goes
+  through a second, destructive confirmation which also names the incoming training and session counts.
+  (v1 uses a confirm dialog rather than a typed confirmation; revisit if a mis-tap ever actually happens.)
+- **Import preview** — parsing on pick rather than on import buys two things. A malformed file reports its
+  error before Merge/Replace is offered rather than after a mode has been chosen, and the counts
+  (`summariseBackup` → trainings / gym sessions / activity logs / custom exercises / check-ins, plus the
+  file's `exportedAt`) are readable before the wipe. That is the mistake a confirmation dialog cannot
+  catch: the file is a perfectly valid backup, just the empty one, or last year's. Rows at zero are
+  dropped rather than shown; a file whose every store is empty says so in one line instead. The store's
+  `importFrom` takes the already-parsed `BackupFile`, so what was previewed is exactly what is applied.
+- `BackupFile.exportedAt` is `string | null` — a hand-made or truncated file that never carried one reads
+  as null rather than being defaulted to now, which would make it look like a fresh export in the preview.
 
 ---
 
@@ -181,6 +196,15 @@ same idea as `lastSessionForTraining` but comparing `date` strings instead of `D
 
 **`mergedHistory(sessions, sportSessions)`** — gym and sport sessions interleaved into one reverse-
 chronological list for History (§5.5); a sport session's sort key is its `date` at local midnight.
+
+**`backupStatus(sessions, lastExportAt, now)`** — how exposed the device's data currently is, for Home's
+backup banner (§5.1) and the Settings export block. Returns `{ due, unsaved, daysSince }`. `unsaved` counts
+sessions whose **`savedAt`** is after the export — not `startedAt`, since a session started yesterday and
+saved after this morning's export is not in that file — and is every session when there has never been an
+export. `due` is true past `BACKUP_MAX_AGE_DAYS` (30) **or** at `BACKUP_MAX_UNSAVED_SESSIONS` (5) sessions
+logged since, whichever comes first: an export from 29 days ago says nothing about the twelve sessions
+logged since, and the session count is what actually measures what a wipe would cost. A fresh install with
+nothing logged is never due — there is nothing to lose before the first session.
 
 **`weeklyStreak(sessions, goal, now)`** — count of consecutive ISO weeks, walking backwards from last week,
 where the session count ≥ `goal`. The current week is included only if it already meets the goal (so a
@@ -284,8 +308,13 @@ the fixed bottom nav.
   seeing all of them, not collapsing the day to one winner. Tapping a day opens its primary entry in History
   (`#/history/<id>`); untrained days are inert. Hidden until at least one gym or sport session exists,
   matching the Stats shortcut.
-- **Backup banner** — shown when `lastExportAt` is unset (and ≥1 session exists) or older than 30 days.
-  Tapping it runs an export immediately.
+- **Backup banner** — shown per `backupStatus` (§4): `lastExportAt` unset with ≥1 session, older than 30
+  days, or 5+ sessions logged since the last export. Its body states the count when there is one ("12
+  sessions logged since your last backup live only on this iPhone") and falls back to the generic warning
+  when the export is merely old with nothing logged since — the number is the part that makes the risk
+  concrete. Tapping it runs an export immediately (through the share sheet where available, §3), and the
+  resulting toast says *saved* or *downloaded* to match what actually happened; a dismissed share sheet
+  raises no toast at all.
 - **Lifetime stats footer** — below the backup banner, a single centred line: total sessions ever saved,
   total kg lifted (`formatCompact`, matching Stats' chart figures), and "since `<date of the first saved
   session>`". Hidden until at least one session exists, matching the Stats shortcut and the calendar.
@@ -450,6 +479,14 @@ exercise:
 | small image | name | reps | + |
 |---|---|---|---|
 
+- **"Last time"** — under the exercise name, on its own line spanning the row: the days-ago label and up
+  to three sets from the last session this exercise was logged in (`summariseSets` in `parse.ts`, capped
+  with a `+N`), read off `useGym().exerciseLatest` rather than a per-row `latestFor` scan. The same lookup
+  already prefills the add-set sheet, but only *after* "+" has been tapped — before that the row is blank
+  and the number you are trying to match is two taps away in the history sheet. Absent entirely for an
+  exercise with no history, so a first-time row stays as short as it was. Its own line rather than inside
+  the name column: three sets in the tabular-numeral font do not fit ~150 px, and wrapping them there
+  costs more row height than a second line does.
 - **reps** starts empty and accumulates one line per logged set: `10x25kg`.
 - **"+"** opens a bottom sheet asking reps and weight. Numeric keypads (`inputmode="numeric"` /
   `"decimal"`), prefilled from that exercise's previous set in this session, or from its last recorded set
@@ -559,7 +596,7 @@ months weekly + monthly, a year monthly only). The selected view falls back to `
 one drops out of the set; that is derived per render, not corrected in the change handler, because
 with a custom range the allowed set moves as the dates move.
 
-**Gym.** Five visuals:
+**Gym.** Six visuals:
 - **Sessions per bucket** (`statsBuckets`) — a bar strip. On the weekly view only, the weekly goal is drawn
   as a reference line and bars that met it wear the accent, the rest go recessive — the daily and monthly
   views aren't the unit the goal is set in, so they get a plain count instead. A bucket with nothing logged
@@ -567,6 +604,16 @@ with a custom range the allowed set moves as the dates move.
   containing its last, so an edge bucket the window cuts in half is still drawn whole — a bar labelled
   "week of the 3rd" that dropped the 1st and 2nd would read as a dip that never happened. The headline
   says "this week" only when the window actually reaches today.
+- **Volume lifted** (`statsBuckets`) — total reps × kg per bucket, a bar strip. `statsBuckets` has carried
+  this figure since it was written and only Home's lifetime footer ever rendered a volume, so the one
+  number that says whether the training is getting *harder* was the one thing Stats could not show. The
+  headline is the **window total**, not the last bucket: unlike a session count, where "0 this week" is the
+  honest reading on a Monday morning, a headline of "0 kg" over a window holding 24 tonnes says the wrong
+  thing entirely. The caption's average is over the buckets actually trained rather than over the window,
+  so a fortnight off reads as a gap in the bars and not as a drop in how hard the sessions were. Axis ticks
+  use bare `formatCompact` with no unit — it is sized for the four characters a phone axis gutter has, and
+  the kg is already in the headline and caption. A bodyweight-only bucket legitimately reads zero, so
+  unlike duration there is no null case to distinguish from "nothing logged".
 - **Session duration** (`statsBuckets`) — average minutes per bucket, also a bar strip (not a line: a bucket
   with no saved session has no duration to plot, and the bar strip's empty-stub treatment already says "no
   data" without a misleading zero-minute point).

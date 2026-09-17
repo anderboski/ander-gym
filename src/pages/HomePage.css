@@ -585,6 +585,31 @@
   white-space: nowrap;
 }
 
+/* What the picked file holds, read before Merge/Replace is chosen. Boxed
+   away from the surrounding buttons so it reads as the file's contents
+   rather than as another hint about what the buttons do. */
+.settings-preview {
+  margin-bottom: var(--s3);
+  padding: var(--s3);
+  border-radius: var(--r-sm);
+  background: var(--bg);
+}
+
+.settings-preview-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--s1);
+  font-size: 14px;
+  color: var(--text);
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.settings-preview .settings-hint {
+  margin-top: var(--s2);
+}
+
 .settings-error {
   margin-top: var(--s4);
   padding: var(--s3);

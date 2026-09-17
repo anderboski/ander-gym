@@ -1,6 +1,14 @@
 import { describe, expect, it } from 'vitest';
-import { firstGrapheme, formatCompact, formatSet, formatWeight, parseRestSeconds } from './parse';
+import {
+  firstGrapheme,
+  formatCompact,
+  formatSet,
+  formatWeight,
+  parseRestSeconds,
+  summariseSets,
+} from './parse';
 import { REST_MAX_SECONDS, REST_MIN_SECONDS } from './types';
+import type { SetEntry } from './types';
 
 describe('formatting', () => {
   it('formats a weighted set', () => {
@@ -74,5 +82,29 @@ describe('firstGrapheme', () => {
 
   it('returns an empty string for empty input', () => {
     expect(firstGrapheme('')).toBe('');
+  });
+});
+
+describe('summariseSets', () => {
+  const set = (reps: number, weight: number): SetEntry => ({ reps, weight, at: '2026-08-01T10:00:00.000Z' });
+
+  it('joins every set when they fit under the cap', () => {
+    expect(summariseSets([set(10, 25), set(8, 25)], 3)).toEqual({
+      text: '10x25kg \u00b7 8x25kg',
+      more: 0,
+    });
+  });
+
+  it('keeps the first sets in logged order and counts the rest', () => {
+    const sets = [set(12, 20), set(10, 25), set(8, 30), set(6, 32.5), set(5, 35)];
+    expect(summariseSets(sets, 3)).toEqual({ text: '12x20kg \u00b7 10x25kg \u00b7 8x30kg', more: 2 });
+  });
+
+  it('renders a bodyweight set as reps', () => {
+    expect(summariseSets([set(15, 0)], 3)).toEqual({ text: '15 reps', more: 0 });
+  });
+
+  it('is empty for an exercise with no sets', () => {
+    expect(summariseSets([], 3)).toEqual({ text: '', more: 0 });
   });
 });

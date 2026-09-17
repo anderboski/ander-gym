@@ -302,6 +302,24 @@ export const CHANGELOG: ChangelogEntry[] = [
       'Los ejercicios que ya tienes aparecen atenuados como "ya añadido" en lugar de desaparecer de los resultados.',
     ],
   },
+  {
+    version: '1.21.0',
+    date: '2026-09-17',
+    en: [
+      'Each exercise in a session now shows what you lifted last time, right under its name — no need to open the history sheet to find the number you are chasing.',
+      'Stats has a new "Volume lifted" chart: total kg per day, week or month over the period you pick.',
+      'Exporting now opens the iOS share sheet, so a backup can go straight to Files, iCloud Drive or Mail instead of into Downloads.',
+      'Picking a file to import shows what is inside it — trainings, sessions, activities, custom exercises, check-ins — before you choose Merge or Replace.',
+      'The backup reminder now counts the sessions logged since your last backup, and appears after five of them rather than waiting a month.',
+    ],
+    es: [
+      'Cada ejercicio de una sesión muestra ahora lo que levantaste la última vez, justo debajo de su nombre — ya no hace falta abrir el historial para ver la cifra que quieres igualar.',
+      'Las estadísticas incluyen un nuevo gráfico de "Volumen levantado": kg totales por día, semana o mes en el periodo que elijas.',
+      'Al exportar se abre el menú de compartir de iOS, así la copia puede ir directa a Archivos, iCloud Drive o Mail en lugar de a Descargas.',
+      'Al elegir un archivo para importar se muestra lo que contiene — entrenamientos, sesiones, actividades, ejercicios personalizados, registros de peso — antes de decidir entre Combinar y Reemplazar.',
+      'El aviso de copia de seguridad cuenta ahora las sesiones registradas desde la última copia, y aparece a partir de cinco en lugar de esperar un mes.',
+    ],
+  },
 ];
 
 /** Keep in sync with the bootstrap-independent nature of theme/language: this

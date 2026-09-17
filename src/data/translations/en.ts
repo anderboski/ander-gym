@@ -16,6 +16,7 @@ export const en = {
   'common.unknownError': 'Unknown error.',
   'common.couldNotStartSession': 'Could not start the session.',
   'common.backupDownloaded': 'Backup downloaded.',
+  'common.backupShared': 'Backup saved.',
   'common.exportFailed': 'Export failed.',
   'common.never': 'Never',
   'common.unknown': 'Unknown',
@@ -68,7 +69,10 @@ export const en = {
   'home.backupOutdated': 'Your backup is out of date',
   'home.backupFirst': 'Back up your data',
   'home.backupBody':
-    'Everything lives only on this iPhone and there is no server copy — Safari can evict it at any time. Tap to download a backup file.',
+    'Everything lives only on this iPhone and there is no server copy — Safari can evict it at any time. Tap to save a backup file.',
+  'home.backupUnsavedOne': '1 session logged since your last backup lives only on this iPhone. Tap to back up.',
+  'home.backupUnsavedOther':
+    '{count} sessions logged since your last backup live only on this iPhone. Tap to back up.',
   'home.dismissBackup': 'Dismiss backup reminder',
   'home.lifetimeKgLifted': 'kg lifted',
   'home.lifetimeSince': 'since {date}',
@@ -90,6 +94,21 @@ export const en = {
   'settings.merge': 'Merge',
   'settings.mergeHint':
     'Keeps what is on this device and adds the file’s records; the file wins on conflicts.',
+  'settings.unsavedOne': '1 session logged since then.',
+  'settings.unsavedOther': '{count} sessions logged since then.',
+  'settings.previewTrainingOne': 'training day',
+  'settings.previewTrainingOther': 'training days',
+  'settings.previewSessionOne': 'gym session',
+  'settings.previewSessionOther': 'gym sessions',
+  'settings.previewSportOne': 'activity log',
+  'settings.previewSportOther': 'activity logs',
+  'settings.previewCustomOne': 'custom exercise',
+  'settings.previewCustomOther': 'custom exercises',
+  'settings.previewCheckinOne': 'weight check-in',
+  'settings.previewCheckinOther': 'weight check-ins',
+  'settings.previewEmpty': 'This file is a valid backup but holds no records.',
+  'settings.previewExported': 'Exported {date}.',
+  'settings.previewExportedUnknown': 'This file does not say when it was exported.',
   'settings.replace': 'Replace',
   'settings.replaceHint':
     'Deletes every training, session and custom exercise here first, then loads the file.',
@@ -111,6 +130,8 @@ export const en = {
   'settings.confirmReplaceTitle': 'Replace all data?',
   'settings.confirmReplaceMessage':
     'This deletes every training, session and custom exercise on this device and loads the backup file in their place. It cannot be undone.',
+  'settings.confirmReplaceCounts':
+    'The file holds {trainings} training days and {sessions} gym sessions.',
   'settings.confirmReplaceLabel': 'Replace everything',
 
   'exercises.title': 'Exercises',
@@ -289,6 +310,8 @@ export const en = {
   'session.discardWithSetsOther': '{count} logged sets will be thrown away. This cannot be undone.',
   'session.noSetsLoggedAria': 'No sets logged for {name}',
   'session.setAria': 'Set {index} of {name}, {label}. Tap to delete.',
+  'session.lastTimeMore': '+{count}',
+  'session.lastTimeAria': 'Last time, {ago}: {sets}',
   'session.removeFromSessionAria': 'Remove {name} from this session',
   'session.alreadyAdded': 'Already in this session',
   'session.alreadyAddedAria': '{name} is already in this session',
@@ -351,6 +374,11 @@ export const en = {
 
   'stats.durationTitle': 'Session duration',
   'stats.durationCaption': 'Average {average} · longest {best}',
+  'stats.volumeTitle': 'Volume lifted',
+  'stats.volumeCaption': 'Best {best} in a single {unit} · {average} per {unit} trained.',
+  'stats.volumeNoData': 'No weighted sets logged in this window.',
+  'stats.volumeAria':
+    'Volume lifted per {unit} in this window: {total} in total, with a best {unit} of {best}.',
   'stats.durationNoData': 'Not enough saved sessions with a start and end time yet.',
   'stats.durationAria':
     'Average session duration per bucket in this window: {current} most recently, against an average of {average} and a longest of {best}.',

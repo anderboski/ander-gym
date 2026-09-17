@@ -10,6 +10,7 @@ export const es: Record<TranslationKey, string> = {
   'common.unknownError': 'Error desconocido.',
   'common.couldNotStartSession': 'No se pudo iniciar la sesión.',
   'common.backupDownloaded': 'Copia de seguridad descargada.',
+  'common.backupShared': 'Copia de seguridad guardada.',
   'common.exportFailed': 'Error al exportar.',
   'common.never': 'Nunca',
   'common.unknown': 'Desconocido',
@@ -62,7 +63,11 @@ export const es: Record<TranslationKey, string> = {
   'home.backupOutdated': 'Tu copia de seguridad está desactualizada',
   'home.backupFirst': 'Haz una copia de seguridad',
   'home.backupBody':
-    'Todo vive únicamente en este iPhone y no hay copia en un servidor — Safari puede eliminarlo en cualquier momento. Toca para descargar un archivo de copia de seguridad.',
+    'Todo vive únicamente en este iPhone y no hay copia en un servidor — Safari puede eliminarlo en cualquier momento. Toca para guardar un archivo de copia de seguridad.',
+  'home.backupUnsavedOne':
+    '1 sesión registrada desde tu última copia vive solo en este iPhone. Toca para hacer una copia.',
+  'home.backupUnsavedOther':
+    '{count} sesiones registradas desde tu última copia viven solo en este iPhone. Toca para hacer una copia.',
   'home.dismissBackup': 'Descartar aviso de copia de seguridad',
   'home.lifetimeKgLifted': 'kg levantados',
   'home.lifetimeSince': 'desde {date}',
@@ -84,6 +89,21 @@ export const es: Record<TranslationKey, string> = {
   'settings.merge': 'Combinar',
   'settings.mergeHint':
     'Conserva lo que hay en este dispositivo y añade los registros del archivo; el archivo gana en caso de conflicto.',
+  'settings.unsavedOne': '1 sesión registrada desde entonces.',
+  'settings.unsavedOther': '{count} sesiones registradas desde entonces.',
+  'settings.previewTrainingOne': 'entrenamiento',
+  'settings.previewTrainingOther': 'entrenamientos',
+  'settings.previewSessionOne': 'sesión de gimnasio',
+  'settings.previewSessionOther': 'sesiones de gimnasio',
+  'settings.previewSportOne': 'actividad registrada',
+  'settings.previewSportOther': 'actividades registradas',
+  'settings.previewCustomOne': 'ejercicio personalizado',
+  'settings.previewCustomOther': 'ejercicios personalizados',
+  'settings.previewCheckinOne': 'registro de peso',
+  'settings.previewCheckinOther': 'registros de peso',
+  'settings.previewEmpty': 'Este archivo es una copia válida pero no contiene registros.',
+  'settings.previewExported': 'Exportado el {date}.',
+  'settings.previewExportedUnknown': 'Este archivo no indica cuándo se exportó.',
   'settings.replace': 'Reemplazar',
   'settings.replaceHint':
     'Elimina primero cada entrenamiento, sesión y ejercicio personalizado de aquí, y luego carga el archivo.',
@@ -106,6 +126,8 @@ export const es: Record<TranslationKey, string> = {
   'settings.confirmReplaceTitle': '¿Reemplazar todos los datos?',
   'settings.confirmReplaceMessage':
     'Esto elimina cada entrenamiento, sesión y ejercicio personalizado de este dispositivo y carga en su lugar el archivo de copia de seguridad. No se puede deshacer.',
+  'settings.confirmReplaceCounts':
+    'El archivo contiene {trainings} entrenamientos y {sessions} sesiones de gimnasio.',
   'settings.confirmReplaceLabel': 'Reemplazar todo',
 
   'exercises.title': 'Ejercicios',
@@ -288,6 +310,8 @@ export const es: Record<TranslationKey, string> = {
   'session.discardWithSetsOther': '{count} series registradas se descartarán. No se puede deshacer.',
   'session.noSetsLoggedAria': 'Sin series registradas para {name}',
   'session.setAria': 'Serie {index} de {name}, {label}. Toca para eliminar.',
+  'session.lastTimeMore': '+{count}',
+  'session.lastTimeAria': 'La última vez, {ago}: {sets}',
   'session.removeFromSessionAria': 'Quitar {name} de esta sesión',
   'session.alreadyAdded': 'Ya está en esta sesión',
   'session.alreadyAddedAria': '{name} ya está en esta sesión',
@@ -351,6 +375,11 @@ export const es: Record<TranslationKey, string> = {
 
   'stats.durationTitle': 'Duración de la sesión',
   'stats.durationCaption': 'Media {average} · máxima {best}',
+  'stats.volumeTitle': 'Volumen levantado',
+  'stats.volumeCaption': 'Máximo {best} por {unit} · media de {average} por {unit} con actividad.',
+  'stats.volumeNoData': 'No hay series con peso registradas en esta ventana.',
+  'stats.volumeAria':
+    'Volumen levantado por {unit} en esta ventana: {total} en total, con un máximo de {best}.',
   'stats.durationNoData': 'Aún no hay suficientes sesiones guardadas con hora de inicio y fin.',
   'stats.durationAria':
     'Duración media de la sesión por bloque en esta ventana: {current} la más reciente, frente a una media de {average} y una máxima de {best}.',

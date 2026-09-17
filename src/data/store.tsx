@@ -11,7 +11,14 @@
  */
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import * as db from './db';
-import { applyBackup, buildBackup, downloadBackup, parseBackup, type ImportMode } from './backup';
+import {
+  applyBackup,
+  buildBackup,
+  deliverBackup,
+  type BackupFile,
+  type ExportOutcome,
+  type ImportMode,
+} from './backup';
 import {
   allLatestFor,
   allPersonalRecords,
@@ -135,8 +142,19 @@ type Mutations = {
   setWeeklyGoal: (goal: number) => Promise<void>;
   /** Stars or unstars an exercise in the finder. */
   toggleFavorite: (exerciseId: string) => Promise<void>;
-  exportNow: () => Promise<void>;
-  importFrom: (file: File, mode: ImportMode) => Promise<void>;
+  /**
+   * Writes a backup out through the share sheet, falling back to a download.
+   * Returns which one happened so the caller can say so — and so a dismissed
+   * share sheet is reported as the non-event it is.
+   */
+  exportNow: () => Promise<ExportOutcome>;
+  /**
+   * Takes an already-parsed file rather than a `File`: the import preview
+   * (SettingsSheet) has to read the backup to show what is in it *before*
+   * Merge/Replace is chosen, so parsing it a second time here would only risk
+   * applying something other than what was previewed.
+   */
+  importFrom: (backup: BackupFile, mode: ImportMode) => Promise<void>;
 
   /** Replaces the whole profile — the edit sheet collects all fields at once. */
   setProfile: (profile: Profile) => Promise<void>;
@@ -515,14 +533,20 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       },
 
       async exportNow() {
-        downloadBackup(await buildBackup());
+        const outcome = await deliverBackup(await buildBackup());
+        // A dismissed share sheet produced no file. Stamping `lastExportAt`
+        // would silence the backup banner over a backup that does not exist —
+        // the one failure mode this whole feature exists to prevent.
+        if (outcome === 'cancelled') return outcome;
+
         const lastExportAt = new Date().toISOString();
         await db.putSetting('lastExportAt', lastExportAt);
         setState((s) => ({ ...s, settings: { ...s.settings, lastExportAt } }));
+        return outcome;
       },
 
-      async importFrom(file, mode) {
-        await applyBackup(parseBackup(await file.text()), mode);
+      async importFrom(backup, mode) {
+        await applyBackup(backup, mode);
         await reload();
       },
 
