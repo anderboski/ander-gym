@@ -1,27 +1,5 @@
 /* Profile page + ProfileEditSheet + CheckinSheet. Tokens only. */
 
-.profile-back {
-  display: inline-flex;
-  align-items: center;
-  gap: var(--s1);
-  height: 44px;
-  padding: 0 var(--s3) 0 var(--s2);
-  margin-left: calc(-1 * var(--s2));
-  border-radius: var(--r-md);
-  color: var(--text-dim);
-  font-size: 15px;
-  font-weight: 600;
-}
-
-.profile-back:active {
-  background: var(--bg-raised-2);
-}
-
-.profile-back svg {
-  width: 20px;
-  height: 20px;
-}
-
 .profile-name-row {
   display: flex;
   align-items: center;
@@ -29,46 +7,14 @@
   gap: var(--s3);
 }
 
-.profile-name-row .icon-btn {
-  flex: none;
-  margin-right: calc(-1 * var(--s3));
-}
-
-/* --- stats row (age / height / BMI) -------------------------------------- */
-
 .profile-stats {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--s2);
-  margin-top: var(--s3);
-}
-
-.profile-stat {
-  flex: 1 1 90px;
-  padding: var(--s2) var(--s3);
-  background: var(--bg-raised);
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
-}
-
-.profile-stat-value {
-  font-size: 17px;
-  font-weight: 700;
-  letter-spacing: -0.01em;
-}
-
-.profile-stat-label {
-  font-size: 11px;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text-faint);
+  margin-top: var(--s4);
 }
 
 /* --- weight trend chart --------------------------------------------------- */
 
 .profile-progress-none {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-dim);
 }
 
@@ -78,72 +24,53 @@
   padding: var(--s2) 0;
 }
 
-/* --- add check-in ---------------------------------------------------------- */
-
-.profile-add-checkin {
-  width: 100%;
-  min-height: 44px;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  gap: var(--s1);
-  border: 1px dashed var(--border-strong);
-  border-radius: var(--r-md);
-  background: transparent;
-  color: var(--text-dim);
-  font-size: 15px;
-  font-weight: 600;
-}
-
-.profile-add-checkin:active {
-  background: var(--bg-raised);
-}
-
-.profile-add-checkin svg {
-  width: 20px;
-  height: 20px;
-}
-
 /* --- check-in list ---------------------------------------------------------- */
-
-.profile-checkin-list {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s2);
-}
 
 .profile-checkin-row {
   display: flex;
   align-items: center;
   gap: var(--s3);
-  padding: var(--s3);
-  background: var(--bg-raised);
-  border: 1px solid var(--border);
-  border-radius: var(--r-md);
+  min-height: 60px;
+  padding: var(--s2) var(--s1) var(--s2) var(--s4);
 }
 
 .profile-checkin-main {
   flex: 1;
   min-width: 0;
-  display: flex;
-  flex-wrap: wrap;
-  align-items: baseline;
-  gap: var(--s2);
-}
-
-.profile-checkin-date {
-  font-size: 15px;
-  font-weight: 650;
 }
 
 .profile-checkin-weight {
-  font-size: 15px;
+  display: block;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+}
+
+.profile-checkin-date {
+  display: block;
+  margin-top: 1px;
+  font-size: 13px;
   color: var(--text-dim);
 }
 
 .profile-checkin-delta {
+  flex: none;
   font-size: 13px;
-  color: var(--text-faint);
+  font-weight: 600;
+  padding: 2px var(--s2);
+  border-radius: var(--r-sm);
+  background: var(--bg-raised-2);
+  color: var(--text-dim);
+}
+
+.profile-checkin-down {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+.profile-checkin-up {
+  background: var(--warn-soft);
+  color: var(--warn);
 }
 
 .profile-checkin-photos {
@@ -157,33 +84,14 @@
   height: 36px;
   object-fit: cover;
   border-radius: var(--r-sm);
-  border: 1px solid var(--border);
 }
 
 .profile-checkin-delete {
   flex: none;
+  color: var(--text-faint);
 }
 
 /* --- forms (ProfileEditSheet, CheckinSheet) --------------------------------- */
-
-.profile-form {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s4);
-}
-
-.profile-form-field {
-  display: flex;
-  flex-direction: column;
-}
-
-.profile-form-error {
-  padding: var(--s3);
-  border-radius: var(--r-md);
-  background: var(--danger-soft);
-  color: var(--danger);
-  font-size: 14px;
-}
 
 /* Native file input, stretched invisibly over its label — same trick as
    .settings-file, but supports picking more than once to add more photos. */
@@ -219,7 +127,6 @@
   height: 100%;
   object-fit: cover;
   border-radius: var(--r-md);
-  border: 1px solid var(--border);
   background: var(--bg-sunken);
 }
 
@@ -233,9 +140,8 @@
   align-items: center;
   justify-content: center;
   border-radius: var(--r-full);
-  background: var(--bg-raised);
-  border: 1px solid var(--border);
-  color: var(--text-dim);
+  background: var(--text);
+  color: var(--bg);
 }
 
 .profile-photo-remove svg {

@@ -13,6 +13,7 @@
  * categorical palette to keep colourblind-safe.
  */
 import { useState, type ReactNode } from 'react';
+import { assignLanes, hourTicks, paddedDomain, zeroDomain } from '../data/chart';
 import './Chart.css';
 
 /* -------------------------------------------------------------------------- */
@@ -27,7 +28,7 @@ const BOX = { w: 320, h: 128 };
 const PAD = { top: 12, right: 10, bottom: 18, left: 36 };
 
 /** Scales for one plot, in user units. */
-export type Frame = {
+type Frame = {
   /** Centre of slot `i`. */
   x: (i: number) => number;
   y: (value: number) => number;
@@ -38,44 +39,6 @@ export type Frame = {
   left: number;
   right: number;
 };
-
-/** Rounds a rough interval up to a 1/2/5 × 10ⁿ step, so axis labels read cleanly. */
-function niceStep(rough: number): number {
-  if (!(rough > 0)) return 1;
-  const magnitude = 10 ** Math.floor(Math.log10(rough));
-  const norm = rough / magnitude;
-  return (norm <= 1 ? 1 : norm <= 2 ? 2 : norm <= 5 ? 5 : 10) * magnitude;
-}
-
-/**
- * Bar domain — always anchored at zero, because a bar encodes its value as a
- * length and a cropped baseline would lie about it.
- *
- * Small whole counts (sessions in a week) top out at exactly the best week
- * rather than at the next round number: rounding 3 up to 4 leaves the tallest
- * bar looking short of a mark that isn't there.
- */
-export function zeroDomain(values: number[]): [number, number] {
-  const max = values.reduce((m, v) => Math.max(m, v), 0);
-  if (max <= 0) return [0, 1];
-  if (max <= 8 && values.every(Number.isInteger)) return [0, max];
-  const step = niceStep(max / 2);
-  return [0, Math.ceil(max / step) * step];
-}
-
-/**
- * Trend-line domain — padded around the data rather than anchored at zero. A
- * lifter going 30 → 32.5 kg is a real climb, and on a 0-based axis it is a flat
- * line. Both bounds are labelled, so the cropped baseline is never a surprise.
- */
-export function paddedDomain(values: number[]): [number, number] {
-  if (values.length === 0) return [0, 1];
-  const lo = Math.min(...values);
-  const hi = Math.max(...values);
-  const span = hi - lo || Math.abs(hi) || 1;
-  const step = niceStep(span / 2);
-  return [Math.floor((lo - span * 0.15) / step) * step, Math.ceil((hi + span * 0.15) / step) * step];
-}
 
 /** A rect with a rounded data-end and square corners at the baseline. */
 function barPath(x: number, top: number, w: number, base: number, r: number): string {
@@ -572,19 +535,6 @@ const MAP_HEIGHT = 208;
 /** A clock time is wider than the compact numbers the strip charts label, and a clipped axis is worse than a narrower plot. */
 const MAP_PAD_LEFT = 46;
 
-/**
- * Whole-hour gridlines at a step that keeps the axis to about five labels —
- * every hour on a short span, every fourth on a full day, so the ticks stay
- * readable without the eye having to interpolate between two distant ones.
- */
-function hourTicks([lo, hi]: [number, number]): number[] {
-  const hours = (hi - lo) / 60;
-  const step = (hours <= 6 ? 1 : hours <= 12 ? 2 : hours <= 18 ? 3 : 4) * 60;
-  const ticks: number[] = [];
-  for (let m = lo; m <= hi; m += step) ticks.push(m);
-  return ticks;
-}
-
 type TimeOfWeekPlotProps = {
   markers: TimeMarker[];
   /** Minute bounds of the y axis — whole hours, so every tick lands on one. */
@@ -632,35 +582,17 @@ export function TimeOfWeekPlot({ markers, domain, dayLabels, formatTime, ariaLab
         const lanes = Math.max(1, Math.floor(frame.band / MARKER));
         const laneWidth = frame.band / lanes;
         const centre = (lanes - 1) / 2;
-        const order = Array.from({ length: lanes }, (_, i) => i).sort(
-          (a, b) => Math.abs(a - centre) - Math.abs(b - centre) || a - b,
+        const ys = markers.map((marker) => frame.y(marker.minutes));
+        const laneOf = assignLanes(
+          markers.map((marker, i) => ({ column: marker.weekday, y: ys[i] ?? 0 })),
+          lanes,
+          MARKER,
         );
-        const taken = new Map<string, number[]>();
-
-        const placed = markers.map((marker) => {
-          const y = frame.y(marker.minutes);
-          let lane = order[0] ?? 0;
-          let widest = -1;
-          for (const candidate of order) {
-            const column = taken.get(`${marker.weekday}:${candidate}`) ?? [];
-            const gap = column.reduce((min, placedY) => Math.min(min, Math.abs(placedY - y)), Infinity);
-            if (gap >= MARKER) {
-              lane = candidate;
-              widest = Infinity;
-              break;
-            }
-            // Nothing is free: remember the lane whose nearest neighbour is
-            // furthest away, so the unavoidable overlap is the mildest one.
-            if (gap > widest) {
-              widest = gap;
-              lane = candidate;
-            }
-          }
-          const column = taken.get(`${marker.weekday}:${lane}`) ?? [];
-          column.push(y);
-          taken.set(`${marker.weekday}:${lane}`, column);
-          return { marker, x: frame.x(marker.weekday) + (lane - centre) * laneWidth, y };
-        });
+        const placed = markers.map((marker, i) => ({
+          marker,
+          x: frame.x(marker.weekday) + ((laneOf[i] ?? 0) - centre) * laneWidth,
+          y: ys[i] ?? 0,
+        }));
 
         const activePoint = placed.find((p) => p.marker.key === active);
 
@@ -745,7 +677,7 @@ export function ChartLegend({ items }: { items: { key: string; label: string; co
   );
 }
 
-export type BarListRow = {
+type BarListRow = {
   key: string;
   label: string;
   /** Bar length. Never negative. */

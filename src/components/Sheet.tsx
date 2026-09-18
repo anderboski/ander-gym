@@ -36,11 +36,11 @@ export function Sheet({ title, full, onClose, children, footer, headerAction }: 
   const { t } = useLanguage();
 
   // WebKit hit-tests touches against the sheet's still-animating transform, so a tap
-  // thrown during the 0.24s slide-up can land on a different field than the one under
-  // the finger (iOS Safari, reproducible: tap a form control right after the sheet
-  // opens). Block pointer events on the sheet until its own enter animation finishes;
-  // skip the lock when the animation itself is disabled (prefers-reduced-motion), since
-  // no `animationend` would ever fire to lift it.
+  // thrown during the slide-up can land on a different field than the one under the
+  // finger (iOS Safari, reproducible: tap a form control right after the sheet opens).
+  // Block pointer events on the sheet until its own enter animation finishes; skip the
+  // lock when the animation itself is disabled (prefers-reduced-motion), since no
+  // `animationend` would ever fire to lift it.
   const [entering, setEntering] = useState(
     () => !window.matchMedia('(prefers-reduced-motion: reduce)').matches,
   );
@@ -68,7 +68,7 @@ export function Sheet({ title, full, onClose, children, footer, headerAction }: 
       >
         <div className="sheet-head">
           <div className="sheet-title">{title}</div>
-          <div style={{ display: 'flex', alignItems: 'center', gap: 'var(--s1)' }}>
+          <div className="sheet-head-actions">
             {headerAction}
             <button className="icon-btn" onClick={onClose} aria-label={t('sheet.close')}>
               <CloseIcon />
@@ -92,14 +92,7 @@ type ConfirmProps = {
   onCancel: () => void;
 };
 
-export function ConfirmSheet({
-  title,
-  message,
-  confirmLabel,
-  danger,
-  onConfirm,
-  onCancel,
-}: ConfirmProps) {
+export function ConfirmSheet({ title, message, confirmLabel, danger, onConfirm, onCancel }: ConfirmProps) {
   const { t } = useLanguage();
 
   return (
@@ -108,20 +101,16 @@ export function ConfirmSheet({
       onClose={onCancel}
       footer={
         <>
-          <button className="btn btn-ghost" style={{ flex: 1 }} onClick={onCancel}>
+          <button className="btn" onClick={onCancel}>
             {t('sheet.cancel')}
           </button>
-          <button
-            className={danger ? 'btn btn-danger' : 'btn btn-primary'}
-            style={{ flex: 1 }}
-            onClick={onConfirm}
-          >
+          <button className={danger ? 'btn btn-danger' : 'btn btn-primary'} onClick={onConfirm}>
             {confirmLabel ?? t('sheet.confirmDefault')}
           </button>
         </>
       }
     >
-      <p style={{ color: 'var(--text-dim)', fontSize: 15 }}>{message}</p>
+      <p className="sheet-text">{message}</p>
     </Sheet>
   );
 }
@@ -137,7 +126,7 @@ export function Toast({ message, actionLabel, onAction }: ToastProps) {
     <div className="toast" role="status">
       <span>{message}</span>
       {actionLabel && (
-        <button className="btn btn-sm btn-ghost" style={{ color: 'var(--accent)' }} onClick={onAction}>
+        <button className="btn btn-sm btn-ghost toast-action" onClick={onAction}>
           {actionLabel}
         </button>
       )}

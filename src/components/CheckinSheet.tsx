@@ -1,7 +1,8 @@
-import { useEffect, useState, type FormEvent } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useGym } from '../data/store';
 import { dayKey } from '../data/derive';
 import { useLanguage } from '../data/i18n';
+import { useObjectUrl } from '../hooks/useObjectUrl';
 import { Sheet } from './Sheet';
 import { CloseIcon } from './icons';
 import '../pages/ProfilePage.css';
@@ -11,23 +12,12 @@ const FORM_ID = 'checkin-form';
 /** A picked-but-unsaved photo, with its own object URL for the preview. */
 function PhotoPreview({ file, onRemove }: { file: File; onRemove: () => void }) {
   const { t } = useLanguage();
-  const [url, setUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    const objectUrl = URL.createObjectURL(file);
-    setUrl(objectUrl);
-    return () => URL.revokeObjectURL(objectUrl);
-  }, [file]);
+  const url = useObjectUrl(file);
 
   return (
     <div className="profile-photo-preview">
       {url && <img src={url} alt="" />}
-      <button
-        type="button"
-        className="profile-photo-remove"
-        onClick={onRemove}
-        aria-label={t('session.remove')}
-      >
+      <button type="button" className="profile-photo-remove" onClick={onRemove} aria-label={t('session.remove')}>
         <CloseIcon />
       </button>
     </div>
@@ -43,14 +33,6 @@ export function CheckinSheet({ onClose }: { onClose: () => void }) {
   const [photos, setPhotos] = useState<File[]>([]);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  function addPhotos(files: File[]) {
-    setPhotos((current) => [...current, ...files]);
-  }
-
-  function removePhoto(index: number) {
-    setPhotos((current) => current.filter((_, i) => i !== index));
-  }
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -82,29 +64,14 @@ export function CheckinSheet({ onClose }: { onClose: () => void }) {
         </button>
       }
     >
-      <form id={FORM_ID} className="profile-form" onSubmit={handleSubmit}>
+      <form id={FORM_ID} onSubmit={handleSubmit}>
         {error && (
-          <div className="profile-form-error" role="alert">
+          <div className="form-error field" role="alert">
             {error}
           </div>
         )}
 
-        <div className="profile-form-field">
-          <label className="label" htmlFor="checkin-date">
-            {t('checkin.dateLabel')}
-          </label>
-          <input
-            id="checkin-date"
-            className="input"
-            type="date"
-            required
-            value={date}
-            max={dayKey(new Date())}
-            onChange={(e) => setDate(e.target.value)}
-          />
-        </div>
-
-        <div className="profile-form-field">
+        <div className="field">
           <label className="label" htmlFor="checkin-weight">
             {t('session.weightKgLabel')}
           </label>
@@ -123,7 +90,14 @@ export function CheckinSheet({ onClose }: { onClose: () => void }) {
           />
         </div>
 
-        <div className="profile-form-field">
+        <div className="field">
+          <label className="label" htmlFor="checkin-date">
+            {t('checkin.dateLabel')}
+          </label>
+          <input id="checkin-date" className="input" type="date" required value={date} max={dayKey(new Date())} onChange={(e) => setDate(e.target.value)} />
+        </div>
+
+        <div className="field">
           <label className="label" htmlFor="checkin-photos">
             {t('checkin.photosLabel')}
           </label>
@@ -142,7 +116,8 @@ export function CheckinSheet({ onClose }: { onClose: () => void }) {
                 // functions run later, passing the live list straight through
                 // would race: by the time React invokes the updater, the list
                 // it closed over could already be empty.
-                addPhotos(Array.from(e.target.files ?? []));
+                const picked = Array.from(e.target.files ?? []);
+                setPhotos((current) => [...current, ...picked]);
                 e.target.value = '';
               }}
             />
@@ -151,7 +126,7 @@ export function CheckinSheet({ onClose }: { onClose: () => void }) {
           {photos.length > 0 && (
             <div className="profile-photo-list">
               {photos.map((file, i) => (
-                <PhotoPreview key={i} file={file} onRemove={() => removePhoto(i)} />
+                <PhotoPreview key={i} file={file} onRemove={() => setPhotos((current) => current.filter((_, j) => j !== i))} />
               ))}
             </div>
           )}

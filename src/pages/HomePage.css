@@ -7,45 +7,37 @@
   gap: var(--s3);
 }
 
+.home-header-text {
+  min-width: 0;
+}
+
+/* A greeting plus a name runs long; the large-title size is reserved for the
+   one-word page titles. */
+.home-header .page-title {
+  font-size: 26px;
+}
+
+/* The date sits above the greeting, small caps, the way a native large-title
+   header carries its eyebrow — the greeting is the title, the date is context. */
+.home-date {
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+  margin-bottom: var(--s1);
+}
+
 .home-header-actions {
   display: flex;
   align-items: center;
+  gap: var(--s2);
   flex: none;
-}
-
-.home-header-actions .icon-btn {
-  flex: none;
-}
-
-/* Pull the trailing 44px hit area back so its ink lines up with the page padding. */
-.home-header-actions .icon-btn:last-child {
-  margin-right: calc(-1 * var(--s3));
-}
-
-/* Only the name is the entry point to the profile section — a <button>
-   inline inside the <h1> (real heading for screen readers, still tappable),
-   styled distinctly so it reads as a link; the rest of the greeting stays
-   plain heading text. Buttons don't inherit type styles by default, so pull
-   the parent's back explicitly. */
-.home-greeting-name {
-  display: inline;
-  font: inherit;
-  font-size: 31px;
-  color: var(--link);
-  letter-spacing: inherit;
-  background: none;
-  border: none;
-  padding: 0;
-  text-decoration: underline;
-  text-underline-offset: 3px;
-}
-
-.home-greeting-name:active {
-  opacity: 0.6;
+  padding-top: 2px;
 }
 
 /* --------------------------------------------------------------------------
-   Week counter + goal ring
+   Week counter + goal ring + stats shortcut
    -------------------------------------------------------------------------- */
 
 .home-week {
@@ -55,17 +47,18 @@
 }
 
 .home-week-text {
+  flex: 1;
   min-width: 0;
 }
 
 .home-week-count {
   font-size: 17px;
-  font-weight: 650;
+  font-weight: 600;
   letter-spacing: -0.01em;
 }
 
 .home-week-goal {
-  font-size: 13px;
+  font-size: 14px;
   color: var(--text-dim);
   margin-top: 2px;
 }
@@ -75,12 +68,45 @@
   align-items: center;
   gap: var(--s1);
   margin-top: var(--s2);
-  padding: 2px var(--s2);
-  border-radius: var(--r-full);
+  padding: 3px var(--s2) 3px var(--s1);
+  border-radius: var(--r-sm);
   background: var(--warn-soft);
   color: var(--warn);
   font-size: 13px;
-  font-weight: 650;
+  font-weight: 600;
+}
+
+.home-streak svg {
+  width: 15px;
+  height: 15px;
+}
+
+/* The Stats push view, as a compact vertical button at the card's trailing edge. */
+.home-stats-btn {
+  flex: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  min-width: 56px;
+  min-height: 56px;
+  padding: var(--s2) var(--s2);
+  border-radius: var(--r-md);
+  background: var(--bg-raised-2);
+  color: var(--text);
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.home-stats-btn svg {
+  width: 22px;
+  height: 22px;
+  color: var(--accent);
+}
+
+.home-stats-btn:active {
+  opacity: 0.7;
 }
 
 .ring {
@@ -92,11 +118,11 @@
 .ring-track,
 .ring-fill {
   fill: none;
-  stroke-width: 6;
+  stroke-width: 7;
 }
 
 .ring-track {
-  stroke: var(--border);
+  stroke: var(--bg-raised-2);
 }
 
 .ring-fill {
@@ -110,9 +136,10 @@
 
 .ring-value {
   fill: var(--text);
-  font-family: var(--font-num);
-  font-size: 24px;
+  font-family: var(--font);
+  font-size: 26px;
   font-weight: 700;
+  letter-spacing: -0.03em;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -121,69 +148,26 @@
   }
 }
 
-/* Week counter + the stats push view (§5.6) side by side, so the row takes
-   less vertical space and TODAY/CALENDAR move up. */
-.home-top-row {
-  display: flex;
-  align-items: stretch;
-  gap: var(--s3);
-}
-
-.home-top-row .home-week {
-  flex: 5;
-  min-width: 0;
-}
-
-.home-stats-box {
-  flex: 1;
-  min-width: 0;
-  padding-left: var(--s2);
-  padding-right: var(--s2);
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: var(--s1);
-  text-align: center;
-}
-
-.home-stats-box-label {
-  font-size: 13px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text-faint);
-}
-
-.home-stats-box-emoji {
-  font-size: 22px;
-  line-height: 1;
-}
-
 /* --------------------------------------------------------------------------
    Today's training
    -------------------------------------------------------------------------- */
 
 .home-done {
-  display: flex;
-  align-items: center;
-  gap: var(--s2);
   margin-bottom: var(--s2);
-}
-
-.home-done-label {
-  font-size: 13px;
-  color: var(--text-dim);
+  max-width: 60%;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  display: inline-block;
 }
 
 .home-card {
   width: 100%;
-  display: flex;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
   align-items: center;
-  gap: var(--s3);
+  gap: var(--s3) var(--s4);
+  padding: var(--s5) var(--s5) var(--s4);
   text-align: left;
 }
 
@@ -193,15 +177,27 @@
 }
 
 .home-card-main {
-  flex: 1;
   min-width: 0;
 }
 
-.home-card-title {
-  font-size: 20px;
+.home-card-badge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  border-radius: var(--r-sm);
+  background: var(--bg-raised-2);
+  font-size: 18px;
   font-weight: 700;
-  letter-spacing: -0.02em;
-  line-height: 1.2;
+  margin-bottom: var(--s2);
+}
+
+.home-card-title {
+  font-size: 22px;
+  font-weight: 700;
+  letter-spacing: -0.025em;
+  line-height: 1.15;
 }
 
 .home-card .pill + .home-card-title {
@@ -213,35 +209,67 @@
   flex-wrap: wrap;
   align-items: baseline;
   gap: var(--s1);
-  font-size: 12px;
-  color: var(--text-faint);
-  margin-top: var(--s2);
+  font-size: 13px;
+  color: var(--text-dim);
+  margin-top: var(--s1);
 }
 
 .home-card-dot {
   color: var(--text-faint);
 }
 
-.home-card-cta {
+/* The big round play control — the card's whole surface starts the session,
+   this just says so unmistakably. */
+.home-card-play {
+  flex: none;
   display: inline-flex;
   align-items: center;
-  gap: var(--s1);
-  margin-top: var(--s3);
+  justify-content: center;
+  width: 56px;
+  height: 56px;
+  border-radius: var(--r-full);
+  background: var(--accent);
+  color: var(--accent-fg);
+}
+
+.home-card-play svg {
+  width: 24px;
+  height: 24px;
+  margin-left: 3px;
+}
+
+.home-card-cta {
+  grid-column: 1 / -1;
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
   color: var(--accent);
   font-size: 15px;
-  font-weight: 650;
+  font-weight: 600;
+  padding-top: var(--s3);
+  border-top: 1px solid var(--border);
 }
 
-.home-card-cta-icon {
-  width: 15px;
-  height: 15px;
+.home-card-cta svg {
+  width: 18px;
+  height: 18px;
 }
 
-.home-card-chevron {
-  flex: none;
-  width: 22px;
-  height: 22px;
-  color: var(--text-faint);
+.home-card-active .home-card-cta {
+  grid-column: 1;
+}
+
+.home-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: var(--s3);
+}
+
+.home-empty-text {
+  font-size: 15px;
+  color: var(--text-dim);
+  line-height: 1.45;
 }
 
 /* --------------------------------------------------------------------------
@@ -252,12 +280,18 @@
   display: flex;
   align-items: center;
   justify-content: space-between;
-  margin: calc(-1 * var(--s2)) calc(-1 * var(--s2)) var(--s2);
+  margin: calc(-1 * var(--s2)) calc(-1 * var(--s2)) var(--s1) 0;
 }
 
 .home-cal-title {
-  font-size: 15px;
-  font-weight: 650;
+  font-size: 16px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+  text-transform: capitalize;
+}
+
+.home-cal-nav {
+  display: flex;
 }
 
 .home-cal-weekdays {
@@ -271,6 +305,7 @@
   font-size: 11px;
   font-weight: 600;
   color: var(--text-faint);
+  text-transform: uppercase;
 }
 
 .home-cal-grid {
@@ -286,22 +321,17 @@
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 3px;
+  gap: 2px;
   border-radius: var(--r-sm);
 }
 
 .home-cal-day-out {
-  color: var(--text-faint);
-  opacity: 0.45;
+  opacity: 0.3;
 }
 
 .home-cal-daynum {
-  font-size: 13px;
+  font-size: 14px;
   font-variant-numeric: tabular-nums;
-}
-
-.home-cal-day-today {
-  box-shadow: inset 0 0 0 1.5px var(--accent);
 }
 
 .home-cal-day-today .home-cal-daynum {
@@ -309,28 +339,24 @@
   font-weight: 700;
 }
 
+.home-cal-day-trained {
+  background: var(--accent-soft);
+}
+
 .home-cal-day-trained:active {
   background: var(--bg-raised-2);
 }
 
 .home-cal-dot {
-  width: 18px;
-  height: 18px;
-  border-radius: var(--r-full);
-  background: var(--accent-soft);
-  color: var(--accent);
-  font-size: 10px;
-  font-weight: 700;
+  font-size: 12px;
   line-height: 1;
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
+  font-weight: 700;
+  color: var(--accent);
 }
 
-/* A day with more than one logged activity: the primary dot above stays
-   exactly as before, these small pips call out that there's more without
-   needing their own tap target — the whole day cell already opens the
-   primary one. */
+/* A day with more than one logged activity: the primary badge above stays,
+   these pips call out that there's more without needing their own tap target —
+   the whole day cell already opens the primary one. */
 .home-cal-pips {
   display: flex;
   align-items: center;
@@ -347,7 +373,7 @@
 .home-cal-pip-more {
   font-size: 8px;
   font-weight: 700;
-  color: var(--text-faint);
+  color: var(--text-dim);
   line-height: 1;
 }
 
@@ -360,7 +386,6 @@
   align-items: flex-start;
   gap: var(--s1);
   background: var(--warn-soft);
-  border: 1px solid var(--warn);
   border-radius: var(--r-lg);
   padding: var(--s1) var(--s1) var(--s1) 0;
 }
@@ -400,14 +425,14 @@
 .home-banner-title {
   display: block;
   font-size: 15px;
-  font-weight: 650;
+  font-weight: 600;
   color: var(--text);
 }
 
 .home-banner-body {
   display: block;
   font-size: 13px;
-  line-height: 1.35;
+  line-height: 1.4;
   color: var(--text-dim);
   margin-top: 2px;
 }
@@ -451,7 +476,7 @@
 
 .home-error-title {
   font-size: 16px;
-  font-weight: 650;
+  font-weight: 600;
 }
 
 .home-error-text {
@@ -470,7 +495,14 @@
    -------------------------------------------------------------------------- */
 
 .settings-block + .settings-block {
-  margin-top: var(--s5);
+  margin-top: var(--s6);
+}
+
+/* Settings rows live inside a grouped card, iOS style. */
+.settings-group {
+  background: var(--bg-raised-2);
+  border-radius: var(--r-md);
+  overflow: hidden;
 }
 
 .settings-row {
@@ -478,28 +510,39 @@
   align-items: center;
   justify-content: space-between;
   gap: var(--s3);
-  min-height: 44px;
+  min-height: 52px;
+  padding: var(--s1) var(--s2) var(--s1) var(--s4);
+}
+
+.settings-row + .settings-row {
+  border-top: 1px solid var(--border);
 }
 
 .settings-row-label {
   font-size: 16px;
+  min-width: 0;
+}
+
+.settings-row-value {
+  color: var(--text-dim);
+  font-size: 15px;
 }
 
 .stepper {
   display: flex;
   align-items: center;
-  gap: var(--s1);
-  background: var(--bg-raised-2);
-  border-radius: var(--r-md);
-  padding: var(--s1);
+  gap: 2px;
+  background: var(--bg-raised);
+  border-radius: var(--r-sm);
+  padding: 2px;
 }
 
 .stepper-btn {
-  width: 44px;
-  height: 44px;
-  border-radius: var(--r-sm);
-  font-size: 22px;
-  font-weight: 600;
+  width: 40px;
+  height: 36px;
+  border-radius: calc(var(--r-sm) - 2px);
+  font-size: 20px;
+  font-weight: 500;
   line-height: 1;
   color: var(--text);
   display: inline-flex;
@@ -508,44 +551,25 @@
 }
 
 .stepper-btn:active {
-  background: var(--bg-raised);
+  background: var(--bg-raised-2);
 }
 
 .stepper-btn:disabled {
-  opacity: 0.35;
+  opacity: 0.3;
   pointer-events: none;
 }
 
 .stepper-value {
-  min-width: 34px;
+  min-width: 30px;
   text-align: center;
   font-size: 17px;
   font-weight: 700;
 }
 
-.settings-btn-icon {
-  width: 18px;
-  height: 18px;
-  flex: none;
-}
-
-.settings-lang-row {
+.settings-actions {
   display: flex;
+  flex-direction: column;
   gap: var(--s2);
-}
-
-.settings-lang-chip {
-  flex: 1;
-  justify-content: center;
-  font-size: 15px;
-  min-height: 44px;
-}
-
-.settings-hint {
-  font-size: 13px;
-  line-height: 1.35;
-  color: var(--text-dim);
-  margin-top: var(--s2);
 }
 
 /* Native file input, stretched invisibly over its label so the whole
@@ -567,19 +591,30 @@
 .settings-import {
   margin-top: var(--s3);
   padding: var(--s3);
-  border: 1px solid var(--border);
   border-radius: var(--r-md);
   background: var(--bg-raised-2);
+  display: flex;
+  flex-direction: column;
+  gap: var(--s2);
 }
 
-.settings-import .settings-hint + .btn {
-  margin-top: var(--s3);
+.settings-import .btn {
+  background: var(--bg-raised);
+}
+
+.settings-import .btn-danger {
+  background: var(--danger-soft);
+}
+
+.settings-import .hint {
+  margin-top: 0;
+  margin-bottom: var(--s2);
 }
 
 .settings-file-name {
   font-size: 13px;
+  font-weight: 600;
   color: var(--text-dim);
-  margin-bottom: var(--s3);
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
@@ -589,10 +624,9 @@
    away from the surrounding buttons so it reads as the file's contents
    rather than as another hint about what the buttons do. */
 .settings-preview {
-  margin-bottom: var(--s3);
   padding: var(--s3);
   border-radius: var(--r-sm);
-  background: var(--bg);
+  background: var(--bg-raised);
 }
 
 .settings-preview-list {
@@ -606,17 +640,14 @@
   margin: 0;
 }
 
-.settings-preview .settings-hint {
-  margin-top: var(--s2);
-}
-
 .settings-error {
   margin-top: var(--s4);
-  padding: var(--s3);
+  padding: var(--s3) var(--s4);
   border-radius: var(--r-md);
   background: var(--danger-soft);
   color: var(--danger);
   font-size: 14px;
+  font-weight: 500;
 }
 
 .settings-ok {
@@ -624,23 +655,33 @@
   align-items: center;
   gap: var(--s2);
   margin-top: var(--s4);
-  padding: var(--s3);
+  padding: var(--s3) var(--s4);
   border-radius: var(--r-md);
   background: var(--accent-soft);
   color: var(--accent);
   font-size: 14px;
+  font-weight: 500;
+}
+
+.settings-ok svg {
+  width: 18px;
+  height: 18px;
+  flex: none;
 }
 
 .settings-footer {
   display: flex;
   align-items: center;
-  justify-content: center;
+  justify-content: space-between;
   gap: var(--s2);
-  margin-top: var(--s6);
+  margin-top: var(--s8);
 }
 
 .settings-version {
-  text-align: center;
   font-size: 12px;
   color: var(--text-faint);
+}
+
+.settings-links {
+  display: flex;
 }

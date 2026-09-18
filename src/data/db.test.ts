@@ -244,9 +244,7 @@ describe('profile', () => {
   });
 
   it('persists overrides field by field', async () => {
-    await db.putProfileField('name', 'Ander');
-    await db.putProfileField('birthdate', '1990-08-02');
-    await db.putProfileField('heightCm', 178);
+    await db.putProfile({ name: 'Ander', birthdate: '1990-08-02', heightCm: 178 });
     expect(await db.getProfile()).toEqual({
       name: 'Ander',
       birthdate: '1990-08-02',
@@ -333,7 +331,7 @@ describe('DB_VERSION 1 -> 2 migration', () => {
     expect((await db.getSettings()).weeklyGoal).toBe(5);
 
     expect(await db.getProfile()).toEqual({ name: '', birthdate: null, heightCm: null });
-    await db.putProfileField('name', 'Ander');
+    await db.putProfile({ name: 'Ander', birthdate: null, heightCm: null });
     expect((await db.getProfile()).name).toBe('Ander');
     expect(await db.getCheckins()).toEqual([]);
   });
@@ -419,9 +417,7 @@ describe('backup round trip', () => {
   });
 
   it('round-trips a profile and a check-in with a photo', async () => {
-    await db.putProfileField('name', 'Ander');
-    await db.putProfileField('birthdate', '1990-08-02');
-    await db.putProfileField('heightCm', 178);
+    await db.putProfile({ name: 'Ander', birthdate: '1990-08-02', heightCm: 178 });
 
     const photo = new Blob([new Uint8Array([9, 8, 7])], { type: 'image/jpeg' });
     await db.putCheckin({ id: 'ck-1', date: '2026-08-01', weightKg: 80.5, photoBlobs: [photo] });

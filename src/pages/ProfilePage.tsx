@@ -2,30 +2,21 @@
  * Profile — a push view off Home, same arrangement as Stats (SPEC D1 locks
  * the tab bar at five; this route reports `home` from `tabOf()`).
  */
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { useGym } from '../data/store';
-import { ageFrom, bmi, formatShortLocalDate } from '../data/derive';
-import { formatWeight } from '../data/parse';
-import { useLanguage } from '../data/i18n';
+import { ageFrom, bmi, parseLocalDate } from '../data/derive';
+import { formatKg, formatKgDelta, formatWeight } from '../data/parse';
+import { formatDay, formatDayWithWeekday, useLanguage } from '../data/i18n';
+import { BackButton } from '../components/BackButton';
 import { ChartFigure, LineChart } from '../components/Chart';
 import { ConfirmSheet } from '../components/Sheet';
+import { StatRow, StatTile } from '../components/StatTile';
 import { ProfileEditSheet } from '../components/ProfileEditSheet';
 import { CheckinSheet } from '../components/CheckinSheet';
-import { ChevronLeftIcon, PencilIcon, PlusIcon, TrashIcon } from '../components/icons';
-import { navigate } from '../router';
+import { PencilIcon, PlusIcon, TrashIcon } from '../components/icons';
+import { useObjectUrl } from '../hooks/useObjectUrl';
 import type { WeightCheckin } from '../data/types';
 import './ProfilePage.css';
-
-function Stat({ value, label }: { value: string; label: string }) {
-  return (
-    <div className="profile-stat">
-      <div className="profile-stat-value num">{value}</div>
-      <div className="profile-stat-label">{label}</div>
-    </div>
-  );
-}
-
-const kg = (value: number) => `${formatWeight(Math.round(value * 10) / 10)} kg`;
 
 /**
  * Trend of logged weight. Same three-shape design as ExerciseCard's progress
@@ -33,12 +24,13 @@ const kg = (value: number) => `${formatWeight(Math.round(value * 10) / 10)} kg`;
  * actual line from two check-ins up.
  */
 function WeightTrend({ checkins }: { checkins: WeightCheckin[] }) {
-  const { t } = useLanguage();
+  const { t, locale } = useLanguage();
   // `checkins` arrives newest-first from the store; charting reads left to right.
   const points = [...checkins].reverse();
 
   const first = points[0];
   const last = points[points.length - 1];
+  const day = (c: WeightCheckin) => formatDay(locale, parseLocalDate(c.date));
 
   if (!first || !last) {
     return (
@@ -51,19 +43,15 @@ function WeightTrend({ checkins }: { checkins: WeightCheckin[] }) {
   const delta = last.weightKg - first.weightKg;
   const trend =
     delta > 0
-      ? t('exerciseCard.trendUp', { kg: kg(delta) })
+      ? t('exerciseCard.trendUp', { kg: formatKg(delta) })
       : delta < 0
-        ? t('exerciseCard.trendDown', { kg: kg(-delta) })
+        ? t('exerciseCard.trendDown', { kg: formatKg(-delta) })
         : t('exerciseCard.trendNoChange');
 
   if (points.length === 1) {
     return (
-      <ChartFigure
-        title={t('profile.weightTrendTitle')}
-        value={kg(last.weightKg)}
-        caption={t('profile.oneCheckinCaption', { date: formatShortLocalDate(last.date) })}
-      >
-        <div className="profile-progress-single num">{kg(last.weightKg)}</div>
+      <ChartFigure title={t('profile.weightTrendTitle')} value={formatKg(last.weightKg)} caption={t('profile.oneCheckinCaption', { date: day(last) })}>
+        <div className="profile-progress-single num">{formatKg(last.weightKg)}</div>
       </ChartFigure>
     );
   }
@@ -71,29 +59,24 @@ function WeightTrend({ checkins }: { checkins: WeightCheckin[] }) {
   return (
     <ChartFigure
       title={t('profile.weightTrendTitle')}
-      value={kg(last.weightKg)}
+      value={formatKg(last.weightKg)}
       caption={
         <>
-          {points.length} {t('profile.checkinsOther')} · {formatShortLocalDate(first.date)} →{' '}
-          {formatShortLocalDate(last.date)} ·{' '}
-          <span className="num">
-            {delta > 0 ? '+' : ''}
-            {kg(delta)}
-          </span>
+          {points.length} {t('profile.checkinsOther')} · {day(first)} → {day(last)} · <span className="num">{formatKgDelta(delta)}</span>
         </>
       }
     >
       <LineChart
         values={points.map((c) => c.weightKg)}
         formatTick={(v) => formatWeight(Math.round(v * 10) / 10)}
-        xLabels={[formatShortLocalDate(first.date), formatShortLocalDate(last.date)]}
+        xLabels={[day(first), day(last)]}
         ariaLabel={t('profile.weightTrendAria', {
           title: t('profile.weightTrendTitle'),
           count: points.length,
-          firstKg: kg(first.weightKg),
-          firstDate: formatShortLocalDate(first.date),
-          lastKg: kg(last.weightKg),
-          lastDate: formatShortLocalDate(last.date),
+          firstKg: formatKg(first.weightKg),
+          firstDate: day(first),
+          lastKg: formatKg(last.weightKg),
+          lastDate: day(last),
           trend,
         })}
       />
@@ -103,42 +86,27 @@ function WeightTrend({ checkins }: { checkins: WeightCheckin[] }) {
 
 /** A check-in's photo, downscaled and stored as a blob — needs an object URL to render. */
 function CheckinPhoto({ blob }: { blob: Blob }) {
-  const [url, setUrl] = useState<string | null>(null);
-
-  useEffect(() => {
-    const objectUrl = URL.createObjectURL(blob);
-    setUrl(objectUrl);
-    return () => URL.revokeObjectURL(objectUrl);
-  }, [blob]);
-
+  const url = useObjectUrl(blob);
   if (!url) return null;
   return <img className="profile-checkin-photo" src={url} alt="" loading="lazy" />;
 }
 
-function CheckinRow({
-  checkin,
-  previous,
-  onDelete,
-}: {
-  checkin: WeightCheckin;
-  previous: WeightCheckin | undefined;
-  onDelete: () => void;
-}) {
-  const { t } = useLanguage();
+function CheckinRow({ checkin, previous, onDelete }: { checkin: WeightCheckin; previous: WeightCheckin | undefined; onDelete: () => void }) {
+  const { t, locale } = useLanguage();
   const delta = previous ? checkin.weightKg - previous.weightKg : null;
 
   return (
-    <div className="profile-checkin-row">
+    <div className="profile-checkin-row card-row">
       <div className="profile-checkin-main">
-        <span className="profile-checkin-date num">{checkin.date}</span>
-        <span className="profile-checkin-weight num">{kg(checkin.weightKg)}</span>
-        {delta !== null && delta !== 0 && (
-          <span className="profile-checkin-delta num">
-            {delta > 0 ? '+' : ''}
-            {kg(delta)}
-          </span>
-        )}
+        <span className="profile-checkin-weight num">{formatKg(checkin.weightKg)}</span>
+        <span className="profile-checkin-date">{formatDayWithWeekday(locale, parseLocalDate(checkin.date))}</span>
       </div>
+
+      {delta !== null && delta !== 0 && (
+        <span className={delta > 0 ? 'profile-checkin-delta num profile-checkin-up' : 'profile-checkin-delta num profile-checkin-down'}>
+          {formatKgDelta(delta)}
+        </span>
+      )}
 
       {checkin.photoBlobs.length > 0 && (
         <div className="profile-checkin-photos">
@@ -148,12 +116,7 @@ function CheckinRow({
         </div>
       )}
 
-      <button
-        type="button"
-        className="icon-btn icon-btn-danger profile-checkin-delete"
-        onClick={onDelete}
-        aria-label={t('profile.deleteCheckinAria', { date: checkin.date })}
-      >
+      <button type="button" className="icon-btn profile-checkin-delete" onClick={onDelete} aria-label={t('profile.deleteCheckinAria', { date: checkin.date })}>
         <TrashIcon />
       </button>
     </div>
@@ -175,31 +138,22 @@ export function ProfilePage() {
 
   return (
     <div className="page">
-      <button className="profile-back" onClick={() => navigate('/home')} aria-label={t('stats.backToHomeAria')}>
-        <ChevronLeftIcon />
-        <span>{t('tabbar.home')}</span>
-      </button>
-
-      <div className="page-header profile-header" style={{ paddingTop: 'var(--s2)' }}>
+      <div className="page-header profile-header">
+        <BackButton to="/home" label={t('tabbar.home')} ariaLabel={t('stats.backToHomeAria')} />
         <div className="profile-name-row">
           <h1 className="page-title">{profile.name.trim() || t('profile.addName')}</h1>
-          <button
-            type="button"
-            className="icon-btn"
-            onClick={() => setEditing(true)}
-            aria-label={t('profile.editAria')}
-          >
+          <button type="button" className="icon-btn icon-btn-filled" onClick={() => setEditing(true)} aria-label={t('profile.editAria')}>
             <PencilIcon />
           </button>
         </div>
 
         {hasAnyStat && (
           <div className="profile-stats">
-            {age !== null && <Stat value={String(age)} label={t('profile.ageLabel')} />}
-            {profile.heightCm !== null && (
-              <Stat value={`${profile.heightCm} cm`} label={t('profile.heightLabel')} />
-            )}
-            {bmiValue !== null && <Stat value={bmiValue.toFixed(1)} label={t('profile.bmiLabel')} />}
+            <StatRow>
+              {age !== null && <StatTile value={String(age)} label={t('profile.ageLabel')} />}
+              {profile.heightCm !== null && <StatTile value={`${profile.heightCm} cm`} label={t('profile.heightLabel')} />}
+              {bmiValue !== null && <StatTile value={bmiValue.toFixed(1)} label={t('profile.bmiLabel')} />}
+            </StatRow>
           </div>
         )}
       </div>
@@ -211,7 +165,7 @@ export function ProfilePage() {
       </section>
 
       <section className="section">
-        <button className="profile-add-checkin" onClick={() => setLoggingWeight(true)}>
+        <button className="btn btn-tinted btn-block" onClick={() => setLoggingWeight(true)}>
           <PlusIcon />
           {t('profile.logWeight')}
         </button>
@@ -220,14 +174,9 @@ export function ProfilePage() {
       {checkins.length > 0 && (
         <section className="section">
           <div className="section-title">{t('profile.checkinsSection')}</div>
-          <div className="profile-checkin-list">
+          <div className="card">
             {checkins.map((c, i) => (
-              <CheckinRow
-                key={c.id}
-                checkin={c}
-                previous={checkins[i + 1]}
-                onDelete={() => setPendingDelete(c)}
-              />
+              <CheckinRow key={c.id} checkin={c} previous={checkins[i + 1]} onDelete={() => setPendingDelete(c)} />
             ))}
           </div>
         </section>

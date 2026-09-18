@@ -15,8 +15,7 @@
    wrong offset once scrolled, leaving a facet chip row rendered on top of it.
    Letting it scroll away with the rest of the page removes the whole class of bug. */
 .browser-search {
-  padding: var(--s2) var(--s4) var(--s3);
-  background: var(--bg);
+  padding: 0 var(--s4) var(--s3);
 }
 
 .browser-search-field {
@@ -26,6 +25,8 @@
 /* Room for the clear button so long queries never run underneath it. */
 .browser-search .input {
   padding-right: 44px;
+  background: var(--bg-raised);
+  box-shadow: var(--shadow-card);
 }
 
 .browser-search-clear {
@@ -65,28 +66,39 @@
 .browser-facets {
   display: flex;
   flex-direction: column;
-  gap: var(--s3);
+  gap: var(--s2);
   /* .chip-row bleeds by this amount so chips scroll under the edges. */
   padding: 0 var(--s4);
 }
 
-.browser-facet .section-title {
-  margin-bottom: var(--s1);
-}
-
-.browser-facets-actions {
-  display: flex;
-  justify-content: flex-end;
+.browser-facet-title {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  margin: var(--s1) 0 0 var(--s1);
 }
 
 /* --- count ---------------------------------------------------------------- */
 
 .browser-count {
-  padding: var(--s4) var(--s4) var(--s2);
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s3);
+  padding: var(--s4) var(--s5) var(--s2);
   font-size: 13px;
   font-weight: 600;
   color: var(--text-dim);
   font-variant-numeric: tabular-nums;
+}
+
+.browser-clear {
+  color: var(--accent);
+  font-size: 13px;
+  font-weight: 600;
+  min-height: 32px;
 }
 
 /* --- results -------------------------------------------------------------- */
@@ -110,7 +122,7 @@
 .browser-list {
   display: flex;
   flex-direction: column;
-  gap: var(--s3);
+  gap: var(--s2);
   padding: var(--s1) var(--s4) var(--s2);
 }
 
@@ -125,17 +137,6 @@
 /* ==========================================================================
    CustomExerciseForm
    ========================================================================== */
-
-.cxf {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s4);
-}
-
-.cxf-field {
-  display: flex;
-  flex-direction: column;
-}
 
 /* Native file input: the picker button is restyled to match .btn. */
 .cxf-file {
@@ -186,14 +187,5 @@
   height: 72px;
   object-fit: cover;
   border-radius: var(--r-md);
-  border: 1px solid var(--border);
   background: var(--bg-sunken);
-}
-
-.cxf-error {
-  padding: var(--s3);
-  border-radius: var(--r-md);
-  background: var(--danger-soft);
-  color: var(--danger);
-  font-size: 14px;
 }

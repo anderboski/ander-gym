@@ -1,5 +1,9 @@
 /* "What's new" popup + Settings changelog sheet. Tokens only. */
 
+.changelog {
+  padding: 0 var(--s5);
+}
+
 .changelog-notes {
   margin: 0;
   padding-left: var(--s5);
@@ -12,8 +16,8 @@
   margin-top: var(--s2);
 }
 
-.changelog-dismiss {
-  margin-top: var(--s5);
+.changelog-notes li::marker {
+  color: var(--accent);
 }
 
 .changelog-entry + .changelog-entry {
@@ -32,6 +36,9 @@
 .changelog-entry-version {
   font-size: 16px;
   font-weight: 700;
+  padding: 2px var(--s2);
+  border-radius: var(--r-sm);
+  background: var(--bg-raised-2);
 }
 
 .changelog-entry-date {

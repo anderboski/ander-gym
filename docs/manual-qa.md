@@ -32,7 +32,10 @@ section 3, which still need a fresh install with no import.
 - [ ] Nothing scrolls horizontally on any of the five tabs.
 - [ ] Every tab bar icon and label is legible and tappable without stretching.
 - [ ] Toggle iOS Dark/Light mode. Both themes are fully styled — no white flash,
-      no unreadable grey-on-grey.
+      no unreadable grey-on-grey. Cards sit on the page background without a
+      border in both; hairlines only appear between rows inside a card.
+- [ ] Home header: the round initials avatar (a person icon before a name is
+      set) opens Profile; the theme and gear buttons beside it are round too.
 
 ## 3. Core flow
 
@@ -43,8 +46,10 @@ section 3, which still need a fresh install with no import.
 - [ ] Trainings → open **Push day** → add 3 exercises via the **+** card.
 - [ ] Home → tap today's training (**Push day**). It opens Session with those 3
       exercises.
-- [ ] Log a set: tap **+**, enter reps and weight, save. The row shows `10x25kg`.
-- [ ] Log a second set on the same exercise. Both lines appear.
+- [ ] Log a set: tap the green **+**, enter reps and weight, save. A numbered
+      chip `1 · 10x25kg` appears under the exercise name.
+- [ ] Log a second set on the same exercise. A second chip appears beside it,
+      and the header's eyebrow line counts `2 sets logged`.
 - [ ] Log a bodyweight set (weight `0`). It reads `12 reps`, not `12x0kg`.
 - [ ] **Save session** → lands on History with the session at the top.
 - [ ] Home now shows `1 training this week` and today's training has advanced to
@@ -66,13 +71,14 @@ section 3, which still need a fresh install with no import.
       left of the last exercise's card up above the first. Release — the list
       reflects the new order immediately, and reloading the app keeps it.
 - [ ] Session → start that training — the exercises appear in the new order.
-- [ ] Confirm there is no way to delete a training day anywhere in the UI.
+- [ ] Confirm a training day with logged sessions can only be archived, never
+      deleted, anywhere in the UI.
 
 ## 3c. Rest timer
 
-- [ ] Session → the bar under the title reads **Rest 90s** with 60 / 90 / 120
-      presets. Tap **120** — it stays selected after leaving and re-entering the
-      tab, and only for this training day.
+- [ ] Session → the bar under the title reads **Rest** with a 60s / 90s / 120s
+      segmented control. Tap **120s** — it stays selected after leaving and
+      re-entering the tab, and only for this training day.
 - [ ] Log a set. The countdown starts at 2:00 and the exercise table does not
       move when it appears, or when it later clears.
 - [ ] Scroll the exercise list — the bar stays pinned below the status bar,
@@ -84,8 +90,7 @@ section 3, which still need a fresh install with no import.
 - [ ] Log a set with a 60 s rest, background the app and come back after 3+
       minutes. The rest has cleared itself rather than announcing a finished one.
 - [ ] Let a rest reach zero with the app open: it reads **Rest done** and clears
-      itself after 30 s. On iOS there is no vibration — this is expected, and the
-      note under the bar says so.
+      itself after 30 s. On iOS there is no vibration — this is expected.
 
 ## 3d. Charts and stats
 
@@ -102,8 +107,9 @@ Only a phone can tell you whether a 320-unit chart is legible in a hand.
       empty axes.
 - [ ] Nothing in the sheet scrolls sideways, and the chart never pushes the page
       wider than the screen.
-- [ ] Home → **See all stats**. The bottom tab bar still highlights **Home** — the
-      navigation is five tabs and Stats is a push view, not a sixth (D1).
+- [ ] Home → the **Stats** button in the week card. The bottom tab bar still
+      highlights **Home** — the navigation is five tabs and Stats is a push view,
+      not a sixth (D1).
 - [ ] The back control returns to Home, and so does the iOS back-swipe / the
       browser back gesture.
 - [ ] Sessions-per-week: weeks that met your goal are green, the rest grey, and a
@@ -156,9 +162,9 @@ Only a phone can tell you whether a 320-unit chart is legible in a hand.
       has no stat tiles above the Delete log button — just the comments card.
 - [ ] Log a second **Other** session leaving Comments empty: the History row
       reads *Session logged* rather than sitting blank.
-- [ ] Stats → the kind switcher still shows exactly four tabs (gym, cycling,
-      snowboard, climbing) — **Other** has none, and its logs change nothing
-      on any of the four.
+- [ ] Stats → the kind switcher still shows exactly four segments (dumbbell,
+      bicycle, snowflake, mountain) — **Other** has none, and its logs change
+      nothing on any of the four.
 - [ ] Log a gym session and a sport session on the same date. The calendar
       cell shows the gym badge plus a small dot for the sport session
       underneath, rather than only one or the other.

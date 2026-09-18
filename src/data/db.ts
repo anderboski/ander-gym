@@ -2,7 +2,7 @@
  * IndexedDB access. Everything the user creates lives here; nothing leaves the
  * device. See SPEC.md §3.
  */
-import { openDB, type IDBPDatabase, type DBSchema } from 'idb';
+import { openDB, type IDBPDatabase, type DBSchema, type StoreNames } from 'idb';
 import {
   DEFAULT_PROFILE,
   DEFAULT_SETTINGS,
@@ -36,15 +36,25 @@ interface GymDB extends DBSchema {
   sportSessions: { key: string; value: SportSession; indexes: { date: string } };
 }
 
+/** Every user store, in one place so `clearAll` and the upgrade path cannot drift apart. */
+const ALL_STORES: StoreNames<GymDB>[] = [
+  'trainings',
+  'sessions',
+  'activeSession',
+  'customExercises',
+  'settings',
+  'profile',
+  'checkins',
+  'sportSessions',
+];
+
 let dbPromise: Promise<IDBPDatabase<GymDB>> | null = null;
 
 export function getDB(): Promise<IDBPDatabase<GymDB>> {
   dbPromise ??= openDB<GymDB>(DB_NAME, DB_VERSION, {
-    // Version-aware from here on: every store below already exists on real
-    // devices at `oldVersion` 1, so it can only ever be created once. Adding
-    // a store for the next version means a new `if` block, never touching
-    // the ones before it — this is the app's first migration, so treat this
-    // shape as the template for the next one.
+    // Version-aware: every store below already exists on real devices at
+    // `oldVersion` 1, so it can only ever be created once. Adding a store for
+    // the next version means a new `if` block, never touching the ones before.
     upgrade(db, oldVersion) {
       if (oldVersion < 1) {
         db.createObjectStore('trainings', { keyPath: 'id' });
@@ -64,10 +74,9 @@ export function getDB(): Promise<IDBPDatabase<GymDB>> {
         sportSessions.createIndex('date', 'date');
       }
     },
-    // A second tab/instance holding an older connection open would otherwise
-    // block the upgrade transaction indefinitely with no feedback. Blunt but
-    // honest: a full reload is the only way to actually release that old
-    // connection, and this is the first version bump this app has ever had.
+    // A second tab holding an older connection open would otherwise block the
+    // upgrade transaction indefinitely with no feedback. Blunt but honest: a
+    // full reload is the only way to actually release that old connection.
     blocked() {
       window.alert('ander-gym needs to update its storage — please close any other open tabs of this app and reload.');
     },
@@ -103,6 +112,24 @@ export async function putTraining(training: Training): Promise<void> {
 }
 
 /**
+ * Read-modify-write one training by key. Every field-level setter below goes
+ * through here — and the store composes exercise add/remove/sync on it — so
+ * nothing has to load the whole list to change one record. Returns null when
+ * the id resolves to nothing.
+ */
+export async function updateTraining(
+  id: string,
+  change: (training: Training) => Training,
+): Promise<Training | null> {
+  const db = await getDB();
+  const training = await db.get('trainings', id);
+  if (!training) return null;
+  const updated = change(training);
+  await db.put('trainings', updated);
+  return updated;
+}
+
+/**
  * Creates a training day with no exercises yet, appended to the end of the
  * rotation. `kind` is omitted from the record for `'gym'` (or when absent) —
  * same "absent means the pre-existing default" convention as `archived`.
@@ -125,39 +152,26 @@ export async function createTraining(label: string, kind?: TrainingKind): Promis
  * Renames a training in place — the id (and therefore every session's
  * `trainingId`) never changes, so history stays intact.
  */
-export async function renameTraining(id: string, label: string): Promise<Training | null> {
-  const training = (await getTrainings()).find((t) => t.id === id);
-  if (!training) return null;
-  const updated = { ...training, label };
-  await putTraining(updated);
-  return updated;
+export function renameTraining(id: string, label: string): Promise<Training | null> {
+  return updateTraining(id, (t) => ({ ...t, label }));
 }
 
-/**
- * Sets this training day's rest default. Callers clamp the value first; nothing
- * else about the training is touched, so an old record simply gains the field.
- */
-export async function setTrainingRest(id: string, restSeconds: number): Promise<Training | null> {
-  const training = (await getTrainings()).find((t) => t.id === id);
-  if (!training) return null;
-  const updated = { ...training, restSeconds };
-  await putTraining(updated);
-  return updated;
+/** Sets this training day's rest default. Callers clamp the value first. */
+export function setTrainingRest(id: string, restSeconds: number): Promise<Training | null> {
+  return updateTraining(id, (t) => ({ ...t, restSeconds }));
 }
 
 /**
  * Sets this training day's icon. `null` clears it back to the first-letter
- * fallback; callers reduce the value to a single grapheme first, so nothing
- * else about the training is touched, an old record simply gains the field.
+ * fallback; callers reduce the value to a single grapheme first.
  */
-export async function setTrainingEmoji(id: string, emoji: string | null): Promise<Training | null> {
-  const training = (await getTrainings()).find((t) => t.id === id);
-  if (!training) return null;
-  const updated: Training = { ...training };
-  if (emoji) updated.emoji = emoji;
-  else delete updated.emoji;
-  await putTraining(updated);
-  return updated;
+export function setTrainingEmoji(id: string, emoji: string | null): Promise<Training | null> {
+  return updateTraining(id, (t) => {
+    const updated: Training = { ...t };
+    if (emoji) updated.emoji = emoji;
+    else delete updated.emoji;
+    return updated;
+  });
 }
 
 /**
@@ -165,14 +179,13 @@ export async function setTrainingEmoji(id: string, emoji: string | null): Promis
  * every session already has its `trainingId` and a snapshotted
  * `trainingLabel`, so nothing downstream needs the training to be active.
  */
-export async function archiveTraining(id: string, archived: boolean): Promise<Training | null> {
-  const training = (await getTrainings()).find((t) => t.id === id);
-  if (!training) return null;
-  const updated: Training = { ...training };
-  if (archived) updated.archived = true;
-  else delete updated.archived;
-  await putTraining(updated);
-  return updated;
+export function archiveTraining(id: string, archived: boolean): Promise<Training | null> {
+  return updateTraining(id, (t) => {
+    const updated: Training = { ...t };
+    if (archived) updated.archived = true;
+    else delete updated.archived;
+    return updated;
+  });
 }
 
 /**
@@ -192,16 +205,12 @@ export async function deleteTraining(id: string): Promise<void> {
 export async function reorderTrainings(orderedIds: string[]): Promise<Training[]> {
   const existing = await getTrainings();
   const byId = new Map(existing.map((t) => [t.id, t]));
-  const known = orderedIds.filter((id) => byId.has(id));
-  const leftover = existing.filter((t) => !known.includes(t.id));
+  const known = new Set(orderedIds.filter((id) => byId.has(id)));
+  const ordered = [...known].map((id) => byId.get(id)!).concat(existing.filter((t) => !known.has(t.id)));
 
   const db = await getDB();
   const tx = db.transaction('trainings', 'readwrite');
-  const store = tx.objectStore('trainings');
-  let order = 0;
-  for (const id of known) await store.put({ ...byId.get(id)!, order: order++ });
-  for (const t of leftover) await store.put({ ...t, order: order++ });
-  await tx.done;
+  await Promise.all([...ordered.map((t, order) => tx.store.put({ ...t, order })), tx.done]);
 
   return getTrainings();
 }
@@ -209,21 +218,18 @@ export async function reorderTrainings(orderedIds: string[]): Promise<Training[]
 /**
  * Applies a new exercise order within one training, from the full dragged
  * sequence — same "known ids first, any leftover appended" shape as
- * `reorderTrainings`, but rewriting `exerciseIds` in place rather than each
- * record's own `order` field.
+ * `reorderTrainings`, but rewriting `exerciseIds` in place.
  */
-export async function reorderTrainingExercises(
+export function reorderTrainingExercises(
   id: string,
   orderedExerciseIds: string[],
 ): Promise<Training | null> {
-  const training = (await getTrainings()).find((t) => t.id === id);
-  if (!training) return null;
-
-  const known = orderedExerciseIds.filter((exId) => training.exerciseIds.includes(exId));
-  const leftover = training.exerciseIds.filter((exId) => !known.includes(exId));
-  const updated = { ...training, exerciseIds: [...known, ...leftover] };
-  await putTraining(updated);
-  return updated;
+  return updateTraining(id, (t) => {
+    const current = new Set(t.exerciseIds);
+    const known = orderedExerciseIds.filter((exId) => current.has(exId));
+    const seen = new Set(known);
+    return { ...t, exerciseIds: [...known, ...t.exerciseIds.filter((exId) => !seen.has(exId))] };
+  });
 }
 
 /* -------------------------------------------------------------------------- */
@@ -286,19 +292,17 @@ export async function putCustomExercise(exercise: CustomExercise): Promise<void>
   await (await getDB()).put('customExercises', exercise);
 }
 
-export async function deleteCustomExercise(id: string): Promise<void> {
-  await (await getDB()).delete('customExercises', id);
-}
-
 /* -------------------------------------------------------------------------- */
 /* Settings                                                                    */
 /* -------------------------------------------------------------------------- */
 
 export async function getSettings(): Promise<Settings> {
   const db = await getDB();
-  const weeklyGoal = await db.get('settings', 'weeklyGoal');
-  const lastExportAt = await db.get('settings', 'lastExportAt');
-  const favoriteExerciseIds = await db.get('settings', 'favoriteExerciseIds');
+  const [weeklyGoal, lastExportAt, favoriteExerciseIds] = await Promise.all([
+    db.get('settings', 'weeklyGoal'),
+    db.get('settings', 'lastExportAt'),
+    db.get('settings', 'favoriteExerciseIds'),
+  ]);
   return {
     weeklyGoal: typeof weeklyGoal === 'number' ? weeklyGoal : DEFAULT_SETTINGS.weeklyGoal,
     lastExportAt: typeof lastExportAt === 'string' ? lastExportAt : null,
@@ -319,9 +323,11 @@ export async function putSetting<K extends keyof Settings>(
 
 export async function getProfile(): Promise<Profile> {
   const db = await getDB();
-  const name = await db.get('profile', 'name');
-  const birthdate = await db.get('profile', 'birthdate');
-  const heightCm = await db.get('profile', 'heightCm');
+  const [name, birthdate, heightCm] = await Promise.all([
+    db.get('profile', 'name'),
+    db.get('profile', 'birthdate'),
+    db.get('profile', 'heightCm'),
+  ]);
   return {
     name: typeof name === 'string' ? name : DEFAULT_PROFILE.name,
     birthdate: typeof birthdate === 'string' ? birthdate : null,
@@ -329,11 +335,16 @@ export async function getProfile(): Promise<Profile> {
   };
 }
 
-export async function putProfileField<K extends keyof Profile>(
-  key: K,
-  value: Profile[K],
-): Promise<void> {
-  await (await getDB()).put('profile', value, key);
+/** Writes every profile field in one transaction — the edit sheet saves them all at once. */
+export async function putProfile(profile: Profile): Promise<void> {
+  const db = await getDB();
+  const tx = db.transaction('profile', 'readwrite');
+  await Promise.all([
+    tx.store.put(profile.name, 'name'),
+    tx.store.put(profile.birthdate, 'birthdate'),
+    tx.store.put(profile.heightCm, 'heightCm'),
+    tx.done,
+  ]);
 }
 
 /* -------------------------------------------------------------------------- */
@@ -356,7 +367,7 @@ export async function deleteCheckin(id: string): Promise<void> {
 /* Bulk (backup / restore)                                                     */
 /* -------------------------------------------------------------------------- */
 
-export async function readAll(): Promise<{
+export type Snapshot = {
   trainings: Training[];
   sessions: Session[];
   customExercises: CustomExercise[];
@@ -364,45 +375,58 @@ export async function readAll(): Promise<{
   profile: Profile;
   checkins: WeightCheckin[];
   sportSessions: SportSession[];
-}> {
-  return {
-    trainings: await getTrainings(),
-    sessions: await getSessions(),
-    customExercises: await getCustomExercises(),
-    settings: await getSettings(),
-    profile: await getProfile(),
-    checkins: await getCheckins(),
-    sportSessions: await getSportSessions(),
-  };
+};
+
+export async function readAll(): Promise<Snapshot> {
+  const [trainings, sessions, customExercises, settings, profile, checkins, sportSessions] =
+    await Promise.all([
+      getTrainings(),
+      getSessions(),
+      getCustomExercises(),
+      getSettings(),
+      getProfile(),
+      getCheckins(),
+      getSportSessions(),
+    ]);
+  return { trainings, sessions, customExercises, settings, profile, checkins, sportSessions };
+}
+
+/**
+ * Writes a whole snapshot in one transaction, so an import is all-or-nothing:
+ * a record that fails to write (a quota error halfway through a large file)
+ * rolls the rest back instead of leaving the device half-restored. Existing
+ * records with the same id are overwritten; nothing else is touched — the
+ * caller decides whether to `clearAll` first (Replace) or not (Merge).
+ */
+export async function writeAll(snapshot: Snapshot): Promise<void> {
+  const db = await getDB();
+  const tx = db.transaction(
+    ['trainings', 'sessions', 'customExercises', 'settings', 'profile', 'checkins', 'sportSessions'],
+    'readwrite',
+  );
+  const settings = tx.objectStore('settings');
+  const profile = tx.objectStore('profile');
+  await Promise.all([
+    ...snapshot.trainings.map((t) => tx.objectStore('trainings').put(t)),
+    ...snapshot.sessions.map((s) => tx.objectStore('sessions').put(s)),
+    ...snapshot.customExercises.map((c) => tx.objectStore('customExercises').put(c)),
+    ...snapshot.checkins.map((c) => tx.objectStore('checkins').put(c)),
+    ...snapshot.sportSessions.map((s) => tx.objectStore('sportSessions').put(s)),
+    settings.put(snapshot.settings.weeklyGoal, 'weeklyGoal'),
+    settings.put(snapshot.settings.lastExportAt, 'lastExportAt'),
+    settings.put(snapshot.settings.favoriteExerciseIds, 'favoriteExerciseIds'),
+    profile.put(snapshot.profile.name, 'name'),
+    profile.put(snapshot.profile.birthdate, 'birthdate'),
+    profile.put(snapshot.profile.heightCm, 'heightCm'),
+    tx.done,
+  ]);
 }
 
 /** Wipes every user store. Used by "Replace" on import. */
 export async function clearAll(): Promise<void> {
   const db = await getDB();
-  const tx = db.transaction(
-    [
-      'trainings',
-      'sessions',
-      'activeSession',
-      'customExercises',
-      'settings',
-      'profile',
-      'checkins',
-      'sportSessions',
-    ],
-    'readwrite',
-  );
-  await Promise.all([
-    tx.objectStore('trainings').clear(),
-    tx.objectStore('sessions').clear(),
-    tx.objectStore('activeSession').clear(),
-    tx.objectStore('customExercises').clear(),
-    tx.objectStore('profile').clear(),
-    tx.objectStore('checkins').clear(),
-    tx.objectStore('sportSessions').clear(),
-    tx.objectStore('settings').clear(),
-    tx.done,
-  ]);
+  const tx = db.transaction(ALL_STORES, 'readwrite');
+  await Promise.all([...ALL_STORES.map((name) => tx.objectStore(name).clear()), tx.done]);
 }
 
 /** Ask Safari not to evict our storage. Best-effort, safe to call repeatedly. */

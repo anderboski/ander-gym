@@ -1,9 +1,9 @@
 /**
  * Search + facet filtering over the exercise catalogue.
  *
- * Shared between the Exercises page (carousel) and the Trainings exercise
- * picker (list), so it owns the query/facet state and knows nothing about what
- * a result looks like — the caller supplies `renderItem`.
+ * Shared between the Exercises page (carousel) and the two pickers (list), so
+ * it owns the query/facet state and knows nothing about what a result looks
+ * like — the caller supplies `renderItem`.
  *
  * The unfiltered catalogue is 1324 records, so results are windowed: an initial
  * slice is rendered and grown when a sentinel at the end of the strip/list
@@ -16,12 +16,13 @@ import { countActiveFacets, facetOptions, searchExercises, toggleFacet } from '.
 import { useGym } from '../data/store';
 import { FACET_LABEL_KEYS, useLanguage } from '../data/i18n';
 import { EMPTY_FACETS, FACET_KEYS, type Exercise, type Facets } from '../data/types';
+import { StarIcon, TrophyIcon } from './icons';
 import './ExerciseBrowser.css';
 
 /** Results rendered up-front, and added on each sentinel hit. */
 const PAGE_SIZE = 30;
 
-export type ExerciseBrowserProps = {
+type ExerciseBrowserProps = {
   /** 'carousel' = horizontal snap strip; 'list' = vertical stack. */
   layout: 'carousel' | 'list';
   /**
@@ -45,12 +46,7 @@ export type ExerciseBrowserProps = {
   sortDoneFirst?: boolean;
 };
 
-export function ExerciseBrowser({
-  layout,
-  renderItem,
-  disabledIds,
-  sortDoneFirst,
-}: ExerciseBrowserProps): ReactElement {
+export function ExerciseBrowser({ layout, renderItem, disabledIds, sortDoneFirst }: ExerciseBrowserProps): ReactElement {
   const { exercises, exerciseLatest, exerciseRecords, settings } = useGym();
   const { t, language } = useLanguage();
 
@@ -60,20 +56,14 @@ export function ExerciseBrowser({
   const [onlyFavorites, setOnlyFavorites] = useState(false);
   const [limit, setLimit] = useState(PAGE_SIZE);
 
-  const favoriteIds = useMemo(
-    () => new Set(settings.favoriteExerciseIds),
-    [settings.favoriteExerciseIds],
-  );
+  const favoriteIds = useMemo(() => new Set(settings.favoriteExerciseIds), [settings.favoriteExerciseIds]);
 
   const options = useMemo(() => facetOptions(exercises), [exercises]);
 
   // Callers usually pass a freshly-built array; key on the contents so the
   // memo below is not invalidated on every parent render.
   const disabledKey = disabledIds?.join(' ') ?? '';
-  const disabled = useMemo(
-    () => new Set(disabledKey ? disabledKey.split(' ') : []),
-    [disabledKey],
-  );
+  const disabled = useMemo(() => new Set(disabledKey ? disabledKey.split(' ') : []), [disabledKey]);
 
   const matches = useMemo(() => {
     const doneIds = sortDoneFirst ? new Set(exerciseLatest.keys()) : undefined;
@@ -81,18 +71,7 @@ export function ExerciseBrowser({
     if (onlyPR) found = found.filter((ex) => exerciseRecords.has(ex.id));
     if (onlyFavorites) found = found.filter((ex) => favoriteIds.has(ex.id));
     return found;
-  }, [
-    exercises,
-    query,
-    facets,
-    sortDoneFirst,
-    language,
-    exerciseLatest,
-    onlyPR,
-    exerciseRecords,
-    onlyFavorites,
-    favoriteIds,
-  ]);
+  }, [exercises, query, facets, sortDoneFirst, language, exerciseLatest, onlyPR, exerciseRecords, onlyFavorites, favoriteIds]);
 
   // Any change to the result set starts the window over.
   useEffect(() => {
@@ -113,9 +92,7 @@ export function ExerciseBrowser({
     // pulling more instead of stalling on an unchanged intersection.
     const observer = new IntersectionObserver(
       (entries) => {
-        if (entries.some((e) => e.isIntersecting)) {
-          setLimit((n) => n + PAGE_SIZE);
-        }
+        if (entries.some((e) => e.isIntersecting)) setLimit((n) => n + PAGE_SIZE);
       },
       { rootMargin: '300px' },
     );
@@ -145,12 +122,7 @@ export function ExerciseBrowser({
             onChange={(e) => setQuery(e.target.value)}
           />
           {query !== '' && (
-            <button
-              type="button"
-              className="browser-search-clear"
-              aria-label={t('browser.clearSearch')}
-              onClick={() => setQuery('')}
-            >
+            <button type="button" className="browser-search-clear" aria-label={t('browser.clearSearch')} onClick={() => setQuery('')}>
               &times;
             </button>
           )}
@@ -158,30 +130,20 @@ export function ExerciseBrowser({
       </div>
 
       <div className="browser-facets">
-        <div className="browser-facet">
-          <div className="chip-row">
-            <button
-              type="button"
-              className="chip"
-              aria-pressed={onlyPR}
-              onClick={() => setOnlyPR((v) => !v)}
-            >
-              🏆 {t('browser.prOnly')}
-            </button>
-            <button
-              type="button"
-              className="chip"
-              aria-pressed={onlyFavorites}
-              onClick={() => setOnlyFavorites((v) => !v)}
-            >
-              ⭐ {t('browser.favorites')}
-            </button>
-          </div>
+        <div className="chip-row">
+          <button type="button" className="chip" aria-pressed={onlyPR} onClick={() => setOnlyPR((v) => !v)}>
+            <TrophyIcon />
+            {t('browser.prOnly')}
+          </button>
+          <button type="button" className="chip" aria-pressed={onlyFavorites} onClick={() => setOnlyFavorites((v) => !v)}>
+            <StarIcon filled={onlyFavorites} />
+            {t('browser.favorites')}
+          </button>
         </div>
 
         {FACET_KEYS.map((key) => (
           <div className="browser-facet" key={key}>
-            <div className="section-title">{t(FACET_LABEL_KEYS[key])}</div>
+            <div className="browser-facet-title">{t(FACET_LABEL_KEYS[key])}</div>
             <div className="chip-row">
               {options[key].map((value) => (
                 <button
@@ -197,26 +159,25 @@ export function ExerciseBrowser({
             </div>
           </div>
         ))}
-
-        {activeFacets > 0 && (
-          <div className="browser-facets-actions">
-            <button
-              type="button"
-              className="btn btn-sm btn-ghost"
-              onClick={() => {
-                setFacets(EMPTY_FACETS);
-                setOnlyPR(false);
-                setOnlyFavorites(false);
-              }}
-            >
-              {t('browser.clearAll', { count: activeFacets })}
-            </button>
-          </div>
-        )}
       </div>
 
-      <div className="browser-count" role="status">
-        {matches.length} {t(matches.length === 1 ? 'browser.exerciseOne' : 'browser.exerciseOther')}
+      <div className="browser-count">
+        <span role="status">
+          {matches.length} {t(matches.length === 1 ? 'browser.exerciseOne' : 'browser.exerciseOther')}
+        </span>
+        {activeFacets > 0 && (
+          <button
+            type="button"
+            className="browser-clear"
+            onClick={() => {
+              setFacets(EMPTY_FACETS);
+              setOnlyPR(false);
+              setOnlyFavorites(false);
+            }}
+          >
+            {t('browser.clearAll', { count: activeFacets })}
+          </button>
+        )}
       </div>
 
       {matches.length === 0 ? (

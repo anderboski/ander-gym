@@ -159,6 +159,10 @@ Reachable from a gear icon on Home (Settings sheet).
   ask **Merge** (union by id, incoming wins on conflict) or **Replace** (wipe then load). Replace goes
   through a second, destructive confirmation which also names the incoming training and session counts.
   (v1 uses a confirm dialog rather than a typed confirmation; revisit if a mis-tap ever actually happens.)
+  The write itself is **one IndexedDB transaction** across every store (`db.writeAll`): a record that fails
+  to write halfway through a large file — a quota error, say — rolls the rest back instead of leaving the
+  device half-restored. Photos are decoded from base64 *before* the transaction opens, because an
+  IndexedDB transaction auto-commits the moment no request is pending.
 - **Import preview** — parsing on pick rather than on import buys two things. A malformed file reports its
   error before Merge/Replace is offered rather than after a mode has been chosen, and the counts
   (`summariseBackup` → trainings / gym sessions / activity logs / custom exercises / check-ins, plus the
@@ -173,7 +177,11 @@ Reachable from a gear icon on Home (Settings sheet).
 
 ## 4. Derived logic (pure functions, unit-tested)
 
-All dates are handled in the device's local timezone.
+All dates are handled in the device's local timezone. `derive.ts` produces keys and numbers (`dayKey`,
+`daysBetween`, `formatElapsed`); anything a person reads goes through the locale-aware formatters in
+`i18n.tsx` (`formatDay`, `formatDayWithWeekday`, `formatDayTime`, `formatLongDate`, `formatMonthYear`),
+which write the year only when it is not the current one. Chart geometry — axis domains, tick steps,
+marker lane assignment — is its own pure module, `chart.ts`, so it is unit-tested without an SVG.
 
 **`currentWeekCount(sessions, now)`** — number of saved sessions whose `startedAt` falls in the current
 ISO week (Monday 00:00 → Sunday 23:59:59).
@@ -211,7 +219,23 @@ where the session count ≥ `goal`. The current week is included only if it alre
 streak is never broken mid-week).
 
 **`latestFor(exerciseId, sessions)`** — most recent saved session containing that exercise; returns
-`{ date, daysAgo, sets }`. `daysAgo` is calendar-day difference, rendered as `-9 days`, `-1 day`, `today`.
+`{ date, daysAgo, sets }`. `daysAgo` is calendar-day difference, rendered by `daysAgoLabel` (i18n) as
+`today`, `yesterday`, `9 days ago` in the app's language.
+
+**`lastSetFor(exerciseId, active, sessions)`** — the set the add-set sheet prefills with: the exercise's
+previous set in this session, else its most recent logged set ever, else null.
+
+**`diffExerciseIds(originalIds, session)`** — what a saved session added to, and dropped from, the
+training it was started against (`{ addedIds, removedIds }`) — the two lists the post-save "update the
+training?" prompt names (§5.4).
+
+**`trainingBadge(training, label)`** — the one-glyph badge a training is drawn with everywhere (Trainings
+list, Home calendar, History rows, the Stats time map, the Session picker): its chosen emoji, else the first
+letter of its label, else the first letter of the fallback `label` (a session's own `trainingLabel`
+snapshot) when the training no longer resolves.
+
+**`groupHistoryByMonth(items)`** — splits a `mergedHistory` list into consecutive month runs for History's
+headings; a single run-length pass, since the input is already sorted.
 
 **`historyFor(exerciseId, sessions)`** — every session containing the exercise, newest first.
 
@@ -240,10 +264,6 @@ output of `historyFor`. `metric` is `topWeight` (heaviest set) or `e1rm` (best e
 be the same set). One point per session: its best set under the metric, ties going to the earlier set.
 Bodyweight sets are skipped, so a session logged entirely at `weight: 0` contributes no point rather than a
 zero that would crater the line.
-
-**`weeklySummary(sessions, weeks, now)`** — the last `weeks` ISO weeks ending with the current one, oldest
-first, each `{ start, sessions, volume }`. Weeks with nothing logged are present with zeros: a gap is the
-point of a consistency chart, and dropping empty weeks would compress a month off training into a flat line.
 
 **`volumeByTarget(sessions, exercises, days, now)`** — volume per muscle `target` over the last `days`
 calendar days, heaviest first. `target` lives on the catalogue and never on a `SessionEntry` (§3), so the
@@ -280,23 +300,28 @@ Every page has a title area that respects the iOS safe-area inset at the top, an
 the fixed bottom nav.
 
 ### 5.1 Home
-- **Greeting / profile entry point** — the page's `<h1>` is a time-bucketed greeting ("Good morning,
-  `<name>`" etc.) doubling as a tappable link into Profile (§5.7), rather than a static "Home" title.
-- **Week counter** — "N trainings this week", with a progress ring against `weeklyGoal`. Sits in a
-  compact card sharing a row with the Stats shortcut below, rather than full-width, so the row costs
-  less vertical space and Today/Calendar sit higher on the screen.
-- **Streak** — "🔥 3 weeks" when `weeklyStreak ≥ 1`; hidden at 0.
+- **Header** — a small-caps date eyebrow ("Thursday 17 September", in the app's language), then the
+  page's `<h1>`: a time-bucketed greeting ("Good evening, Ander"; just "Good evening" until a name is set)
+  rather than a static "Home" title. On the right, two round filled buttons (theme toggle, gear) and an
+  **initials avatar** — the profile entry point (§5.7); a person icon until a name is set. The avatar is the
+  standard place a profile lives on a phone, which is what makes it discoverable without decorating the
+  greeting as a link.
+- **Week counter** — "N trainings this week", with a progress ring against `weeklyGoal`, in a card that
+  also carries the Stats shortcut at its trailing edge (below), so the row costs no extra height.
+- **Streak** — a flame icon and "3 weeks" when `weeklyStreak ≥ 1`; hidden at 0.
 - **Today's training card** — the result of `nextTraining()`: label, body parts, and last-done date +
   days-back. Tapping it starts a new session for that training and navigates to Session.
-  - If a session was already saved today, show a "Completed today" badge above the card; the card still
-    offers the next training in rotation.
+  - The card shows the training's badge (`trainingBadge`, §4), its label, the last-done line, and a round
+    accent play control; the whole card is the tap target.
+  - If a session was already saved today, show a "Completed today · <label>" pill beside the section
+    title; the card still offers the next training in rotation.
   - If a session is currently active, the card is replaced by "Resume session →".
   - **Duration estimate** — "usually ~45m", the average of `savedAt − startedAt` across every past saved
     session for that training (`averageSessionMinutes`). Omitted when the training has no saved sessions
     yet, since there is nothing to average.
-- **Stats shortcut** — a compact card beside the week counter (same row), just "STATS" and 📊, pushing to
-  the Stats view (§5.6). Hidden until at least one session exists, so a fresh install keeps its empty
-  state — the week counter alone then fills the full row.
+- **Stats shortcut** — a compact "Stats" button (bar-chart icon) at the trailing edge of the week card,
+  pushing to the Stats view (§5.6). Hidden until at least one session exists, so a fresh install keeps its
+  empty state.
 - **Calendar** — below Today, a month grid (Monday-start, six fixed rows so paging never changes the card's
   height). Prev/next chevrons above the grid step one month at a time, unbounded in either direction. A day
   with a saved gym session or a logged sport session shows a small circular badge with that training's icon,
@@ -316,17 +341,17 @@ the fixed bottom nav.
   resulting toast says *saved* or *downloaded* to match what actually happened; a dismissed share sheet
   raises no toast at all.
 - **Lifetime stats footer** — below the backup banner, a single centred line: total sessions ever saved,
-  total kg lifted (`formatCompact`, matching Stats' chart figures), and "since `<date of the first saved
-  session>`". Hidden until at least one session exists, matching the Stats shortcut and the calendar.
-- **Gear icon** (top right) — Settings sheet: weekly goal, language, export, import, storage usage
-  (`navigator.storage.estimate()`), app version, a changelog link, a "How to use" link (§5.9), and a
-  link to the GitHub repo.
+  total kg lifted (`formatCompact`, matching Stats' chart figures), and "since `<month and year of the first
+  saved session>`". Hidden until at least one session exists, matching the Stats shortcut and the calendar.
+- **Gear icon** (top right) — Settings sheet: a grouped card with the weekly goal stepper and the language
+  control, then export, import, storage usage (`navigator.storage.estimate()`), app version, a changelog
+  link, a "How to use" link (§5.9), and a link to the GitHub repo.
 - **Theme toggle** (top right, beside the gear icon) — sun/moon icon button that flips between light
   and dark, overriding the OS `prefers-color-scheme`. Persisted in `localStorage` (not the `settings`
   IndexedDB store, so it can be read and applied synchronously before first paint — see the inline
   bootstrap script in `index.html`). Defaults to the OS preference until the user picks explicitly.
-- **Language** — English or Spanish, chosen from a "Language" section in the Settings sheet: two chip
-  buttons, a UK flag for English and a Spain flag for Spanish, with the active one visually selected.
+- **Language** — English or Spanish, chosen from a "Language" row in the Settings sheet: a two-segment
+  control, "English" / "Español" (endonyms, never translated), with the active one raised.
   Covers the app's own chrome — labels, buttons, empty states, toasts, dates — everywhere, and also
   the exercise catalogue's name, category, equipment and target, through a **separate dictionary
   layer** (`src/data/exerciseI18n.ts` + `src/data/translations/exercise{Names,Facets}.ts`) keyed by
@@ -365,7 +390,8 @@ Vertical order, exactly as briefed:
    iOS zoom-on-focus. In normal document flow — not sticky — so it scrolls away with the rest of the page;
    an earlier sticky version could stick at the wrong offset and leave a facet chip row rendered on top of
    it.
-2. **"PR only" and "Favorites" toggles**, side by side in their own row above the facet chips.
+2. **"PR only" and "Favorites" toggles** (trophy and star icons), side by side in their own row above the
+   facet chips.
    - "PR only" filters the list down to exercises with at least one personal record
      (`exerciseRecords.has(id)` — same weighted-set-only definition as the personal-record badge below, so
      a bodyweight-only exercise never matches).
@@ -373,15 +399,21 @@ Vertical order, exactly as briefed:
    Both combine with the search query, every facet, and each other (AND). Both count toward, and are reset
    by, "Clear all" alongside the facet chips.
 3. **Facet chips**, three rows in this order: Category → Equipment → Target muscle. Each row scrolls
-   horizontally, chips toggle, selected chips are filled. A "Clear all" appears when any is active.
-4. **Match count** — "142 exercises".
+   horizontally, chips toggle, selected chips are filled.
+4. **Match count** — "142 exercises", with a "Clear all (n)" link on the same line when any filter is
+   active.
 5. **Card carousel** — horizontally scrollable, scroll-snapped cards of the matching exercises.
    **Default order** (no search query): exercises logged at least once — in any past session, bodyweight
    included — sort before ones that have not, alphabetical within each group. A search query switches to
    relevance order, unchanged. This is broader than the personal-record badge below, which only counts
    weighted sets.
-6. **"+ Add exercise"** — opens the custom-exercise form (name, category, equipment, target, optional photo).
-   Saved to `customExercises` and immediately searchable, tagged with a "Custom" pill.
+6. **Add exercise** — a round accent "+" in the page header opens the custom-exercise form (name,
+   category, equipment, target, optional photo). Saved to `customExercises` and immediately searchable,
+   tagged with a "Custom" pill.
+
+Catalogue names are stored lower-case ("barbell bench press") and rendered **sentence-cased** everywhere
+(`exerciseDisplayName`, after translation) — presentation only; search, sorting and storage keep the
+canonical value.
 
 > **Review point for the user:** a single horizontal strip is being built as specified, but with an
 > unfiltered 1324 matches it is a long swipe. Implemented with lazy image loading and windowing so it stays
@@ -393,7 +425,7 @@ Vertical order, exactly as briefed:
   without a photo).
 - Latest training data: `2026-07-23 · -9 days`, then a 2-column matrix — one row per set, reps × weight.
   When the exercise has never been logged: "No history yet".
-- **Personal-record badge** — `🏆 8x30kg` from `personalRecords().heaviest`, top-left. Overlaid on the card
+- **Personal-record badge** — a trophy icon and `8x30kg` from `personalRecords().heaviest`, top-left. Overlaid on the card
   rather than placed in the body flow, so a card with a record is exactly as tall as one without and the
   media aspect ratio is untouched. Hidden entirely when there is no weighted history.
 - **Favorite star** — top-right, always present, filled when the exercise's id is in
@@ -420,15 +452,15 @@ Training days are fully user-managed — there is no fixed list and nothing is s
   Climbing — fixed for that training's lifetime, no UI to change it later. A non-Gym training has no
   exercises and lives in its own **"Other activities"** section below the rotation list, undraggable and
   excluded from `nextTraining()` (§5.8 covers what its detail view looks like instead of an exercise list).
-- One card per training day, in rotation order: an icon, the label as typed, last session datetime +
-  days-back for that training, and the exercise count.
+- One card per training day, in rotation order: an icon, the label as typed, and one line reading
+  "`<n> exercises · <last session day> · <days ago>`" (or "Never done").
 - **Icon.** A tappable icon button sits before each card's body, showing the training's chosen icon or its
   first letter by default. Tapping it opens a dialog with a single text field accepting one letter, symbol,
   or emoji; saving updates the badge immediately (on this page and on Home's calendar), and leaving the
   field blank clears it back to the initial-letter default.
-- **Add.** A trailing "+ Add training day" card opens a sheet with a single name field. Saving appends a
-  new, empty training to the end of the rotation. Names may repeat; ids are always unique and hidden from
-  the user.
+- **Add.** A trailing tinted "+ Add training day" button (and a round "+" in the page header) opens a
+  sheet with a name field and the Type selector. Saving appends a new, empty training to the end of the
+  rotation. Names may repeat; ids are always unique and hidden from the user.
 - **Edit.** A pencil icon on each card opens an "Edit training" sheet: the name field (as before, prefilled
   with the current name — only `label` changes on save; the id is stable, so every session already logged
   under that training keeps pointing at it correctly, since a session's `trainingLabel` is a snapshot taken
@@ -441,10 +473,10 @@ Training days are fully user-managed — there is no fixed list and nothing is s
 - **Archive.** Tapping "Archive training" removes it from this page's default list and from Home's
   rotation — `nextTraining()` skips it entirely, and there is no way to start a session against an
   archived training. Nothing about its id, exercises, or history changes, so it stays fully resolvable;
-  archiving is immediate and undoable via a 5 s toast. An archive icon at the top right of this page opens
-  the list of archived trainings, each still tappable through to its normal detail view and still editable
-  (to rename it or to unarchive it, which is immediate and drops it back into the rotation at its old
-  `order`).
+  archiving is immediate and undoable via a 5 s toast. An archive icon at the top right of this page —
+  present only while at least one training is archived — opens the list of archived trainings, each still
+  tappable through to its normal detail view and still editable (to rename it or to unarchive it, which is
+  immediate and drops it back into the rotation at its old `order`).
 - **Delete — the one case that isn't archive-only.** If a training has zero sessions in History *and* no
   session currently in progress against it, there is nothing for a `Session.trainingId` to lose — so
   tapping "Archive training" on one instead offers a choice: archive it, or delete it outright. Deletion is
@@ -453,31 +485,33 @@ Training days are fully user-managed — there is no fixed list and nothing is s
   deleted.
 - Tapping a card's body (not the grip or pencil) opens its detail view: the training's exercises rendered
   as `ExerciseCard`s **with** the trash icon (removal is immediate, undoable via a toast for 5 s), and a
-  trailing **"+"** card. This works the same whether the training is active or archived.
+  trailing tinted **"+ Add exercise"** button. This works the same whether the training is active or archived.
 - **Exercise reorder.** Each exercise's card in the detail view has its own grip handle to its left — the
   same drag-to-reorder interaction as the trainings list, scoped to this training's `exerciseIds`. The drop
   position becomes the new `exerciseIds` order, which is exactly the order a new session against this
   training lists its exercises in (§5.4) and the order they're rendered in here and on Home's per-training
   card.
-- The "+" card opens an exercise picker — the same search + facet UI as the Exercises page in selection
-  mode. Picking one appends it to `exerciseIds`. Already-included exercises are shown as disabled, labelled
+- The button opens an exercise picker — the same search + facet UI as the Exercises page in selection
+  mode, rows rendered by the shared `PickRow`. Picking one appends it to `exerciseIds`. Already-included exercises are shown as disabled, labelled
   "Already in this training". They stay in the results and in the match count: a picker that silently drops
   them answers the same query differently from the Exercises page, which reads as a broken filter rather
   than as "you already have this one".
 - Duplicate exercises within one training are rejected.
 
 ### 5.4 Session
-**No active session:** a single "New Session" box listing the training days; picking one creates the active
-session (`startedAt` = now) with an empty `sets` array per exercise in that training. The list is `gym`-kind
-trainings only (D9) — a sport day has no live, set-by-set flow to start, only the after-the-fact summary
-form on its own Trainings detail page (§5.8), so it never appears here. With trainings but none of them
-`gym`, the box explains sport logging lives on Trainings instead of repeating "no training days found".
+**No active session:** a grouped list of the training days, each with its badge and exercise count;
+picking one creates the active session (`startedAt` = now) with an empty `sets` array per exercise in that
+training. The list is **active** `gym`-kind trainings only (D9, and there is no way to start a session
+against an archived training) — a sport day has no live, set-by-set flow to start, only the after-the-fact
+summary form on its own Trainings detail page (§5.8), so it never appears here. With trainings but none of
+them `gym`, the box explains sport logging lives on Trainings instead of repeating "no training days found".
 
-**Active session:** header shows training label and a running elapsed time. Then a table, one row per
-exercise:
+**Active session:** the header's eyebrow line carries the running elapsed time and the set count
+("12m · 4 sets logged"), the title is the training label, and a round trash control top-right discards
+(confirmed). Then a grouped list, one row per exercise:
 
-| small image | name | reps | + |
-|---|---|---|---|
+| small image | name · last time · logged sets | + / trash |
+|---|---|---|
 
 - **"Last time"** — under the exercise name, on its own line spanning the row: the days-ago label and up
   to three sets from the last session this exercise was logged in (`summariseSets` in `parse.ts`, capped
@@ -487,15 +521,16 @@ exercise:
   exercise with no history, so a first-time row stays as short as it was. Its own line rather than inside
   the name column: three sets in the tabular-numeral font do not fit ~150 px, and wrapping them there
   costs more row height than a second line does.
-- **reps** starts empty and accumulates one line per logged set: `10x25kg`.
-- **"+"** opens a bottom sheet asking reps and weight. Numeric keypads (`inputmode="numeric"` /
-  `"decimal"`), prefilled from that exercise's previous set in this session, or from its last recorded set
-  historically. **Save** appends the set; a small **"×"** top-right dismisses without saving.
+- **Logged sets** accumulate under the name as numbered tinted chips — `① 10x25kg ② 10x25kg` — in the order
+  they were done; tapping one offers Delete.
+- **"+"** (a round accent button on the row) opens a bottom sheet asking reps and weight in two large
+  fields. Numeric keypads (`inputmode="numeric"` / `"decimal"`), prefilled via `lastSetFor` (§4) from that
+  exercise's previous set in this session, or from its last recorded set historically. **Save** appends the
+  set; a small **"×"** top-right dismisses without saving.
 - **Tapping the row's image** opens the same full-history sheet as Trainings/Exercises (§5.2's
   `ExerciseHistorySheet`, shared) — progress chart plus every past saved session's set matrix. Unresolved
   exercise ids (no catalogue entry) render the plain fallback tile with no tap target, same as elsewhere.
-- Tapping an existing set line offers Delete (confirm).
-- Saving a set that satisfies `beatsPersonalRecord()` raises a self-dismissing **"🏆 New PR"** toast. The
+- Saving a set that satisfies `beatsPersonalRecord()` raises a self-dismissing **"New record — 8x30kg"** toast. The
   baseline is saved sessions **plus the sets already logged in this session**, so three ascending sets
   announce three distinct records rather than the same one three times.
 - Exercises may be logged in any order; rows with no sets are kept in the saved record with an empty `sets`
@@ -518,17 +553,17 @@ the exercise rows.
 - Saving a set starts (or restarts) a countdown of that training day's `restSeconds`, defaulting to
   90 s. The deadline is absolute — see §4 — so a backgrounded tab resumes at the right number rather
   than at wherever it froze; the display also re-derives on `visibilitychange`.
-- Running: `mm:ss`, a progress bar, **−30 s** / **+30 s**, and **Skip**. The ±30 s applies to that
-  rest only; nothing is written.
-- Idle: the training day's default with **60 / 90 / 120 s** presets. Picking one writes
-  `Training.restSeconds` immediately and is where that default is edited.
+- Running: the bar tints accent and shows `mm:ss` large, a progress bar, **−30** / **+30**, and **Skip**.
+  The ±30 s applies to that rest only; nothing is written.
+- Idle: "Rest" with a **60s / 90s / 120s** segmented control, the training day's default raised.
+  Picking one writes `Training.restSeconds` immediately and is where that default is edited.
 - At zero the bar reads "Rest done" until cleared, or for 30 s. `navigator.vibrate()` fires once if
   the device has it — feature-detected, so its absence on iOS is a no-op, not an error.
 - Timer state is deliberately ephemeral: it lives in the page, not in `activeSession`. A reload
   clears it; a half-finished rest is not training data.
 
 Bottom of the page, above the nav:
-- **"Save session"** — large, full-width, green. Writes to `sessions` with `savedAt`, clears
+- **"Save session"** — large, full-width, accent. Writes to `sessions` with `savedAt`, clears
   `activeSession`, navigates to History. Blocked with an explanatory message if zero sets were logged.
   If the final set of exercises differs from the training's `exerciseIds` when the session started —
   because of mid-session **"+ Add exercise"**, the row trash icon, or both — a confirmation sheet names
@@ -538,11 +573,11 @@ Bottom of the page, above the nav:
 
 ### 5.5 History
 - Reverse-chronological list of **everything logged** (`mergedHistory`, §4) — saved gym sessions and logged
-  sport sessions interleaved into one list, not split by kind. A gym row shows date + time, training label,
-  and a summary line (set count · total volume in kg); a sport row shows date, training label, and a
-  kind-specific one-line summary (§5.8). Every row is prefixed on the left with the training's chosen icon
-  (§5.3) — same fallback as the Home calendar dot and the Trainings row: the label's first letter if no
-  icon was ever set — so long lists stay scannable at a glance.
+  sport sessions interleaved into one list, not split by kind, grouped into one card per month
+  (`groupHistoryByMonth`) under a month heading. A row's title is the training label; its second line is the
+  date — "Aug 5, 17:00" for a gym session, "Wed, Aug 5" for a sport log — and the summary (set count · total
+  volume in kg, or the kind-specific line of §5.8). Every row is prefixed on the left with the training's
+  badge (`trainingBadge`, §4) so long lists stay scannable at a glance.
 - Tapping a gym record opens the same detail layout as an active session, **read-only** — no "+", no
   editing. Tapping a sport record opens its own read-only detail (§5.8).
 - The detail view has a destructive "Delete session" (or, for a sport record, "Delete log") action with
@@ -555,14 +590,14 @@ A push view off Home (`#/stats`), **not** a sixth tab: D1 locks the navigation a
 this route to `home` and the tab bar stays lit on Home while it is open — the same arrangement as a training
 or a session detail. Reached from the Stats shortcut in §5.1; a back control returns to Home.
 
-**Training-kind switcher.** Top right of the header, four emoji tabs — gym 🏋️, cycling 🚴, snowboard 🏂,
-climbing 🧗 — picking which stats show below. Local component state only (no route change); gym is the
+**Training-kind switcher.** Under the title, a four-segment icon control — dumbbell, bicycle, snowflake,
+mountain — picking which stats show below. Local component state only (no route change); gym is the
 default. Everything is derived from `sessions`/`sportSessions`, nothing new is stored.
 
 `other` has **no tab here, on purpose**: an `other` log records nothing measurable, and two `other`
 trainings ("Padel", "Surf") don't measure the same thing anyway, so there is nothing to aggregate across
 them. The switcher's kind list is its own narrowed union in `StatsPage.tsx`, not `TrainingKind`, so a
-future kind has to opt in here rather than silently need an emoji and a panel.
+future kind has to opt in here rather than silently need an icon and a panel.
 
 **Time window.** Two dropdowns above the charts, shared by every kind that scopes to a window (gym,
 cycling, climbing — snowboard is scoped by season instead) and owned by the page, so switching kind
@@ -696,14 +731,12 @@ used anywhere else in the app.
 A push view off Home (`#/profile`), same arrangement as Stats — not a sixth tab, `tabOf()` maps it to `home`.
 Reached by tapping the greeting in Home's header (see below); a back control returns to Home.
 
-- **The greeting doubles as the entry point.** Home's `<h1>` shows a time-bucketed greeting instead of a
-  static "Home" title — morning (5:00–11:59) "Good morning, `<name>`", day (12:00–17:59) "Welcome back,
-  `<name>`", evening (18:00–4:59) "Good evening, `<name>`" (`derive.ts` `greetingBucket`). Only `<name>` is
-  the tap target — a `<button>` nested inside the `<h1>` (so it stays a real heading for screen readers),
-  styled distinctly (`--link` blue, underlined, slightly larger) so it reads as a link; the rest of the
-  greeting is plain heading text. With no name set yet, `<name>` is a literal placeholder (`<yourname>` /
-  `<tu nombre>`) rather than falling back to a plain title — the entry point has to stay discoverable from
-  the very first launch, not just after someone has already found their way to Profile once.
+- **The avatar is the entry point.** Home's `<h1>` shows a time-bucketed greeting instead of a static
+  "Home" title — morning (5:00–11:59) "Good morning", day (12:00–17:59) "Welcome back", evening
+  (18:00–4:59) "Good evening" (`derive.ts` `greetingBucket`), with ", `<name>`" appended once a name is
+  set. The tap target is the round initials avatar at the header's trailing edge (up to two initials; a
+  person icon until a name is set) — the place a phone user already expects a profile to live, so it stays
+  discoverable from the very first launch without turning the greeting into an underlined link.
 - **Fields — name, birthdate, height (cm)** — all optional and skippable, edited from a pencil-icon sheet
   next to the name. **Age is never stored**, only `birthdate`; `ageFrom()` derives it on every render, same
   "derive, don't duplicate" rule as everything else in this app (week counts, streaks, "days ago"). A stat

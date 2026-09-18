@@ -6,25 +6,20 @@
  * The photo is optional and `capture` is deliberately not set: without it iOS
  * offers both "Take Photo" and "Choose from Library".
  */
-import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
+import { useMemo, useRef, useState, type FormEvent } from 'react';
 import { titleCase } from '../data/parse';
 import { translateFacetValue } from '../data/exerciseI18n';
 import { facetOptions } from '../data/search';
 import { useGym } from '../data/store';
 import { FACET_LABEL_KEYS, useLanguage } from '../data/i18n';
-import { FACET_KEYS, type Exercise, type FacetKey } from '../data/types';
+import { FACET_KEYS, type FacetKey } from '../data/types';
+import { useObjectUrl } from '../hooks/useObjectUrl';
 import { Sheet } from './Sheet';
 import './ExerciseBrowser.css';
 
 const FORM_ID = 'custom-exercise-form';
 
-export type CustomExerciseFormProps = {
-  onClose: () => void;
-  /** Called with the created exercise before the sheet closes. */
-  onSaved?: (exercise: Exercise) => void;
-};
-
-export function CustomExerciseForm({ onClose, onSaved }: CustomExerciseFormProps) {
+export function CustomExerciseForm({ onClose }: { onClose: () => void }) {
   const { exercises, addCustomExercise } = useGym();
   const { t, language } = useLanguage();
   const options = useMemo(() => facetOptions(exercises), [exercises]);
@@ -37,21 +32,11 @@ export function CustomExerciseForm({ onClose, onSaved }: CustomExerciseFormProps
   }));
 
   const [photo, setPhoto] = useState<File | null>(null);
-  const [preview, setPreview] = useState<string | null>(null);
+  const preview = useObjectUrl(photo);
   const fileRef = useRef<HTMLInputElement | null>(null);
 
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
-
-  useEffect(() => {
-    if (!photo) {
-      setPreview(null);
-      return;
-    }
-    const url = URL.createObjectURL(photo);
-    setPreview(url);
-    return () => URL.revokeObjectURL(url);
-  }, [photo]);
 
   const canSave = name.trim().length > 0 && !saving;
 
@@ -67,16 +52,7 @@ export function CustomExerciseForm({ onClose, onSaved }: CustomExerciseFormProps
     setSaving(true);
     setError(null);
     try {
-      const exercise = await addCustomExercise(
-        {
-          name: name.trim(),
-          category: values.category,
-          equipment: values.equipment,
-          target: values.target,
-        },
-        photo,
-      );
-      onSaved?.(exercise);
+      await addCustomExercise({ name: name.trim(), category: values.category, equipment: values.equipment, target: values.target }, photo);
       onClose();
     } catch (err: unknown) {
       // Most likely the image decode/encode step — keep the form open with
@@ -91,24 +67,19 @@ export function CustomExerciseForm({ onClose, onSaved }: CustomExerciseFormProps
       title={t('exercises.addExercise')}
       onClose={onClose}
       footer={
-        <button
-          type="submit"
-          form={FORM_ID}
-          className="btn btn-primary btn-block"
-          disabled={!canSave}
-        >
+        <button type="submit" form={FORM_ID} className="btn btn-primary btn-block" disabled={!canSave}>
           {saving ? t('common.saving') : t('customExerciseForm.saveExercise')}
         </button>
       }
     >
-      <form id={FORM_ID} className="cxf" onSubmit={handleSubmit}>
+      <form id={FORM_ID} onSubmit={handleSubmit}>
         {error && (
-          <div className="cxf-error" role="alert">
+          <div className="form-error field" role="alert">
             {error}
           </div>
         )}
 
-        <div className="cxf-field">
+        <div className="field">
           <label className="label" htmlFor="cxf-name">
             {t('common.name')}
           </label>
@@ -126,16 +97,11 @@ export function CustomExerciseForm({ onClose, onSaved }: CustomExerciseFormProps
         </div>
 
         {FACET_KEYS.map((key) => (
-          <div className="cxf-field" key={key}>
+          <div className="field" key={key}>
             <label className="label" htmlFor={`cxf-${key}`}>
               {t(FACET_LABEL_KEYS[key])}
             </label>
-            <select
-              id={`cxf-${key}`}
-              className="input"
-              value={values[key]}
-              onChange={(e) => setValues((v) => ({ ...v, [key]: e.target.value }))}
-            >
+            <select id={`cxf-${key}`} className="input" value={values[key]} onChange={(e) => setValues((v) => ({ ...v, [key]: e.target.value }))}>
               {options[key].map((option) => (
                 <option key={option} value={option}>
                   {titleCase(translateFacetValue(language, key, option))}
@@ -145,18 +111,11 @@ export function CustomExerciseForm({ onClose, onSaved }: CustomExerciseFormProps
           </div>
         ))}
 
-        <div className="cxf-field">
+        <div className="field">
           <label className="label" htmlFor="cxf-photo">
             {t('customExerciseForm.photoOptional')}
           </label>
-          <input
-            id="cxf-photo"
-            ref={fileRef}
-            className="cxf-file"
-            type="file"
-            accept="image/*"
-            onChange={(e) => setPhoto(e.target.files?.[0] ?? null)}
-          />
+          <input id="cxf-photo" ref={fileRef} className="cxf-file" type="file" accept="image/*" onChange={(e) => setPhoto(e.target.files?.[0] ?? null)} />
 
           {preview && (
             <div className="cxf-preview">

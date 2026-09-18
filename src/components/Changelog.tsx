@@ -3,15 +3,9 @@
  * sheet reachable from Settings. Both read from data/changelog.ts.
  */
 import { useEffect, useState } from 'react';
-import {
-  CHANGELOG,
-  getLastSeenVersion,
-  setLastSeenVersion,
-  unseenEntries,
-  type ChangelogEntry,
-} from '../data/changelog';
-import { formatDate } from '../data/derive';
-import { useLanguage } from '../data/i18n';
+import { CHANGELOG, getLastSeenVersion, setLastSeenVersion, unseenEntries, type ChangelogEntry } from '../data/changelog';
+import { parseLocalDate } from '../data/derive';
+import { formatDay, useLanguage } from '../data/i18n';
 import { Sheet } from './Sheet';
 import './Changelog.css';
 
@@ -55,39 +49,46 @@ export function WhatsNewGate() {
   }
 
   return (
-    <Sheet title={t('changelog.whatsNewTitle', { version: current.version })} onClose={dismiss}>
+    <Sheet
+      title={t('changelog.whatsNewTitle', { version: current.version })}
+      onClose={dismiss}
+      footer={
+        <button className="btn btn-primary btn-block" onClick={dismiss}>
+          {t('changelog.gotIt')}
+        </button>
+      }
+    >
       <ul className="changelog-notes">
         {notesFor(current, language).map((line, i) => (
           <li key={i}>{line}</li>
         ))}
       </ul>
-      <button className="btn btn-primary btn-block changelog-dismiss" onClick={dismiss}>
-        {t('changelog.gotIt')}
-      </button>
     </Sheet>
   );
 }
 
 /** Full release history, newest first, opened from the Settings footer. */
 export function ChangelogSheet({ onClose }: { onClose: () => void }) {
-  const { language, t } = useLanguage();
+  const { language, locale, t } = useLanguage();
   const entries = [...CHANGELOG].reverse();
 
   return (
     <Sheet title={t('changelog.title')} onClose={onClose} full>
-      {entries.map((entry) => (
-        <section className="changelog-entry" key={entry.version}>
-          <div className="changelog-entry-head">
-            <span className="changelog-entry-version num">v{entry.version}</span>
-            <span className="changelog-entry-date num">{formatDate(entry.date)}</span>
-          </div>
-          <ul className="changelog-notes">
-            {notesFor(entry, language).map((line, i) => (
-              <li key={i}>{line}</li>
-            ))}
-          </ul>
-        </section>
-      ))}
+      <div className="changelog">
+        {entries.map((entry) => (
+          <section className="changelog-entry" key={entry.version}>
+            <div className="changelog-entry-head">
+              <span className="changelog-entry-version num">{entry.version}</span>
+              <span className="changelog-entry-date">{formatDay(locale, parseLocalDate(entry.date), new Date(0))}</span>
+            </div>
+            <ul className="changelog-notes">
+              {notesFor(entry, language).map((line, i) => (
+                <li key={i}>{line}</li>
+              ))}
+            </ul>
+          </section>
+        ))}
+      </div>
     </Sheet>
   );
 }

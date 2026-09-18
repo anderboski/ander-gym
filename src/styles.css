@@ -1,39 +1,41 @@
 /* ==========================================================================
    ander-gym design system
-   Dark-first, iPhone-first. Every page and component in the app styles itself
-   from these tokens and primitives — do not hardcode colours or spacing.
+   iPhone-first. Every page and component styles itself from these tokens and
+   primitives — do not hardcode colours or spacing.
+
+   Surfaces follow the iOS "grouped" model: a flat page background with
+   raised, borderless cards on it, and hairline separators only inside lists.
+   Colour is kept to a single accent plus state colours; identity is carried
+   by type and spacing, not by tint.
    ========================================================================== */
 
 :root {
   /* Palette — dark (default) */
-  --bg: #0f1216;
-  --bg-raised: #171b21;
-  --bg-raised-2: #1f242c;
-  --bg-sunken: #0a0d10;
-  --border: #262c35;
-  --border-strong: #39414d;
+  --bg: #0b0b0d;
+  --bg-raised: #1c1c1f;
+  --bg-raised-2: #2a2a2e;
+  --bg-sunken: #000000;
+  --border: rgba(255, 255, 255, 0.08);
+  --border-strong: rgba(255, 255, 255, 0.18);
 
-  --text: #eef1f5;
-  --text-dim: #98a2b0;
-  --text-faint: #667080;
+  --text: #f5f5f7;
+  --text-dim: rgba(235, 235, 245, 0.62);
+  --text-faint: rgba(235, 235, 245, 0.36);
 
-  --accent: #22c55e;
-  --accent-press: #16a34a;
-  --accent-fg: #04170b;
-  --accent-soft: rgba(34, 197, 94, 0.14);
+  --accent: #30d158;
+  --accent-press: #28b64c;
+  --accent-fg: #06200e;
+  --accent-soft: rgba(48, 209, 88, 0.16);
 
-  --danger: #ef4444;
-  --danger-soft: rgba(239, 68, 68, 0.13);
-  --warn: #f59e0b;
-  --warn-soft: rgba(245, 158, 11, 0.13);
+  --danger: #ff453a;
+  --danger-soft: rgba(255, 69, 58, 0.16);
+  --warn: #ff9f0a;
+  --warn-soft: rgba(255, 159, 10, 0.16);
 
   /* Categorical chart palette — the one exception to "every chart is a single
      --accent series" (SPEC §5.6): the ski season-comparison chart stacks by
-     snow condition or weather, which is inherently multi-series. Six
-     colourblind-safe hues, validated with the dataviz skill's
-     validate_palette.js against this app's actual card surfaces
-     (--bg-raised, light #ffffff / dark #171b21), adjacent-pair mode (stacked
-     segments only ever neighbour each other). Never used for anything else. */
+     snow condition or weather. Six colourblind-safe hues, validated with the
+     dataviz skill's validate_palette.js against the card surface. */
   --chart-cat-1: #3987e5;
   --chart-cat-2: #d95926;
   --chart-cat-3: #199e70;
@@ -41,9 +43,7 @@
   --chart-cat-5: #d55181;
   --chart-cat-6: #008300;
 
-  /* Inline tappable text (e.g. the Home greeting) — distinct from --accent,
-     which marks state (selected/primary), not "this text is a link". iOS
-     system blue, so it reads as a native affordance. */
+  /* Inline tappable text — iOS system blue, so it reads as a native affordance. */
   --link: #0a84ff;
 
   /* Spacing scale */
@@ -57,23 +57,25 @@
   --s10: 40px;
 
   /* Radii */
-  --r-sm: 8px;
-  --r-md: 12px;
-  --r-lg: 16px;
-  --r-xl: 22px;
+  --r-sm: 10px;
+  --r-md: 14px;
+  --r-lg: 18px;
+  --r-xl: 26px;
   --r-full: 999px;
 
-  --shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
-  --shadow-sheet: 0 -10px 40px rgba(0, 0, 0, 0.55);
+  --shadow: 0 8px 28px rgba(0, 0, 0, 0.5);
+  --shadow-sheet: 0 -12px 44px rgba(0, 0, 0, 0.6);
+  --shadow-card: none;
 
   /* Chrome heights */
-  --tabbar-h: 56px;
+  --tabbar-h: 50px;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
 
-  --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, 'Segoe UI',
-    Roboto, sans-serif;
-  --font-num: ui-monospace, 'SF Mono', SFMono-Regular, Menlo, monospace;
+  --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, 'Segoe UI', Roboto,
+    'Helvetica Neue', sans-serif;
+
+  color-scheme: dark;
 }
 
 /*
@@ -81,35 +83,34 @@
  * hasn't explicitly picked dark) or because the user explicitly picked light
  * via the Home toggle (`documentElement[data-theme]`, set in theme.ts and
  * mirrored by the inline bootstrap script in index.html so it lands before
- * first paint). The explicit-choice selector below has higher specificity
- * than the bare `:root` dark defaults, so it wins regardless of OS setting.
+ * first paint). The explicit-choice selector has higher specificity than the
+ * bare `:root` dark defaults, so it wins regardless of OS setting.
  */
 @media (prefers-color-scheme: light) {
   :root:not([data-theme='dark']) {
-    --bg: #f7f8fa;
+    --bg: #f2f2f7;
     --bg-raised: #ffffff;
-    --bg-raised-2: #eef1f5;
-    --bg-sunken: #e7eaef;
-    --border: #dde2e9;
-    --border-strong: #c3cbd6;
+    --bg-raised-2: #ececf1;
+    --bg-sunken: #e3e3e8;
+    --border: rgba(60, 60, 67, 0.12);
+    --border-strong: rgba(60, 60, 67, 0.3);
 
-    --text: #101418;
-    --text-dim: #5b6673;
-    --text-faint: #8a94a2;
+    --text: #1c1c1e;
+    --text-dim: rgba(60, 60, 67, 0.62);
+    --text-faint: rgba(60, 60, 67, 0.4);
 
-    --accent: #15a349;
-    --accent-press: #0f7f39;
+    --accent: #1a9e4b;
+    --accent-press: #168540;
     --accent-fg: #ffffff;
-    --accent-soft: rgba(21, 163, 73, 0.12);
+    --accent-soft: rgba(26, 158, 75, 0.13);
 
-    --danger: #d92d20;
-    --danger-soft: rgba(217, 45, 32, 0.1);
-    --warn: #b45309;
-    --warn-soft: rgba(180, 83, 9, 0.12);
+    --danger: #e0352b;
+    --danger-soft: rgba(224, 53, 43, 0.11);
+    --warn: #c96a05;
+    --warn-soft: rgba(201, 106, 5, 0.12);
 
     --link: #007aff;
 
-    /* Same six hues, light-surface steps (validated against #ffffff). */
     --chart-cat-1: #2a78d6;
     --chart-cat-2: #eb6834;
     --chart-cat-3: #1baf7a;
@@ -117,32 +118,37 @@
     --chart-cat-5: #e87ba4;
     --chart-cat-6: #008300;
 
-    --shadow: 0 6px 24px rgba(16, 24, 40, 0.12);
-    --shadow-sheet: 0 -10px 40px rgba(16, 24, 40, 0.18);
+    --shadow: 0 8px 28px rgba(16, 24, 40, 0.14);
+    --shadow-sheet: 0 -12px 44px rgba(16, 24, 40, 0.18);
+    --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04);
+
+    color-scheme: light;
   }
 }
 
 :root[data-theme='light'] {
-  --bg: #f7f8fa;
+  --bg: #f2f2f7;
   --bg-raised: #ffffff;
-  --bg-raised-2: #eef1f5;
-  --bg-sunken: #e7eaef;
-  --border: #dde2e9;
-  --border-strong: #c3cbd6;
+  --bg-raised-2: #ececf1;
+  --bg-sunken: #e3e3e8;
+  --border: rgba(60, 60, 67, 0.12);
+  --border-strong: rgba(60, 60, 67, 0.3);
 
-  --text: #101418;
-  --text-dim: #5b6673;
-  --text-faint: #8a94a2;
+  --text: #1c1c1e;
+  --text-dim: rgba(60, 60, 67, 0.62);
+  --text-faint: rgba(60, 60, 67, 0.4);
 
-  --accent: #15a349;
-  --accent-press: #0f7f39;
+  --accent: #1a9e4b;
+  --accent-press: #168540;
   --accent-fg: #ffffff;
-  --accent-soft: rgba(21, 163, 73, 0.12);
+  --accent-soft: rgba(26, 158, 75, 0.13);
 
-  --danger: #d92d20;
-  --danger-soft: rgba(217, 45, 32, 0.1);
-  --warn: #b45309;
-  --warn-soft: rgba(180, 83, 9, 0.12);
+  --danger: #e0352b;
+  --danger-soft: rgba(224, 53, 43, 0.11);
+  --warn: #c96a05;
+  --warn-soft: rgba(201, 106, 5, 0.12);
+
+  --link: #007aff;
 
   --chart-cat-1: #2a78d6;
   --chart-cat-2: #eb6834;
@@ -151,8 +157,11 @@
   --chart-cat-5: #e87ba4;
   --chart-cat-6: #008300;
 
-  --shadow: 0 6px 24px rgba(16, 24, 40, 0.12);
-  --shadow-sheet: 0 -10px 40px rgba(16, 24, 40, 0.18);
+  --shadow: 0 8px 28px rgba(16, 24, 40, 0.14);
+  --shadow-sheet: 0 -12px 44px rgba(16, 24, 40, 0.18);
+  --shadow-card: 0 1px 2px rgba(16, 24, 40, 0.04);
+
+  color-scheme: light;
 }
 
 /* --------------------------------------------------------------------------
@@ -177,7 +186,7 @@ body {
   color: var(--text);
   font-family: var(--font);
   font-size: 16px;
-  line-height: 1.45;
+  line-height: 1.4;
   -webkit-font-smoothing: antialiased;
   overscroll-behavior-y: none;
 }
@@ -241,37 +250,76 @@ p {
   -webkit-overflow-scrolling: touch;
   padding-top: var(--safe-top);
   /* clear the fixed tab bar */
-  padding-bottom: calc(var(--tabbar-h) + var(--safe-bottom) + var(--s6));
+  padding-bottom: calc(var(--tabbar-h) + var(--safe-bottom) + var(--s8));
 }
 
 .page-header {
-  padding: var(--s5) var(--s4) var(--s3);
+  padding: var(--s6) var(--s4) var(--s4);
 }
 
 .page-title {
-  font-size: 28px;
+  font-size: 30px;
   font-weight: 700;
-  letter-spacing: -0.02em;
+  letter-spacing: -0.03em;
+  line-height: 1.15;
 }
 
 .page-sub {
   color: var(--text-dim);
-  font-size: 14px;
-  margin-top: 2px;
+  font-size: 15px;
+  margin-top: var(--s1);
 }
 
 .section {
   padding: 0 var(--s4);
-  margin-bottom: var(--s5);
+  margin-bottom: var(--s6);
 }
 
 .section-title {
   font-size: 13px;
   font-weight: 600;
   text-transform: uppercase;
-  letter-spacing: 0.06em;
-  color: var(--text-faint);
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
   margin-bottom: var(--s2);
+  padding-left: var(--s1);
+}
+
+/* Section title with a trailing control on the same line. */
+.section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--s3);
+}
+
+/* The back affordance every push view shares (components/BackButton). */
+.back-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 2px;
+  min-height: 44px;
+  padding: 0 var(--s3) 0 var(--s2);
+  margin: 0 0 0 calc(-1 * var(--s2));
+  border-radius: var(--r-md);
+  color: var(--accent);
+  font-size: 16px;
+  font-weight: 500;
+}
+
+.back-btn:active {
+  opacity: 0.6;
+}
+
+.back-btn svg {
+  width: 22px;
+  height: 22px;
+  margin-left: -2px;
+}
+
+.page-header .back-btn {
+  margin-top: calc(-1 * var(--s3));
+  margin-bottom: var(--s1);
 }
 
 /* --------------------------------------------------------------------------
@@ -284,7 +332,7 @@ p {
   grid-template-columns: repeat(5, 1fr);
   height: calc(var(--tabbar-h) + var(--safe-bottom));
   padding-bottom: var(--safe-bottom);
-  background: color-mix(in srgb, var(--bg-raised) 88%, transparent);
+  background: color-mix(in srgb, var(--bg) 82%, transparent);
   backdrop-filter: saturate(180%) blur(20px);
   -webkit-backdrop-filter: saturate(180%) blur(20px);
   border-top: 1px solid var(--border);
@@ -295,17 +343,17 @@ p {
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: 2px;
+  gap: 3px;
   color: var(--text-faint);
   font-size: 10px;
   font-weight: 500;
-  letter-spacing: -0.01em;
+  letter-spacing: 0.01em;
   transition: color 0.12s;
 }
 
 .tab svg {
-  width: 22px;
-  height: 22px;
+  width: 24px;
+  height: 24px;
 }
 
 .tab[aria-current='page'] {
@@ -325,19 +373,26 @@ p {
   align-items: center;
   justify-content: center;
   gap: var(--s2);
-  min-height: 44px;
-  padding: 0 var(--s4);
+  min-height: 48px;
+  padding: 0 var(--s5);
   border-radius: var(--r-md);
   background: var(--bg-raised-2);
   color: var(--text);
   font-size: 16px;
   font-weight: 600;
+  letter-spacing: -0.01em;
   transition: transform 0.08s, opacity 0.12s;
 }
 
+.btn svg {
+  width: 20px;
+  height: 20px;
+  flex: none;
+}
+
 .btn:active {
-  transform: scale(0.97);
-  opacity: 0.85;
+  transform: scale(0.98);
+  opacity: 0.8;
 }
 
 .btn:disabled {
@@ -348,6 +403,13 @@ p {
 .btn-primary {
   background: var(--accent);
   color: var(--accent-fg);
+}
+
+/* Tinted: the accent as a wash with accent text — a secondary call to action
+   that still belongs to the primary colour ("Add exercise", "Log weight"). */
+.btn-tinted {
+  background: var(--accent-soft);
+  color: var(--accent);
 }
 
 .btn-danger {
@@ -377,6 +439,11 @@ p {
   border-radius: var(--r-sm);
 }
 
+.btn-sm svg {
+  width: 16px;
+  height: 16px;
+}
+
 /* Small circular icon button (trash, close, plus). 44px hit area, smaller ink. */
 .icon-btn {
   display: inline-flex;
@@ -393,12 +460,50 @@ p {
 }
 
 .icon-btn svg {
-  width: 20px;
-  height: 20px;
+  width: 22px;
+  height: 22px;
 }
 
 .icon-btn-danger {
   color: var(--danger);
+}
+
+/* A filled circular icon button — the header's round controls. */
+.icon-btn-filled {
+  width: 38px;
+  height: 38px;
+  background: var(--bg-raised);
+  color: var(--text);
+  box-shadow: var(--shadow-card);
+}
+
+.icon-btn-filled svg {
+  width: 19px;
+  height: 19px;
+}
+
+/* Initials on a tinted disc — the profile entry point. */
+.avatar {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 38px;
+  height: 38px;
+  border-radius: var(--r-full);
+  background: var(--accent);
+  color: var(--accent-fg);
+  font-size: 14px;
+  font-weight: 700;
+  letter-spacing: 0.02em;
+}
+
+.avatar:active {
+  opacity: 0.7;
+}
+
+.avatar svg {
+  width: 20px;
+  height: 20px;
 }
 
 /* --------------------------------------------------------------------------
@@ -407,8 +512,8 @@ p {
 
 .card {
   background: var(--bg-raised);
-  border: 1px solid var(--border);
   border-radius: var(--r-lg);
+  box-shadow: var(--shadow-card);
   overflow: hidden;
 }
 
@@ -420,6 +525,40 @@ p {
   background: var(--bg-raised-2);
 }
 
+/* Rows inside a card separated by a hairline that starts after the leading gutter. */
+.card-row + .card-row {
+  border-top: 1px solid var(--border);
+}
+
+/* A row of figures (components/StatTile). */
+.stat-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--s2);
+}
+
+.stat-tile {
+  flex: 1 1 96px;
+  padding: var(--s3) var(--s3);
+  background: var(--bg-raised);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-card);
+}
+
+.stat-tile-value {
+  font-size: 20px;
+  font-weight: 700;
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+}
+
+.stat-tile-label {
+  margin-top: 2px;
+  font-size: 12px;
+  font-weight: 500;
+  color: var(--text-dim);
+}
+
 /* --------------------------------------------------------------------------
    Inputs
    -------------------------------------------------------------------------- */
@@ -427,11 +566,11 @@ p {
 /* 16px minimum keeps iOS Safari from zooming the viewport on focus. */
 .input {
   width: 100%;
-  min-height: 44px;
-  padding: 0 var(--s3);
+  min-height: 48px;
+  padding: 0 var(--s4);
   font-size: 16px;
-  background: var(--bg-raised);
-  border: 1px solid var(--border);
+  background: var(--bg-raised-2);
+  border: 2px solid transparent;
   border-radius: var(--r-md);
   color: var(--text);
   outline: none;
@@ -447,11 +586,33 @@ p {
   color: var(--text-faint);
 }
 
-.input-search {
-  padding-left: 38px;
-  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23667080' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M20 20l-3.5-3.5'/%3E%3C/svg%3E");
+textarea.input {
+  padding: var(--s3) var(--s4);
+  line-height: 1.4;
+  resize: vertical;
+}
+
+/* Native date input: Safari centres the text oddly in a fixed-height box. */
+input[type='date'].input {
+  display: flex;
+  align-items: center;
+}
+
+/* Native select: `.input` strips the platform appearance, so the disclosure
+   caret is drawn back on. */
+select.input {
+  padding-right: var(--s8);
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23888c94' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
   background-repeat: no-repeat;
-  background-position: 11px center;
+  background-position: right var(--s3) center;
+  background-size: 16px;
+}
+
+.input-search {
+  padding-left: 40px;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23888c94' stroke-width='2' stroke-linecap='round'%3E%3Ccircle cx='11' cy='11' r='7'/%3E%3Cpath d='M20 20l-3.5-3.5'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: 13px center;
   background-size: 18px;
 }
 
@@ -464,11 +625,33 @@ p {
   font-size: 13px;
   font-weight: 600;
   color: var(--text-dim);
-  margin-bottom: var(--s1);
+  margin-bottom: var(--s2);
+  padding-left: var(--s1);
+}
+
+.field + .field {
+  margin-top: var(--s4);
+}
+
+.hint {
+  font-size: 13px;
+  line-height: 1.4;
+  color: var(--text-dim);
+  margin-top: var(--s2);
+  padding-left: var(--s1);
+}
+
+.form-error {
+  padding: var(--s3) var(--s4);
+  border-radius: var(--r-md);
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: 14px;
+  font-weight: 500;
 }
 
 /* --------------------------------------------------------------------------
-   Chips (filter facets)
+   Chips (filter facets) and segmented controls
    -------------------------------------------------------------------------- */
 
 /* Horizontally scrolling row of chips; the row bleeds to the screen edges so
@@ -489,28 +672,172 @@ p {
 
 .chip {
   flex: none;
-  min-height: 34px;
-  padding: 0 var(--s3);
+  min-height: 36px;
+  padding: 0 var(--s4);
   border-radius: var(--r-full);
   background: var(--bg-raised);
-  border: 1px solid var(--border);
-  color: var(--text-dim);
+  box-shadow: var(--shadow-card);
+  color: var(--text);
   font-size: 14px;
   font-weight: 500;
   white-space: nowrap;
   display: inline-flex;
   align-items: center;
+  gap: var(--s1);
   transition: transform 0.08s;
 }
 
+.chip svg {
+  width: 16px;
+  height: 16px;
+}
+
 .chip:active {
-  transform: scale(0.95);
+  transform: scale(0.96);
 }
 
 .chip[aria-pressed='true'] {
+  background: var(--text);
+  color: var(--bg);
+}
+
+/* Segmented control: a pill track with one raised segment. */
+.segment {
+  display: flex;
+  gap: 2px;
+  padding: 3px;
+  border-radius: var(--r-md);
+  background: var(--bg-raised-2);
+}
+
+.segment-btn {
+  flex: 1;
+  min-height: 34px;
+  padding: 0 var(--s3);
+  border-radius: calc(var(--r-md) - 3px);
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--text-dim);
+  white-space: nowrap;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--s1);
+}
+
+.segment-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.segment-btn[aria-pressed='true'],
+.segment-btn[aria-selected='true'] {
+  background: var(--bg-raised);
+  color: var(--text);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.18);
+}
+
+.segment-btn:active {
+  opacity: 0.7;
+}
+
+/* --------------------------------------------------------------------------
+   Exercise thumbnails and picker rows (shared by several pages)
+   -------------------------------------------------------------------------- */
+
+.ex-thumb {
+  flex: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 48px;
+  height: 48px;
+  border-radius: var(--r-sm);
+  background: #ffffff;
+  overflow: hidden;
+}
+
+.ex-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+/* Lettered tile for an exercise with no photo. */
+.ex-thumb-letter {
+  background: var(--bg-raised-2);
+  color: var(--text-dim);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.pick-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  width: 100%;
+  padding: var(--s2) var(--s2) var(--s2) var(--s3);
+  background: var(--bg-raised);
+  border-radius: var(--r-md);
+  box-shadow: var(--shadow-card);
+  text-align: left;
+}
+
+.pick-row:active {
+  background: var(--bg-raised-2);
+}
+
+/* Already held by the caller: kept in the results so a search returns the
+   same set as the Exercises page, but unpickable and visibly so. */
+.pick-row:disabled {
+  opacity: 0.55;
+}
+
+.pick-row:disabled .pick-row-add {
+  background: transparent;
+  color: var(--text-faint);
+}
+
+.pick-row-thumb {
+  width: 52px;
+  height: 52px;
+}
+
+.pick-row-main {
+  flex: 1;
+  min-width: 0;
+}
+
+.pick-row-name {
+  display: block;
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.25;
+  letter-spacing: -0.01em;
+}
+
+.pick-row-meta {
+  display: block;
+  margin-top: 2px;
+  font-size: 12px;
+  color: var(--text-dim);
+}
+
+.pick-row-add {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  border-radius: var(--r-full);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
   background: var(--accent-soft);
-  border-color: var(--accent);
   color: var(--accent);
+}
+
+.pick-row-add svg {
+  width: 20px;
+  height: 20px;
 }
 
 /* --------------------------------------------------------------------------
@@ -520,7 +847,7 @@ p {
 .sheet-backdrop {
   position: fixed;
   inset: 0;
-  background: rgba(0, 0, 0, 0.5);
+  background: rgba(0, 0, 0, 0.45);
   z-index: 100;
   animation: fade-in 0.18s ease;
 }
@@ -531,7 +858,7 @@ p {
   right: 0;
   bottom: 0;
   z-index: 101;
-  max-height: 88svh;
+  max-height: 90svh;
   display: flex;
   flex-direction: column;
   background: var(--bg-raised);
@@ -540,7 +867,19 @@ p {
   padding-bottom: var(--safe-bottom);
   /* stop scroll chaining to the page behind */
   overscroll-behavior: contain;
-  animation: slide-up 0.24s cubic-bezier(0.32, 0.72, 0, 1);
+  animation: slide-up 0.26s cubic-bezier(0.32, 0.72, 0, 1);
+}
+
+/* The grabber every iOS sheet carries — decorative, the "×" is the control. */
+.sheet::before {
+  content: '';
+  flex: none;
+  align-self: center;
+  width: 36px;
+  height: 5px;
+  margin: var(--s2) 0 0;
+  border-radius: var(--r-full);
+  background: var(--border-strong);
 }
 
 .sheet-full {
@@ -550,20 +889,32 @@ p {
   padding-top: var(--safe-top);
 }
 
+.sheet-full::before {
+  display: none;
+}
+
 .sheet-head {
   flex: none;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: var(--s2);
-  padding: var(--s3) var(--s2) var(--s3) var(--s4);
-  border-bottom: 1px solid var(--border);
+  padding: var(--s2) var(--s2) var(--s2) var(--s5);
+  min-height: 56px;
+}
+
+.sheet-head-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--s1);
 }
 
 .sheet-title {
-  font-size: 17px;
+  font-size: 18px;
   font-weight: 700;
-  letter-spacing: -0.01em;
+  letter-spacing: -0.02em;
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .sheet-body {
@@ -572,15 +923,29 @@ p {
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
   overscroll-behavior: contain;
-  padding: var(--s4);
+  padding: var(--s2) var(--s5) var(--s5);
+}
+
+.sheet-full .sheet-body {
+  padding-left: 0;
+  padding-right: 0;
 }
 
 .sheet-foot {
   flex: none;
-  padding: var(--s3) var(--s4) var(--s4);
-  border-top: 1px solid var(--border);
+  padding: var(--s3) var(--s5) var(--s4);
   display: flex;
   gap: var(--s3);
+}
+
+.sheet-foot > .btn {
+  flex: 1;
+}
+
+.sheet-text {
+  color: var(--text-dim);
+  font-size: 15px;
+  line-height: 1.45;
 }
 
 @keyframes slide-up {
@@ -600,7 +965,8 @@ p {
   .sheet-backdrop {
     animation: none;
   }
-  .btn:active {
+  .btn:active,
+  .chip:active {
     transform: none;
   }
 }
@@ -611,22 +977,27 @@ p {
 
 .empty {
   text-align: center;
-  color: var(--text-faint);
+  color: var(--text-dim);
   padding: var(--s10) var(--s5);
   font-size: 15px;
+  line-height: 1.45;
 }
 
 .pill {
   display: inline-flex;
   align-items: center;
-  padding: 2px var(--s2);
-  border-radius: var(--r-full);
-  font-size: 11px;
-  font-weight: 700;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  gap: var(--s1);
+  padding: 3px var(--s2);
+  border-radius: var(--r-sm);
+  font-size: 12px;
+  font-weight: 600;
   background: var(--bg-raised-2);
   color: var(--text-dim);
+}
+
+.pill svg {
+  width: 13px;
+  height: 13px;
 }
 
 .pill-accent {
@@ -634,8 +1005,13 @@ p {
   color: var(--accent);
 }
 
+.pill-warn {
+  background: var(--warn-soft);
+  color: var(--warn);
+}
+
+/* Figures line up in columns; the system face already has a tabular set. */
 .num {
-  font-family: var(--font-num);
   font-variant-numeric: tabular-nums;
 }
 
@@ -649,19 +1025,31 @@ p {
   align-items: center;
   justify-content: space-between;
   gap: var(--s3);
-  padding: var(--s3) var(--s4);
+  min-height: 52px;
+  padding: var(--s2) var(--s2) var(--s2) var(--s4);
   border-radius: var(--r-md);
-  background: var(--bg-raised-2);
-  border: 1px solid var(--border-strong);
+  background: var(--text);
+  color: var(--bg);
   box-shadow: var(--shadow);
   font-size: 14px;
+  font-weight: 500;
   animation: fade-in 0.18s ease;
 }
 
+.toast-action {
+  color: var(--accent);
+  font-weight: 700;
+}
+
+:root[data-theme='light'] .toast-action,
+:root:not([data-theme='dark']) .toast-action {
+  color: #5ee38a;
+}
+
 .spinner {
-  width: 20px;
-  height: 20px;
-  border: 2px solid var(--border-strong);
+  width: 22px;
+  height: 22px;
+  border: 2.5px solid var(--border-strong);
   border-top-color: var(--accent);
   border-radius: 50%;
   animation: spin 0.7s linear infinite;

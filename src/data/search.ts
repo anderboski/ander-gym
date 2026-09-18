@@ -89,19 +89,15 @@ export function searchExercises(
   const q = query.trim();
 
   if (q.length < 2) {
+    // The display name is resolved once per exercise, not once per comparison:
+    // a 1324-record sort makes ~25k comparisons, each of which would otherwise
+    // do two dictionary lookups and build two locale comparators.
+    const collator = new Intl.Collator(language);
     return exercises
       .filter((ex) => matchesFacets(ex, facets))
-      .sort((a, b) => {
-        if (doneIds) {
-          const da = doneIds.has(a.id) ? 0 : 1;
-          const db = doneIds.has(b.id) ? 0 : 1;
-          if (da !== db) return da - db;
-        }
-        return translateExerciseName(language, a.name).localeCompare(
-          translateExerciseName(language, b.name),
-          language,
-        );
-      });
+      .map((ex) => ({ ex, done: doneIds?.has(ex.id) ? 0 : 1, key: translateExerciseName(language, ex.name) }))
+      .sort((a, b) => a.done - b.done || collator.compare(a.key, b.key))
+      .map((r) => r.ex);
   }
 
   return fuseFor(exercises, language)

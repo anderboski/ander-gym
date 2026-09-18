@@ -47,14 +47,19 @@ src/
     types.ts           domain types + facet constants
     db.ts              IndexedDB via `idb` — the only file that touches IndexedDB
     derive.ts          pure read models (dates, rotation, streaks, per-exercise history)
+    chart.ts           pure chart geometry (axis domains, ticks, marker lanes) for components/Chart.tsx
     search.ts          Fuse.js fuzzy search + facet filtering
-    parse.ts           formatting helpers, no I/O
+    parse.ts           number/text formatting helpers, no I/O
+    i18n.tsx           language + `t()`, and the locale-aware date formatters every page reads dates through
+    exerciseI18n.ts    catalogue translation + `exerciseDisplayName` (sentence-cased display name)
     backup.ts          JSON export/import
     theme.ts           light/dark override (localStorage, NOT IndexedDB)
     store.tsx          GymProvider + useGym() — the single source of app state
+  hooks/               useClock, useObjectUrl, useTransient (self-clearing toast state), useDragReorder
   pages/               one file per route, each with its own .css next to it
-  components/          shared UI: Sheet/ConfirmSheet/Toast, ExerciseCard, ExerciseBrowser, icons
-  router.ts            ~90-line hash router
+  components/          shared UI: Sheet/ConfirmSheet/Toast, BackButton, StatTile, PickRow, ExerciseThumb,
+                       ExerciseCard, ExerciseBrowser, Chart, icons
+  router.ts            ~80-line hash router
   styles.css           design tokens + primitives (imported first, in main.tsx)
 ```
 
@@ -66,7 +71,8 @@ can never diverge and a force-quit mid-workout loses nothing.
 
 Actions derive their next value by **reading the DB**, not by closing over React state — state
 updaters must stay pure because StrictMode invokes them twice, and IndexedDB is the authority anyway.
-Follow this pattern when adding a mutation.
+Follow this pattern when adding a mutation. Per-training changes go through `db.updateTraining(id, fn)`
+(one record by key, never the whole list) and publish with the store's `replaceTraining` updater.
 
 ### Routing
 
@@ -150,14 +156,28 @@ surprising. File-level docblocks reference the SPEC section they implement (`/**
 
 **CSS.** Tokens and primitives live in `src/styles.css` (`--bg`, `--text-dim`, `--accent`, `--s1`…`--s10`,
 `--r-md`, `--tabbar-h`, `--safe-top`/`--safe-bottom`). **Never hardcode a colour or a spacing value.**
-Page-specific CSS goes in a sibling file (`HomePage.css`) imported by the page, with classes prefixed
-by the page (`home-card`, `history-row`). Shared primitives are unprefixed: `page`, `page-header`,
-`page-title`, `page-sub`, `empty`, `btn`, `btn-primary`, `btn-ghost`, `btn-danger`, `chip`, `input`,
-`sheet`, `toast`, `num`. Both light and dark themes must be fully styled.
+Surfaces follow the iOS grouped model: flat page background, borderless raised `card`s, hairline
+separators only between `card-row`s inside a card. Page-specific CSS goes in a sibling file
+(`HomePage.css`) imported by the page, with classes prefixed by the page (`home-card`, `history-row`).
+Shared primitives are unprefixed: `page`, `page-header`, `page-title`, `page-sub`, `section`,
+`section-title`, `back-btn`, `empty`, `btn` (+ `btn-primary`, `btn-tinted`, `btn-ghost`, `btn-danger`,
+`btn-lg`, `btn-sm`, `btn-block`), `icon-btn` (+ `icon-btn-filled`), `avatar`, `card`, `card-row`,
+`stat-row`/`stat-tile`, `chip`, `segment`/`segment-btn`, `input`, `label`, `field`, `hint`, `form-error`,
+`ex-thumb`, `pick-row`, `pill`, `sheet`, `toast`, `num`. Both light and dark themes must be fully styled.
+**No emoji in the chrome** — icons come from `components/icons.tsx`; the only emoji on screen are the
+ones users pick for their own trainings.
 
 **Components.** Bottom sheets go through `<Sheet>` / `<ConfirmSheet>` (portal-rendered, scroll-locked,
 Escape-closable, dismiss "×" top-right). Destructive actions always confirm. Undoable removals use
-`<Toast>` with a 5 s action. Icons are stroke SVGs in `components/icons.tsx`, 24×24 viewBox, sized by CSS.
+`<Toast>` with a 5 s action, held in `useTransient` state so it clears itself. Push views start with
+`<BackButton>`; figure rows use `<StatRow>`/`<StatTile>`; exercise pickers render `<PickRow>`; any
+exercise picture goes through `<ExerciseThumb>` (initial-letter fallback, broken-image tolerant). Icons
+are stroke SVGs in `components/icons.tsx`, 24×24 viewBox, sized by CSS.
+
+**Dates and names.** Anything a person reads goes through the `i18n.tsx` formatters (`formatDay`,
+`formatDayTime`, …) and `daysAgoLabel` — never ISO strings in the UI. `derive.ts`'s `dayKey` is for keys.
+Catalogue names render through `exerciseDisplayName` (translated, then sentence-cased); the stored value
+stays lower-case canonical.
 
 **Tests.** Vitest, Node environment, `src/**/*.test.ts` colocated with the source. `src/test/setup.ts`
 loads `fake-indexeddb/auto`, so `db.ts` is testable directly — `db.test.ts` deletes the database in

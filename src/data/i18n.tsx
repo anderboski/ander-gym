@@ -33,7 +33,7 @@ export const LANGUAGE_STORAGE_KEY = 'ander-gym-language';
 
 /** BCP-47 tag for `toLocaleDateString` calls, keyed by app language — not the
  *  device locale, so date formatting follows the in-app choice, not the OS. */
-export const LOCALE: Record<Language, string> = { en: 'en-US', es: 'es-ES' };
+const LOCALE: Record<Language, string> = { en: 'en-US', es: 'es-ES' };
 
 const DICTIONARIES: Record<Language, Record<TranslationKey, string>> = { en, es };
 
@@ -44,13 +44,13 @@ function systemLanguage(): Language {
 }
 
 /** The language currently in effect: the stored override, or the OS preference. */
-export function getLanguage(): Language {
+function getLanguage(): Language {
   const stored = localStorage.getItem(LANGUAGE_STORAGE_KEY);
   return stored === 'en' || stored === 'es' ? stored : systemLanguage();
 }
 
 /** Applies a language to the document without persisting it. */
-export function applyLanguage(language: Language): void {
+function applyLanguage(language: Language): void {
   document.documentElement.lang = language;
 }
 
@@ -102,14 +102,56 @@ export function useLanguage(): LanguageContextValue {
   return ctx;
 }
 
-/**
- * Translated equivalent of derive.ts's `formatDaysAgo` ('today' / '-1 day' /
- * '-N days'), for pages that have adopted i18n. Kept separate from derive.ts
- * rather than changing that function's signature, since not every page uses
- * this yet and derive.ts is meant to stay pure/UI-agnostic.
- */
+/** `today` / `yesterday` / `9 days ago`. Kept out of derive.ts, which stays UI-agnostic. */
 export function daysAgoLabel(t: TFunc, days: number): string {
   if (days <= 0) return t('common.today');
   if (days === 1) return t('common.daysAgoOne');
   return t('common.daysAgoOther', { days });
+}
+
+/* -------------------------------------------------------------------------- */
+/* Locale-aware dates                                                          */
+/*                                                                             */
+/* Everything the user reads goes through these; derive.ts's ISO helpers are  */
+/* for keys and file names. The year is written only when it is not the       */
+/* current one — "5 Aug" in a list of this year's sessions, "5 Aug 2025" once */
+/* it is not — so a row never spends its width on a number the reader knows.  */
+/* -------------------------------------------------------------------------- */
+
+function toDate(d: Date | string): Date {
+  return d instanceof Date ? d : new Date(d);
+}
+
+function withYear(d: Date, now: Date): { year?: 'numeric' } {
+  return d.getFullYear() === now.getFullYear() ? {} : { year: 'numeric' };
+}
+
+/** `5 Aug` · `5 Aug 2025` */
+export function formatDay(locale: string, d: Date | string, now = new Date()): string {
+  const date = toDate(d);
+  return date.toLocaleDateString(locale, { day: 'numeric', month: 'short', ...withYear(date, now) });
+}
+
+/** `Wed 5 Aug` · `Wed 5 Aug 2025` */
+export function formatDayWithWeekday(locale: string, d: Date | string, now = new Date()): string {
+  const date = toDate(d);
+  return date.toLocaleDateString(locale, { weekday: 'short', day: 'numeric', month: 'short', ...withYear(date, now) });
+}
+
+/** `5 Aug, 17:00` — 24-hour, like the rest of the app's times. */
+export function formatDayTime(locale: string, d: Date | string, now = new Date()): string {
+  const date = toDate(d);
+  const day = formatDay(locale, date, now);
+  const time = date.toLocaleTimeString(locale, { hour: '2-digit', minute: '2-digit', hour12: false });
+  return `${day}, ${time}`;
+}
+
+/** `Wednesday 5 August` — the Home header. */
+export function formatLongDate(locale: string, d: Date | string): string {
+  return toDate(d).toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' });
+}
+
+/** `August 2026` — month headings. */
+export function formatMonthYear(locale: string, d: Date | string): string {
+  return toDate(d).toLocaleDateString(locale, { month: 'long', year: 'numeric' });
 }

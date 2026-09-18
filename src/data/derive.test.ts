@@ -18,16 +18,16 @@ import {
   dayKey,
   daysBetween,
   customStatsRange,
+  diffExerciseIds,
+  groupHistoryByMonth,
+  lastSetFor,
   defaultStatsView,
   epley1RM,
   exerciseProgress,
   formatCountdown,
-  formatDaysAgo,
   formatDurationEstimate,
   formatElapsed,
-  formatShortDate,
   formatMinutesOfDay,
-  formatShortLocalDate,
   greetingBucket,
   historyFor,
   lastSessionForTraining,
@@ -59,12 +59,12 @@ import {
   topExercises,
   totalVolume,
   trailingRange,
+  trainingBadge,
   trainingTimeOfDay,
   UNKNOWN_TARGET,
   viewsForRange,
   volumeByTarget,
   weeklyStreak,
-  weeklySummary,
 } from './derive';
 import type { ClimbGrade, Session, SessionEntry, SnowCondition, SportSession, Training, WeatherCondition } from './types';
 
@@ -141,12 +141,6 @@ describe('daysBetween', () => {
 describe('parseLocalDate', () => {
   it('parses YYYY-MM-DD as local midnight, not UTC', () => {
     expect(parseLocalDate('2026-08-02')).toEqual(new Date(2026, 7, 2));
-  });
-});
-
-describe('formatShortLocalDate', () => {
-  it('formats a bare YYYY-MM-DD without a UTC-parsing day shift', () => {
-    expect(formatShortLocalDate('2026-08-02')).toBe('2 Aug');
   });
 });
 
@@ -621,61 +615,6 @@ describe('exerciseProgress', () => {
 /* -------------------------------------------------------------------------- */
 /* Volume and consistency                                                      */
 /* -------------------------------------------------------------------------- */
-
-describe('weeklySummary', () => {
-  const now = new Date(2026, 7, 2, 10); // Sunday of the week starting Mon 2026-07-27
-
-  /** One session with a single 10 x `weight` kg set. */
-  function lifted(date: string, weight: number): Session {
-    return session(date, 'a', [
-      { exerciseId: '0001', sets: [{ reps: 10, weight, at: date }] },
-    ]);
-  }
-
-  it('returns the requested number of weeks, oldest first, ending with this one', () => {
-    const weeks = weeklySummary([], 4, now);
-    expect(weeks.map((w) => w.start)).toEqual([
-      new Date(2026, 6, 6).toISOString(),
-      new Date(2026, 6, 13).toISOString(),
-      new Date(2026, 6, 20).toISOString(),
-      new Date(2026, 6, 27).toISOString(),
-    ]);
-  });
-
-  it('reports empty weeks as zeros rather than dropping them', () => {
-    const weeks = weeklySummary([lifted(at(2026, 7, 28), 25)], 3, now);
-    expect(weeks.map((w) => w.sessions)).toEqual([0, 0, 1]);
-    expect(weeks.map((w) => w.volume)).toEqual([0, 0, 250]);
-  });
-
-  it('sums sessions and volume within a week', () => {
-    const weeks = weeklySummary(
-      [lifted(at(2026, 7, 27), 25), lifted(at(2026, 7, 30), 30), lifted(at(2026, 8, 2, 9), 0)],
-      1,
-      now,
-    );
-    expect(weeks[0]).toMatchObject({ sessions: 3, volume: 550 });
-  });
-
-  it('splits on the Monday boundary in local time', () => {
-    const weeks = weeklySummary(
-      [lifted(at(2026, 7, 26, 23, 59), 10), lifted(at(2026, 7, 27, 0, 0), 10)],
-      2,
-      now,
-    );
-    expect(weeks.map((w) => w.sessions)).toEqual([1, 1]);
-  });
-
-  it('ignores sessions older than the window', () => {
-    expect(weeklySummary([lifted(at(2026, 6, 1), 25)], 4, now).map((w) => w.sessions)).toEqual([
-      0, 0, 0, 0,
-    ]);
-  });
-
-  it('returns nothing for a non-positive window', () => {
-    expect(weeklySummary([lifted(at(2026, 7, 28), 25)], 0, now)).toEqual([]);
-  });
-});
 
 describe('volumeByTarget', () => {
   const now = new Date(2026, 7, 1, 12);
@@ -1425,7 +1364,7 @@ describe('calendar', () => {
     expect(addMonths(new Date(2026, 0, 15), -1)).toEqual(new Date(2025, 11, 1));
   });
 
-  it('dayKey formats local-time YYYY-MM-DD, matching formatDate', () => {
+  it('dayKey formats local-time YYYY-MM-DD', () => {
     expect(dayKey(new Date(2026, 7, 4))).toBe('2026-08-04');
   });
 
@@ -1493,6 +1432,77 @@ describe('lastSportSessionForTraining', () => {
   });
 });
 
+describe('trainingBadge', () => {
+  it('prefers the chosen emoji', () => {
+    expect(trainingBadge({ label: 'Push', emoji: '💪' })).toBe('💪');
+  });
+
+  it('falls back to the first letter of the label, upper-cased', () => {
+    expect(trainingBadge({ label: 'push day' })).toBe('P');
+  });
+
+  it('falls back to the snapshot label when the training no longer resolves', () => {
+    expect(trainingBadge(undefined, 'legs')).toBe('L');
+    expect(trainingBadge(undefined)).toBe('');
+  });
+});
+
+describe('diffExerciseIds', () => {
+  it('reports nothing when the session matches the training', () => {
+    const s = session(at(2026, 8, 1), 'a', [{ exerciseId: '1', sets: [] }, { exerciseId: '2', sets: [] }]);
+    expect(diffExerciseIds(['1', '2'], s)).toEqual({ addedIds: [], removedIds: [] });
+  });
+
+  it('lists additions in session order and removals in training order', () => {
+    const s = session(at(2026, 8, 1), 'a', [{ exerciseId: '3', sets: [] }, { exerciseId: '1', sets: [] }, { exerciseId: '4', sets: [] }]);
+    expect(diffExerciseIds(['1', '2', '5'], s)).toEqual({ addedIds: ['3', '4'], removedIds: ['2', '5'] });
+  });
+
+  it('counts a duplicated row once', () => {
+    const s = session(at(2026, 8, 1), 'a', [{ exerciseId: '3', sets: [] }, { exerciseId: '3', sets: [] }]);
+    expect(diffExerciseIds([], s).addedIds).toEqual(['3']);
+  });
+});
+
+describe('lastSetFor', () => {
+  const history = [
+    session(at(2026, 7, 20), 'a', [{ exerciseId: '1', sets: [{ reps: 10, weight: 20, at: 'old' }, { reps: 8, weight: 22.5, at: 'old2' }] }]),
+  ];
+
+  it('prefers the previous set of this session', () => {
+    const active = { entries: [{ exerciseId: '1', sets: [{ reps: 6, weight: 30, at: 'now' }] }] };
+    expect(lastSetFor('1', active, history)?.at).toBe('now');
+  });
+
+  it('falls back to the last set ever logged for the exercise', () => {
+    const active = { entries: [{ exerciseId: '1', sets: [] }] };
+    expect(lastSetFor('1', active, history)?.at).toBe('old2');
+  });
+
+  it('is null with no history at all', () => {
+    expect(lastSetFor('9', { entries: [] }, history)).toBeNull();
+  });
+});
+
+describe('groupHistoryByMonth', () => {
+  it('splits a newest-first list into month runs, keeping order', () => {
+    const items = mergedHistory(
+      [session(at(2026, 8, 9)), session(at(2026, 7, 1)), session(at(2026, 8, 2))],
+      [sportSession('2026-07-15')],
+    );
+    const groups = groupHistoryByMonth(items);
+    expect(groups.map((g) => [g.key, g.items.length])).toEqual([
+      ['2026-7', 2],
+      ['2026-6', 2],
+    ]);
+    expect(groups[0]?.anchor).toEqual(new Date(2026, 7, 9, 12));
+  });
+
+  it('is empty for no history', () => {
+    expect(groupHistoryByMonth([])).toEqual([]);
+  });
+});
+
 describe('mergedHistory', () => {
   it('interleaves gym and sport sessions, newest first', () => {
     const gym = session(at(2026, 8, 1));
@@ -1551,17 +1561,6 @@ describe("the 'other' sport kind", () => {
 });
 
 describe('display helpers', () => {
-  it('formats days back', () => {
-    expect(formatDaysAgo(0)).toBe('today');
-    expect(formatDaysAgo(1)).toBe('-1 day');
-    expect(formatDaysAgo(9)).toBe('-9 days');
-  });
-
-  it('formats a short axis date without depending on the locale', () => {
-    expect(formatShortDate(at(2026, 7, 23))).toBe('23 Jul');
-    expect(formatShortDate(at(2026, 1, 5))).toBe('5 Jan');
-  });
-
   it('formats elapsed time', () => {
     const start = at(2026, 8, 1, 10, 0);
     expect(formatElapsed(start, new Date(2026, 7, 1, 10, 24))).toBe('24m');
