@@ -247,3 +247,9 @@
 .chart-badge-active {
   font-size: 14px;
 }
+
+/* A sparkline's dots sit a slot apart at most, so a thinner ring keeps a dense
+   window from reading as a row of beads. */
+.chart-spark .chart-dot {
+  stroke-width: 1.5;
+}

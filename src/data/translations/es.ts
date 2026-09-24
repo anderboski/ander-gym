@@ -392,7 +392,9 @@ export const es: Record<TranslationKey, string> = {
     'Más volumen en {most}, menos en {least}. Un músculo que no hayas entrenado en absoluto simplemente no aparece en esta lista.',
   'stats.muscleBalanceSingle': 'Solo se entrenó un grupo muscular en esta ventana.',
 
-  'stats.topExercisesTitle': 'Ejercicios más frecuentes · {range}',
+  'stats.exerciseTrendsTitle': 'Progreso por ejercicio · {range}',
+  'stats.exerciseTrendAria': '{name}: {sessions}, de {min} a {max}',
+  'stats.repsValue': '{reps} reps',
   'stats.timesOne': '1 vez',
   'stats.timesOther': '{count} veces',
 
