@@ -13,7 +13,7 @@
  * categorical palette to keep colourblind-safe.
  */
 import { useState, type ReactNode } from 'react';
-import { assignLanes, hourTicks, paddedDomain, zeroDomain } from '../data/chart';
+import { assignLanes, hourTicks, monotonePath, paddedDomain, zeroDomain } from '../data/chart';
 import './Chart.css';
 
 /* -------------------------------------------------------------------------- */
@@ -255,6 +255,48 @@ export function LineChart({ values, formatTick, xLabels, ariaLabel }: LineChartP
         );
       }}
     </Plot>
+  );
+}
+
+const SPARK = { w: 200, h: 44, dot: 2.5 };
+
+/**
+ * A row-sized trend with no axes of its own — the caller labels the min and
+ * max beside it. The y domain is exactly the data's range, so the lowest
+ * reading sits on the floor and the highest on the ceiling; a flat series has
+ * no range and sits on the midline. The x axis is one equal slot per value,
+ * each dot centred in its slot, so a single reading lands in the middle
+ * rather than on an edge. The curve is monotone (`monotonePath`), so it
+ * smooths between readings without overshooting either bound.
+ */
+export function Sparkline({ values, ariaLabel }: { values: number[]; ariaLabel: string }) {
+  const lo = Math.min(...values);
+  const hi = Math.max(...values);
+  // Inset by a dot radius plus its ring, so a dot on either bound isn't clipped.
+  const inset = SPARK.dot + 2;
+  const top = inset;
+  const bottom = SPARK.h - inset;
+  const slot = SPARK.w / Math.max(1, values.length);
+  const points = values.map((v, i) => ({
+    x: slot * (i + 0.5),
+    y: hi === lo ? SPARK.h / 2 : bottom - ((v - lo) / (hi - lo)) * (bottom - top),
+  }));
+
+  return (
+    <svg
+      className="chart-svg chart-spark"
+      viewBox={`0 0 ${SPARK.w} ${SPARK.h}`}
+      preserveAspectRatio="xMidYMid meet"
+      role="img"
+      aria-label={ariaLabel}
+    >
+      <line className="chart-grid" x1={0} x2={SPARK.w} y1={top} y2={top} />
+      <line className="chart-grid" x1={0} x2={SPARK.w} y1={bottom} y2={bottom} />
+      {points.length > 1 && <path className="chart-line" d={monotonePath(points)} />}
+      {points.map((p, i) => (
+        <circle key={i} className="chart-dot" cx={p.x} cy={p.y} r={SPARK.dot} />
+      ))}
+    </svg>
   );
 }
 

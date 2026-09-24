@@ -391,7 +391,9 @@ export const en = {
     'Most volume on {most}, least on {least}. A muscle you have not trained at all is simply absent from this list.',
   'stats.muscleBalanceSingle': 'Only one muscle group trained in this window.',
 
-  'stats.topExercisesTitle': 'Top exercises · {range}',
+  'stats.exerciseTrendsTitle': 'Exercise progress · {range}',
+  'stats.exerciseTrendAria': '{name}: {sessions}, from {min} to {max}',
+  'stats.repsValue': '{reps} reps',
   'stats.timesOne': '1 time',
   'stats.timesOther': '{count} times',
 

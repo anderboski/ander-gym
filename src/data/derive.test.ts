@@ -56,7 +56,7 @@ import {
   resolveStatsRange,
   statsBuckets,
   timeAxisBounds,
-  topExercises,
+  exerciseTrends,
   totalVolume,
   trailingRange,
   trainingBadge,
@@ -66,7 +66,7 @@ import {
   volumeByTarget,
   weeklyStreak,
 } from './derive';
-import type { ClimbGrade, Session, SessionEntry, SnowCondition, SportSession, Training, WeatherCondition } from './types';
+import type { ClimbGrade, Session, SessionEntry, SetEntry, SnowCondition, SportSession, Training, WeatherCondition } from './types';
 
 /** Local-time ISO, so tests don't depend on the runner's timezone. */
 function at(y: number, m: number, d: number, h = 12, min = 0): string {
@@ -855,51 +855,66 @@ describe('statsBuckets', () => {
   });
 });
 
-describe('topExercises', () => {
+describe('exerciseTrends', () => {
   const now = new Date(2026, 7, 1, 12);
+  const range = trailingRange(30, now);
 
-  /** One session covering the given exercise ids, each with one set. */
-  function withExercises(date: string, exerciseIds: string[]): Session {
-    seq += 1;
-    return {
-      id: `s${seq}`,
-      trainingId: 'a',
-      trainingLabel: 'a',
-      startedAt: date,
-      savedAt: date,
-      entries: exerciseIds.map((exerciseId) => ({ exerciseId, sets: [{ reps: 10, weight: 20, at: date }] })),
-    };
+  function set(reps: number, weight: number): SetEntry {
+    return { reps, weight, at: at(2026, 7, 1) };
   }
 
-  it('counts sessions per exercise, most first', () => {
+  it('ranks by sessions in the window, ties by id', () => {
     const sessions = [
-      withExercises(at(2026, 7, 30), ['0001', '0002']),
-      withExercises(at(2026, 7, 28), ['0001']),
+      session(at(2026, 7, 30), 'a', [
+        { exerciseId: '0002', sets: [set(10, 20)] },
+        { exerciseId: '0001', sets: [set(10, 20)] },
+        { exerciseId: '0003', sets: [set(10, 20)] },
+      ]),
+      session(at(2026, 7, 28), 'a', [{ exerciseId: '0003', sets: [set(10, 20)] }]),
     ];
-    expect(topExercises(sessions, trailingRange(30, now), 10)).toEqual([
-      { exerciseId: '0001', count: 2 },
-      { exerciseId: '0002', count: 1 },
+    expect(exerciseTrends(sessions, range, 'topWeight').map((r) => [r.exerciseId, r.sessions])).toEqual([
+      ['0003', 2],
+      ['0001', 1],
+      ['0002', 1],
     ]);
   });
 
-  it('excludes sessions outside the window', () => {
-    const sessions = [withExercises(at(2026, 6, 1), ['0001'])];
-    expect(topExercises(sessions, trailingRange(30, now), 10)).toEqual([]);
+  it('plots one best-set value per session, oldest first, whatever order the sessions come in', () => {
+    const sessions = [
+      session(at(2026, 7, 30), 'a', [{ exerciseId: '0001', sets: [set(5, 60), set(8, 50)] }]),
+      session(at(2026, 7, 20), 'a', [{ exerciseId: '0001', sets: [set(10, 40)] }]),
+    ];
+    expect(exerciseTrends(sessions, range, 'topWeight')[0]?.values).toEqual([40, 60]);
+    // The heavier single wins on e1RM too: 5 × 60 is 70, 8 × 50 only 63.3.
+    expect(exerciseTrends(sessions, range, 'e1rm')[0]?.values).toEqual([epley1RM(10, 40), epley1RM(5, 60)]);
   });
 
-  it('ignores an entry with no sets', () => {
-    const sessions = [session(at(2026, 7, 30), 'a', [{ exerciseId: '0001', sets: [] }])];
-    expect(topExercises(sessions, trailingRange(30, now), 10)).toEqual([]);
+  it('excludes sessions outside the window and entries with no sets', () => {
+    const sessions = [
+      session(at(2026, 6, 1), 'a', [{ exerciseId: '0001', sets: [set(10, 20)] }]),
+      session(at(2026, 7, 30), 'a', [{ exerciseId: '0002', sets: [] }]),
+    ];
+    expect(exerciseTrends(sessions, range, 'topWeight')).toEqual([]);
   });
 
-  it('respects the limit', () => {
-    const sessions = [withExercises(at(2026, 7, 30), ['0001', '0002', '0003'])];
-    expect(topExercises(sessions, trailingRange(30, now), 2)).toHaveLength(2);
+  it('plots max reps for an exercise done only at bodyweight', () => {
+    const sessions = [
+      session(at(2026, 7, 20), 'a', [{ exerciseId: '0001', sets: [set(8, 0), set(12, 0)] }]),
+      session(at(2026, 7, 30), 'a', [{ exerciseId: '0001', sets: [set(15, 0)] }]),
+    ];
+    expect(exerciseTrends(sessions, range, 'e1rm')).toEqual([
+      { exerciseId: '0001', sessions: 2, unit: 'reps', values: [12, 15] },
+    ]);
   });
 
-  it('breaks ties by exercise id', () => {
-    const sessions = [withExercises(at(2026, 7, 30), ['0002', '0001'])];
-    expect(topExercises(sessions, trailingRange(30, now), 10).map((r) => r.exerciseId)).toEqual(['0001', '0002']);
+  it('skips a bodyweight-only session of a loaded exercise, but still counts it', () => {
+    const sessions = [
+      session(at(2026, 7, 20), 'a', [{ exerciseId: '0001', sets: [set(10, 0)] }]),
+      session(at(2026, 7, 30), 'a', [{ exerciseId: '0001', sets: [set(8, 10)] }]),
+    ];
+    expect(exerciseTrends(sessions, range, 'topWeight')).toEqual([
+      { exerciseId: '0001', sessions: 2, unit: 'kg', values: [10] },
+    ]);
   });
 });
 

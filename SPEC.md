@@ -667,8 +667,17 @@ with a custom range the allowed set moves as the dates move.
   filtering: sport kinds log to `sportSessions`.
 - **Muscle balance** (`volumeByTarget`) — ranked bar list over the selected window. A muscle never trained
   in the window is absent from the list rather than shown at zero.
-- **Top exercises** (`topExercises`) — the 10 exercises done most often over the window, ranked by how many
-  separate sessions included at least one set, not by set count.
+- **Exercise progress** (`exerciseTrends`) — every exercise done in the window, most sessions first (ties by
+  id), one row each: a small thumbnail on the left (tapping it opens the same history sheet the exercise
+  cards open — name, big picture, progress chart, every past session), then the name and session count over
+  a sparkline. The sparkline has one equal-width slot per plotted session with a small dot centred in each
+  and a smooth line through them; a single session is one dot in the middle. Its y axis is exactly the
+  window's minimum (floor) and maximum (ceiling), both labelled at the right edge; a flat series sits on the
+  midline with one label. The curve is monotone cubic (`monotonePath` in `chart.ts`) so it never overshoots
+  either bound. A toggle on the card switches every row between **top set** weight and **estimated 1RM**,
+  each session's best set as in the exercise sheet; a session logged only at bodyweight contributes no point
+  to a loaded exercise. An exercise with no loaded set in the whole window plots each session's **max reps**
+  instead, whatever the toggle. A removed custom exercise keeps its row, with an inert letter tile.
 
 Card titles name the window — the range's own label ("Last 3 months") for the fixed ranges, the two dates
 ("1 Mar – 15 Apr") for a custom one. Every gym aggregate walks the session list once and is memoised on its
@@ -682,7 +691,7 @@ chart in the app that is not a single `--accent` series — see the categorical-
 **Climbing.** The same time-range dropdown as Gym (without the view, which has nothing to size) above a
 **grade pyramid** — a `BarList` of climbs per grade (`climbGradePyramid` in `derive.ts`), hardest grade first so the
 bars taper the way a climbing pyramid is expected to: short at the hard end, long at the easy end. Unlike
-the muscle-balance and top-exercises lists, every grade in `CLIMB_GRADES` is always shown, zero-count
+the muscle-balance and exercise-progress lists, every grade in `CLIMB_GRADES` is always shown, zero-count
 included — the set is small and fixed, so dropping an untouched grade would leave a hole in the pyramid
 rather than just shorten a list. The caption states the total logged and the hardest grade sent in the
 window. No climbing sessions ever logged shows a plain empty state instead of the period control.

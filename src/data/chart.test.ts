@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { assignLanes, hourTicks, niceStep, paddedDomain, zeroDomain } from './chart';
+import { assignLanes, hourTicks, monotonePath, niceStep, paddedDomain, zeroDomain } from './chart';
 
 describe('niceStep', () => {
   it('rounds up to a 1/2/5 × 10ⁿ step', () => {
@@ -107,5 +107,50 @@ describe('assignLanes', () => {
 
   it('copes with a single lane', () => {
     expect(assignLanes([{ column: 0, y: 1 }, { column: 0, y: 2 }], 1, 12)).toEqual([0, 0]);
+  });
+});
+
+describe('monotonePath', () => {
+  /** Control-point y values out of a path, for bounds checks. */
+  function ys(path: string): number[] {
+    const nums = path.replace(/[MC]/g, ' ').trim().split(/\s+/).map(Number);
+    return nums.filter((_, i) => i % 2 === 1);
+  }
+
+  it('is empty for no points and a bare move for one', () => {
+    expect(monotonePath([])).toBe('');
+    expect(monotonePath([{ x: 5, y: 7 }])).toBe('M5 7');
+  });
+
+  it('draws one cubic segment per gap', () => {
+    const path = monotonePath([
+      { x: 0, y: 0 },
+      { x: 10, y: 5 },
+      { x: 20, y: 0 },
+    ]);
+    expect(path.match(/C/g)).toHaveLength(2);
+  });
+
+  it('never overshoots the data range', () => {
+    const points = [
+      { x: 0, y: 10 },
+      { x: 10, y: 0 },
+      { x: 20, y: 10 },
+      { x: 30, y: 9 },
+      { x: 40, y: 0 },
+    ];
+    for (const y of ys(monotonePath(points))) {
+      expect(y).toBeGreaterThanOrEqual(0);
+      expect(y).toBeLessThanOrEqual(10);
+    }
+  });
+
+  it('keeps a flat run flat', () => {
+    const path = monotonePath([
+      { x: 0, y: 4 },
+      { x: 10, y: 4 },
+      { x: 20, y: 4 },
+    ]);
+    expect(new Set(ys(path))).toEqual(new Set([4]));
   });
 });

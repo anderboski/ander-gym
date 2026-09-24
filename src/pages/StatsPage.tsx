@@ -32,7 +32,7 @@ import {
   STATS_PERIODS,
   statsBuckets,
   snowboardSeasons,
-  topExercises,
+  exerciseTrends,
   trailingRange,
   trainingTimeOfDay,
   UNKNOWN_TARGET,
@@ -42,7 +42,8 @@ import {
   type CustomRangeInput,
   type CyclingRide,
   type CyclingSummary,
-  type ExerciseCount,
+  type ExerciseTrend,
+  type ProgressMetric,
   type PeriodStat,
   type SeasonSplit,
   type StatsPeriod,
@@ -51,7 +52,7 @@ import {
   type TrainingTimeMap,
 } from '../data/derive';
 import { formatDurationEstimate } from '../data/derive';
-import { formatCompact, titleCase } from '../data/parse';
+import { formatCompact, formatKg, formatWeight, titleCase } from '../data/parse';
 import { exerciseDisplayName, translateFacetValue } from '../data/exerciseI18n';
 import { snowConditionLabel, sportSessionSummary, trainingKindLabel, weatherLabel } from '../data/sportLabels';
 import {
@@ -59,12 +60,15 @@ import {
   BarStrip,
   ChartFigure,
   ChartLegend,
+  Sparkline,
   type StackedSeriesDef,
   StackedBarStrip,
   TimeOfWeekPlot,
   type TimeMarker,
 } from '../components/Chart';
 import { BackButton } from '../components/BackButton';
+import { ExerciseHistorySheet } from '../components/ExerciseCard';
+import { ExerciseThumb } from '../components/ExerciseThumb';
 import { BikeIcon, DumbbellIcon, MountainIcon, SnowflakeIcon } from '../components/icons';
 import { formatDay, useLanguage, type Language, type TranslationKey } from '../data/i18n';
 import {
@@ -97,8 +101,6 @@ const KIND_ICON: Record<StatsKind, (p: { className?: string }) => React.ReactEle
   snowboard: SnowflakeIcon,
   climbing: MountainIcon,
 };
-
-const TOP_EXERCISES_LIMIT = 10;
 
 const PERIOD_LABEL_KEY: Record<StatsPeriod, TranslationKey> = {
   month: 'stats.periodMonth',
@@ -431,7 +433,6 @@ function GymStats({
 
   const buckets = useMemo(() => statsBuckets(sessions, range, view), [sessions, range, view]);
   const balance = useMemo(() => volumeByTarget(sessions, exerciseById, range), [sessions, exerciseById, range]);
-  const top = useMemo(() => topExercises(sessions, range, TOP_EXERCISES_LIMIT), [sessions, range]);
   const timeMap = useMemo(() => trainingTimeOfDay(sessions, trainings, range), [sessions, trainings, range]);
 
   return (
@@ -476,7 +477,7 @@ function GymStats({
 
       <section className="section">
         <div className="card card-pad">
-          <TopExercises rows={top} rangeLabel={rangeLabel} exerciseById={exerciseById} language={language} />
+          <ExerciseTrends sessions={sessions} range={range} rangeLabel={rangeLabel} exerciseById={exerciseById} language={language} />
         </div>
       </section>
     </>
@@ -802,42 +803,129 @@ function MuscleBalance({
   );
 }
 
-/** The exercises done most often over the selected window, ranked by session count. */
-function TopExercises({
-  rows,
+/** Toggle order, matching the exercise sheet's chart: top set first, it is the number actually lifted. */
+const TREND_METRICS: ProgressMetric[] = ['topWeight', 'e1rm'];
+
+/**
+ * Every exercise done in the window, most sessions first, each with a
+ * sparkline of its per-session readings. The metric toggle owns its own state
+ * so flipping it re-derives only this card, not the whole page.
+ */
+function ExerciseTrends({
+  sessions,
+  range,
   rangeLabel,
   exerciseById,
   language,
 }: {
-  rows: ExerciseCount[];
+  sessions: Session[];
+  range: StatsRange;
   rangeLabel: string;
   exerciseById: Map<string, Exercise>;
   language: Language;
 }) {
   const { t } = useLanguage();
+  const [metric, setMetric] = useState<ProgressMetric>('topWeight');
+  const [open, setOpen] = useState<Exercise | null>(null);
+  const rows = useMemo(() => exerciseTrends(sessions, range, metric), [sessions, range, metric]);
+  const title = t('stats.exerciseTrendsTitle', { range: rangeLabel });
 
   if (rows.length === 0) {
     return (
-      <ChartFigure title={t('stats.topExercisesTitle', { range: rangeLabel })}>
+      <ChartFigure title={title}>
         <div className="stats-empty">{t('stats.rangeEmpty')}</div>
       </ChartFigure>
     );
   }
 
+  const labels: Record<ProgressMetric, string> = {
+    topWeight: t('exerciseCard.topSet'),
+    e1rm: t('exerciseCard.estOneRM'),
+  };
+  const toggle = (
+    <div className="segment" role="group" aria-label={t('exerciseCard.chartMetricAria')}>
+      {TREND_METRICS.map((id) => (
+        <button key={id} className="segment-btn" aria-pressed={id === metric} onClick={() => setMetric(id)}>
+          {labels[id]}
+        </button>
+      ))}
+    </div>
+  );
+
   return (
-    <ChartFigure title={t('stats.topExercisesTitle', { range: rangeLabel })}>
-      <BarList
-        rows={rows.map((row) => {
-          const exercise = exerciseById.get(row.exerciseId);
-          return {
-            key: row.exerciseId,
-            label: exercise ? exerciseDisplayName(language, exercise.name) : t('stats.removedExercises'),
-            value: row.count,
-            valueLabel: row.count === 1 ? t('stats.timesOne') : t('stats.timesOther', { count: row.count }),
-          };
-        })}
-      />
-    </ChartFigure>
+    <>
+      <ChartFigure title={title} action={toggle}>
+        <ul className="stats-trends">
+          {rows.map((row) => (
+            <ExerciseTrendRow
+              key={row.exerciseId}
+              row={row}
+              exercise={exerciseById.get(row.exerciseId)}
+              language={language}
+              onOpen={setOpen}
+            />
+          ))}
+        </ul>
+      </ChartFigure>
+      {open && <ExerciseHistorySheet exercise={open} onClose={() => setOpen(null)} />}
+    </>
+  );
+}
+
+function ExerciseTrendRow({
+  row,
+  exercise,
+  language,
+  onOpen,
+}: {
+  row: ExerciseTrend;
+  exercise: Exercise | undefined;
+  language: Language;
+  onOpen: (exercise: Exercise) => void;
+}) {
+  const { t } = useLanguage();
+  const name = exercise ? exerciseDisplayName(language, exercise.name) : t('stats.removedExercises');
+  const format = (v: number) =>
+    row.unit === 'kg' ? formatKg(v) : t('stats.repsValue', { reps: formatWeight(v) });
+  const lo = Math.min(...row.values);
+  const hi = Math.max(...row.values);
+  const sessionsLabel = `${row.sessions} ${t(row.sessions === 1 ? 'common.sessionsOne' : 'common.sessionsOther')}`;
+
+  return (
+    <li className="stats-trend">
+      {/* A removed custom exercise has no sheet to open, so its thumbnail is inert. */}
+      {exercise ? (
+        <button
+          type="button"
+          className="stats-trend-media"
+          onClick={() => onOpen(exercise)}
+          aria-label={t('exerciseCard.historyForAria', { name })}
+        >
+          <ExerciseThumb exercise={exercise} name={name} className="stats-trend-thumb" />
+        </button>
+      ) : (
+        <span className="stats-trend-media">
+          <ExerciseThumb exercise={undefined} name={name} className="stats-trend-thumb" />
+        </span>
+      )}
+      <div className="stats-trend-body">
+        <div className="stats-trend-head">
+          <span className="stats-trend-name">{name}</span>
+          <span className="stats-trend-count">{sessionsLabel}</span>
+        </div>
+        <div className="stats-trend-plot">
+          <Sparkline
+            values={row.values}
+            ariaLabel={t('stats.exerciseTrendAria', { name, min: format(lo), max: format(hi), sessions: sessionsLabel })}
+          />
+          {/* Min and max only: the sparkline's floor and ceiling are exactly these two. A flat series has one value, on the midline. */}
+          <div className={hi === lo ? 'stats-trend-axis stats-trend-axis-flat num' : 'stats-trend-axis num'} aria-hidden="true">
+            <span>{format(hi)}</span>
+            {hi !== lo && <span>{format(lo)}</span>}
+          </div>
+        </div>
+      </div>
+    </li>
   );
 }
 

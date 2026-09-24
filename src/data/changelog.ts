@@ -342,6 +342,16 @@ export const CHANGELOG: ChangelogEntry[] = [
       'Corregido: los entrenamientos archivados ya no aparecen en la lista de la pestaña Sesión.',
     ],
   },
+  {
+    version: '1.23.0',
+    date: '2026-09-24',
+    en: [
+      'Stats: "Top exercises" is now "Exercise progress" — every exercise you did in the selected range, each with a small graph of how it went session by session, from its lowest to its highest reading. Switch between top set and estimated 1RM; bodyweight-only exercises chart reps. Tap a picture to open that exercise’s full history.',
+    ],
+    es: [
+      'Estadísticas: «Ejercicios más frecuentes» pasa a ser «Progreso por ejercicio» — todos los ejercicios que has hecho en el intervalo elegido, cada uno con un pequeño gráfico de cómo ha ido sesión a sesión, de su valor más bajo al más alto. Cambia entre serie máxima y RM estimado; los ejercicios solo con peso corporal muestran repeticiones. Toca una imagen para abrir el historial completo de ese ejercicio.',
+    ],
+  },
 ];
 
 /** Keep in sync with the bootstrap-independent nature of theme/language: this

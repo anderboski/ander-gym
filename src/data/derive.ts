@@ -1003,26 +1003,63 @@ export function statsBuckets(sessions: Session[], range: StatsRange, view: Stats
   return out;
 }
 
-export type ExerciseCount = { exerciseId: string; count: number };
+/** One exercise's per-session readings over a stats window. */
+export type ExerciseTrend = {
+  exerciseId: string;
+  /** Sessions in the window with at least one set of it — the ranking key. */
+  sessions: number;
+  /**
+   * `kg` once any set in the window carried a load; `reps` for an exercise
+   * done only at bodyweight, which has no kg to plot but still has a trend.
+   */
+  unit: 'kg' | 'reps';
+  /** One value per plotted session, **oldest first**. */
+  values: number[];
+};
 
 /**
- * The exercises done most often in `range`, ranked by how many separate
- * sessions included at least one set for it — "how many times you've done
- * it", not how many individual sets. Ties break by id for a stable order.
+ * Every exercise done in `range`, most sessions first (ties by id), each with
+ * its per-session trend — the Stats exercise list (SPEC §5.6).
+ *
+ * A weighted exercise plots each session's best set under `metric`, the same
+ * reading as the exercise sheet's chart; a session logged only at bodyweight
+ * contributes no point there rather than a phantom zero that would crater the
+ * line. An exercise with no loaded set in the whole window plots max reps
+ * instead, which `metric` has no bearing on.
  */
-export function topExercises(sessions: Session[], range: StatsRange, limit: number): ExerciseCount[] {
-  const counts = new Map<string, number>();
+export function exerciseTrends(sessions: Session[], range: StatsRange, metric: ProgressMetric): ExerciseTrend[] {
+  const measure = METRIC[metric];
+  const byExercise = new Map<string, { at: number; sets: SetEntry[] }[]>();
+
   for (const s of sessions) {
-    if (!inRange(new Date(s.startedAt), range)) continue;
+    const at = new Date(s.startedAt);
+    if (!inRange(at, range)) continue;
     for (const entry of s.entries) {
       if (entry.sets.length === 0) continue;
-      counts.set(entry.exerciseId, (counts.get(entry.exerciseId) ?? 0) + 1);
+      const list = byExercise.get(entry.exerciseId) ?? [];
+      list.push({ at: at.getTime(), sets: entry.sets });
+      byExercise.set(entry.exerciseId, list);
     }
   }
-  return [...counts]
-    .map(([exerciseId, count]) => ({ exerciseId, count }))
-    .sort((a, b) => b.count - a.count || a.exerciseId.localeCompare(b.exerciseId))
-    .slice(0, limit);
+
+  const out: ExerciseTrend[] = [];
+  for (const [exerciseId, list] of byExercise) {
+    // Sessions arrive in whatever order the store holds them; a trend reads left to right.
+    list.sort((a, b) => a.at - b.at);
+    const loaded = list.some(({ sets }) => sets.some((set) => set.weight > 0));
+    const values: number[] = [];
+    for (const { sets } of list) {
+      if (loaded) {
+        const weighted = sets.filter((set) => set.weight > 0);
+        if (weighted.length > 0) values.push(Math.max(...weighted.map(measure)));
+      } else {
+        values.push(Math.max(...sets.map((set) => set.reps)));
+      }
+    }
+    out.push({ exerciseId, sessions: list.length, unit: loaded ? 'kg' : 'reps', values });
+  }
+
+  return out.sort((a, b) => b.sessions - a.sessions || a.exerciseId.localeCompare(b.exerciseId));
 }
 
 /* -------------------------------------------------------------------------- */

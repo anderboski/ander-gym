@@ -96,3 +96,65 @@ export function assignLanes(items: readonly LaneItem[], lanes: number, minGap: n
     return lane;
   });
 }
+
+export type Point = { x: number; y: number };
+
+/**
+ * SVG path through `points` (ascending x) as a smooth curve that never
+ * overshoots: monotone cubic interpolation (Fritsch–Carlson). A plain
+ * Catmull-Rom bulges past a local peak, and on a sparkline whose axis is
+ * exactly the data's min and max that bulge would leave the plot — and
+ * suggest a reading nobody logged.
+ */
+export function monotonePath(points: readonly Point[]): string {
+  const n = points.length;
+  const first = points[0];
+  if (!first) return '';
+  if (n === 1) return `M${first.x} ${first.y}`;
+
+  const dx: number[] = [];
+  const slope: number[] = [];
+  for (let i = 0; i < n - 1; i++) {
+    const a = points[i] as Point;
+    const b = points[i + 1] as Point;
+    dx.push(b.x - a.x);
+    slope.push(dx[i] === 0 ? 0 : (b.y - a.y) / (b.x - a.x));
+  }
+
+  // Tangent at each point: the average of the two neighbouring secants, zeroed
+  // at a local extreme so the curve flattens there instead of overshooting.
+  const tangent: number[] = [slope[0] ?? 0];
+  for (let i = 1; i < n - 1; i++) {
+    const s0 = slope[i - 1] ?? 0;
+    const s1 = slope[i] ?? 0;
+    tangent.push(s0 * s1 <= 0 ? 0 : (s0 + s1) / 2);
+  }
+  tangent.push(slope[n - 2] ?? 0);
+
+  // Fritsch–Carlson limiter: keeps each segment inside its own endpoints.
+  for (let i = 0; i < n - 1; i++) {
+    const s = slope[i] ?? 0;
+    if (s === 0) {
+      tangent[i] = 0;
+      tangent[i + 1] = 0;
+      continue;
+    }
+    const a = (tangent[i] ?? 0) / s;
+    const b = (tangent[i + 1] ?? 0) / s;
+    const h = a * a + b * b;
+    if (h > 9) {
+      const k = 3 / Math.sqrt(h);
+      tangent[i] = k * a * s;
+      tangent[i + 1] = k * b * s;
+    }
+  }
+
+  let d = `M${first.x} ${first.y}`;
+  for (let i = 0; i < n - 1; i++) {
+    const a = points[i] as Point;
+    const b = points[i + 1] as Point;
+    const third = (dx[i] ?? 0) / 3;
+    d += ` C${a.x + third} ${a.y + (tangent[i] ?? 0) * third} ${b.x - third} ${b.y - (tangent[i + 1] ?? 0) * third} ${b.x} ${b.y}`;
+  }
+  return d;
+}
