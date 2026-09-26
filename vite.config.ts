@@ -2,14 +2,68 @@ import { defineConfig } from 'vitest/config';
 import react from '@vitejs/plugin-react';
 import { VitePWA } from 'vite-plugin-pwa';
 import { viteStaticCopy } from 'vite-plugin-static-copy';
+import type { Plugin } from 'vite';
 
 const BASE = '/ander-gym/';
+
+/**
+ * Content-Security-Policy as a <meta> tag — GitHub Pages can't set response
+ * headers. Its job is to stop injected code from sending on-device data
+ * anywhere (`connect-src 'self'`) or loading script from elsewhere; it can't
+ * defend against a malicious deploy, which controls this HTML too.
+ *
+ * Build-only: the dev server injects inline scripts and <style> tags this
+ * policy would block. The inline bootstrap scripts in index.html (theme,
+ * language) are allowed by hash, computed here so editing them can't leave a
+ * stale hash behind that silently kills the pre-paint theme.
+ */
+function contentSecurityPolicy(): Plugin {
+  return {
+    name: 'ander-gym-csp',
+    apply: 'build',
+    transformIndexHtml: {
+      order: 'post',
+      async handler(html) {
+        // Web Crypto rather than node:crypto: tsconfig carries DOM types, not @types/node.
+        const bodies = [...html.matchAll(/<script(?![^>]*\bsrc=)[^>]*>([\s\S]*?)<\/script>/g)].map(
+          ([, body = '']) => body,
+        );
+        const hashes = await Promise.all(
+          bodies.map(async (body) => {
+            const digest = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(body));
+            return `'sha256-${btoa(String.fromCharCode(...new Uint8Array(digest)))}'`;
+          }),
+        );
+        const policy = [
+          "default-src 'self'",
+          `script-src 'self' ${hashes.join(' ')}`,
+          "style-src 'self'",
+          // blob: for custom-exercise and check-in photos (object URLs);
+          // data: for the inline SVG chevrons in styles.css.
+          "img-src 'self' blob: data:",
+          "connect-src 'self'",
+          "worker-src 'self'",
+          "manifest-src 'self'",
+          "object-src 'none'",
+          "base-uri 'self'",
+          "form-action 'self'",
+        ].join('; ');
+        // Must precede every script it governs, so it goes straight after <meta charset>.
+        // Fail the build rather than silently ship without a policy if that tag changes shape.
+        const anchor = /(<meta charset="UTF-8" \/>)/;
+        if (!anchor.test(html)) throw new Error('ander-gym-csp: <meta charset="UTF-8" /> not found in index.html');
+        return html.replace(anchor, `$1\n    <meta http-equiv="Content-Security-Policy" content="${policy}" />`);
+      },
+    },
+  };
+}
 
 export default defineConfig({
   base: BASE,
 
   plugins: [
     react(),
+    contentSecurityPolicy(),
 
     // `data/` stays at the repo root as the source of truth. Copy it into dist/data
     // on build; the plugin also serves it from the same URLs in dev.
