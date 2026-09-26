@@ -1,4 +1,17 @@
 # ander-gym
+
+<p align="center">
+  <img src="docs/assets/ander-gym-banner.png" alt="ander-gym" width="100%">
+</p>
+
+<p align="center">
+  <a href="https://github.com/anderboski/ander-gym/actions/workflows/ci.yml"><img src="https://github.com/anderboski/ander-gym/actions/workflows/ci.yml/badge.svg" alt="CI"></a>
+  <a href="https://github.com/anderboski/ander-gym/actions/workflows/deploy.yml"><img src="https://github.com/anderboski/ander-gym/actions/workflows/deploy.yml/badge.svg" alt="Deploy"></a>
+  <a href="https://github.com/anderboski/ander-gym/blob/main/package.json"><img src="https://img.shields.io/github/package-json/v/anderboski/ander-gym" alt="Version"></a>
+  <a href="https://github.com/anderboski/ander-gym/blob/main/LICENSE"><img src="https://img.shields.io/github/license/anderboski/ander-gym" alt="License"></a>
+  <a href="https://anderboski.github.io/ander-gym/"><img src="https://img.shields.io/badge/live-ander--gym-blue" alt="Live demo"></a>
+</p>
+
 A local-first gym tracker for the iPhone. No backend, no account, no app store —
 a static PWA you add to your Home Screen. Your training data never leaves the
 device.
