@@ -1,0 +1,38 @@
+name: CI
+
+# deploy.yml only runs on push to main, and a merge there ships straight to
+# production — so this is the one place a pull request gets checked before it
+# can reach users' phones.
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# A new push to the same PR supersedes the run for the previous one.
+concurrency:
+  group: ci-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      # Pinned to commit SHAs, same as deploy.yml; Dependabot bumps both.
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4.4.0
+
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with:
+          node-version: 22
+          cache: npm
+
+      - run: npm ci
+      # High and above only: a moderate advisory that needs a breaking major
+      # bump (vitest's, at the time of writing) shouldn't block every PR.
+      - run: npm audit --audit-level=high
+      - run: npm run typecheck
+      - run: npm test
+      # Also emits the CSP <meta> tag and the service worker, so a broken
+      # policy plugin or precache config fails here rather than on deploy.
+      - run: npm run build

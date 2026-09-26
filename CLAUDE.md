@@ -32,7 +32,8 @@ The service worker is disabled in dev (`devOptions.enabled: false`). Any change 
 behaviour, caching, or the manifest must be verified with `npm run build && npm run preview`.
 
 Before committing anything: `npm run typecheck && npm test`. CI runs both and a failure blocks the
-deploy.
+deploy. Pull requests also get `.github/workflows/ci.yml` — `npm audit --audit-level=high`, typecheck,
+tests, build — the only check a change gets before merging ships it.
 
 ## Architecture
 
@@ -78,8 +79,8 @@ Follow this pattern when adding a mutation. Per-training changes go through `db.
 
 Hash routing (`#/trainings/t-abc`), hand-rolled, deliberate. GitHub Pages has no rewrite rule, so a
 path-based deep link would 404 on reload. **Do not add React Router** — every 7.x release currently
-carries an open advisory, and this is a five-tab static app. `npm audit` reports 0 vulnerabilities;
-keep it that way.
+carries an open advisory, and this is a five-tab static app. `npm audit` reports no high or critical
+advisories (CI enforces it); keep it that way.
 
 Adding a route: extend the `Route` union in `router.ts`, handle it in `parseRoute`, map it to a tab
 in `tabOf`, and render it in `App.tsx`.
@@ -126,6 +127,14 @@ stay trustworthy.
 custom exercise stays consistent everywhere.
 
 **Every write to `activeSession` is immediate.** A set that has been logged must survive a force-quit.
+
+**The Content-Security-Policy is generated at build time.** `contentSecurityPolicy()` in
+`vite.config.ts` injects a `<meta>` CSP into the built `index.html` only (the dev server's inline
+scripts would trip it), hashing the inline bootstrap scripts itself. Everything is `'self'`: loading
+anything from another origin — a font, a CDN script, an API — is blocked until the policy is
+deliberately widened, and `connect-src 'self'` is what stops injected code sending data off the device.
+Don't add `'unsafe-inline'`/`'unsafe-eval'` to get past a violation; fix the cause. Verify policy changes
+with `npm run build && npm run preview` and watch the console for `Content Security Policy` errors.
 
 **Exercise images are excluded from the precache** (11 MB / 1324 files) and cached lazily at runtime
 via a `CacheFirst` rule. Don't widen `workbox.globPatterns` to pull in `.jpg`.

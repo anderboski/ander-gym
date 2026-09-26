@@ -264,6 +264,14 @@ a real iPhone.
       grants this silently for installed PWAs; the gear panel should report
       storage as persisted.
 
+## 10. Content-Security-Policy
+
+- [ ] With the phone connected to a Mac, open Safari → Develop → *[iPhone]* → the Gym web app,
+      and use the app normally (Home, Exercises with images, a session, a check-in with a photo,
+      export). The console shows **no** `Content Security Policy` errors.
+- [ ] The theme and language you picked still apply instantly on launch (the inline bootstrap
+      scripts are allowed by hash — a mismatch would silently skip them).
+
 ## Known limits
 
 - Exercise images are cached **lazily**. A brand-new install in airplane mode

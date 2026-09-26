@@ -824,6 +824,10 @@ precache the same way app-shell icons do.
 - Momentum scrolling in the card carousel; `overscroll-behavior: contain` in sheets to stop rubber-banding
   the page behind them.
 - The app must be fully usable with the network off, for any exercise whose image has been viewed once.
+- **Content-Security-Policy** as a `<meta>` tag (Pages can't set headers), added at build time: every
+  fetch directive `'self'` (plus `blob:`/`data:` images for photos and CSS icons), inline scripts only by
+  hash, `object-src 'none'`. The app talks to no other origin, so nothing legitimate is lost, and injected
+  code cannot send on-device data anywhere.
 - **The rest timer cannot alert.** iOS Safari implements no Vibration API, and a standalone PWA gets
   no notifications, so a rest that ends while the app is backgrounded or the phone is locked ends
   silently. Stated in the UI (§5.4) rather than failed silently. `navigator.vibrate()` is still
