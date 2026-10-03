@@ -870,7 +870,7 @@ select.input {
 
 .sheet-backdrop {
   position: fixed;
-  inset: 0 0 calc(-1 * var(--vp-gap));
+  inset: 0;
   background: rgba(0, 0, 0, 0.45);
   z-index: 100;
   animation: fade-in 0.18s ease;
@@ -880,7 +880,7 @@ select.input {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: calc(-1 * var(--vp-gap));
+  bottom: 0;
   z-index: 101;
   max-height: 90svh;
   display: flex;
@@ -909,7 +909,7 @@ select.input {
 .sheet-full {
   top: 0;
   border-radius: 0;
-  max-height: calc(100svh + var(--vp-gap));
+  max-height: 100svh;
   padding-top: var(--safe-top);
 }
 
@@ -1043,7 +1043,7 @@ select.input {
   position: fixed;
   left: var(--s4);
   right: var(--s4);
-  bottom: calc(var(--tabbar-h) + var(--safe-bottom) + var(--s3) - var(--vp-gap));
+  bottom: calc(var(--tabbar-h) + var(--safe-bottom) + var(--s3));
   z-index: 120;
   display: flex;
   align-items: center;
