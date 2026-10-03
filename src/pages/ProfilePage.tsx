@@ -7,6 +7,7 @@ import { useGym } from '../data/store';
 import { ageFrom, bmi, parseLocalDate } from '../data/derive';
 import { formatKg, formatKgDelta, formatWeight } from '../data/parse';
 import { formatDay, formatDayWithWeekday, useLanguage } from '../data/i18n';
+import { AvatarFace } from '../components/Avatar';
 import { BackButton } from '../components/BackButton';
 import { ChartFigure, LineChart } from '../components/Chart';
 import { ConfirmSheet } from '../components/Sheet';
@@ -141,7 +142,14 @@ export function ProfilePage() {
       <div className="page-header profile-header">
         <BackButton to="/home" label={t('tabbar.home')} ariaLabel={t('stats.backToHomeAria')} />
         <div className="profile-name-row">
-          <h1 className="page-title">{profile.name.trim() || t('profile.addName')}</h1>
+          {/* Only once there is a photo: the initials disc already sits on Home,
+              and repeating the name's letters right beside the name says nothing. */}
+          {profile.photoBlob && (
+            <span className="avatar avatar-lg" aria-hidden="true">
+              <AvatarFace name={profile.name} photoBlob={profile.photoBlob} />
+            </span>
+          )}
+          <h1 className="page-title profile-name">{profile.name.trim() || t('profile.addName')}</h1>
           <button type="button" className="icon-btn icon-btn-filled" onClick={() => setEditing(true)} aria-label={t('profile.editAria')}>
             <PencilIcon />
           </button>

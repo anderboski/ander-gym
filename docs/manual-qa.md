@@ -36,6 +36,12 @@ section 3, which still need a fresh install with no import.
       border in both; hairlines only appear between rows inside a card.
 - [ ] Home header: the round initials avatar (a person icon before a name is
       set) opens Profile; the theme and gear buttons beside it are round too.
+- [ ] Profile → pencil → **Choose photo** opens the iOS photo picker (camera roll,
+      and the camera option). A HEIC photo from the library and a portrait photo
+      both show a centred, undistorted circle in the preview; Save puts it on
+      Home's avatar and beside the name on Profile, in light and dark.
+- [ ] Force-quit and reopen: the photo is still there. **Remove photo** → Save
+      brings the initials back. Export, Replace-import: the photo survives.
 
 ## 3. Core flow
 

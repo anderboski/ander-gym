@@ -81,7 +81,7 @@ IndexedDB via `idb`. Database `ander-gym`, version 3.
 | `activeSession` | literal `'current'` | `{ trainingId, trainingLabel, startedAt, entries }` |
 | `customExercises` | `id` (`c-<uuid>`) | Exercise fields + `isCustom: true`, `imageBlob?: Blob` |
 | `settings` | key string | `weeklyGoal` (default `3`), `lastExportAt`, `favoriteExerciseIds` (default `[]`), `schemaVersion` |
-| `profile` | key string | `name` (default `''`), `birthdate` (default `null`), `heightCm` (default `null`) — see §5.7 |
+| `profile` | key string | `name` (default `''`), `birthdate` (default `null`), `heightCm` (default `null`), `photo` (`Blob`, default `null`) — see §5.7 |
 | `checkins` | `id` (`ck-<uuid>`) | `{ id, date, weightKg, photoBlobs: Blob[] }` — index on `date`, see §5.7 |
 | `sportSessions` | `id` (`ss-<uuid>`) | one of the `SportSession` shapes below — index on `date`, see §5.8 |
 
@@ -149,6 +149,10 @@ Reachable from a gear icon on Home (Settings sheet).
 - `profile`/`checkins` are absent entirely from a `schemaVersion: 1` backup (written before they existed) —
   a missing `profile` defaults to `{ name: '', birthdate: null, heightCm: null }` and a missing `checkins`
   defaults to `[]`, same "default rather than reject" handling as an old backup missing `favoriteExerciseIds`.
+- `profile.photo` (schema `4`) is the profile photo inlined as a data URL, same technique as the other
+  blobs; absent from an older backup and defaults to `null`. On import anything that is not a
+  `data:image/…` URL is dropped to `null` — it becomes an `<img>`, so a hand-edited file must not be able
+  to put arbitrary content there, and the avatar simply falls back to initials.
 - `sportSessions` is likewise absent from a backup older than schema `3` and defaults to `[]`. Sport records
   are trusted as written on import — nothing in them feeds a countdown deadline or renders as a raw UI glyph
   the way `restSeconds`/`emoji` do, so unlike those two fields there is no validate-or-drop pass.
@@ -303,7 +307,8 @@ the fixed bottom nav.
 - **Header** — a small-caps date eyebrow ("Thursday 17 September", in the app's language), then the
   page's `<h1>`: a time-bucketed greeting ("Good evening, Ander"; just "Good evening" until a name is set)
   rather than a static "Home" title. On the right, two round filled buttons (theme toggle, gear) and an
-  **initials avatar** — the profile entry point (§5.7); a person icon until a name is set. The avatar is the
+  **avatar** — the profile entry point (§5.7): the profile photo when one is set, otherwise initials,
+  and a person icon until a name is set. The avatar is the
   standard place a profile lives on a phone, which is what makes it discoverable without decorating the
   greeting as a link.
 - **Week counter** — "N trainings this week", with a progress ring against `weeklyGoal`, in a card that
@@ -746,6 +751,14 @@ Reached by tapping the greeting in Home's header (see below); a back control ret
   set. The tap target is the round initials avatar at the header's trailing edge (up to two initials; a
   person icon until a name is set) — the place a phone user already expects a profile to live, so it stays
   discoverable from the very first launch without turning the greeting into an underlined link.
+- **Profile photo** — optional, picked from the camera roll (`<input type="file" accept="image/*">`) in
+  the edit sheet, with a live circular preview and a Remove button. Centre-cropped to a square and
+  downscaled to at most 256 px JPEG **on pick** (`squareCropImage`), so the preview is exactly what will
+  show and the full-size original never reaches IndexedDB; no manual pan/zoom cropper. Stored as the
+  `photo` key of the `profile` store (a key-value store, so no `DB_VERSION` bump). Once set it replaces the
+  initials in Home's avatar and shows as a larger disc beside the name on Profile — only when there is a
+  photo, since repeating the initials beside the name would add nothing. Removing it restores initials.
+  Included in backups (§2).
 - **Fields — name, birthdate, height (cm)** — all optional and skippable, edited from a pencil-icon sheet
   next to the name. **Age is never stored**, only `birthdate`; `ageFrom()` derives it on every render, same
   "derive, don't duplicate" rule as everything else in this app (week counts, streaks, "days ago"). A stat
