@@ -71,6 +71,9 @@
   --tabbar-h: 50px;
   --safe-top: env(safe-area-inset-top, 0px);
   --safe-bottom: env(safe-area-inset-bottom, 0px);
+  /* How far iOS 26's standalone layout viewport falls short of the screen;
+     set at runtime by src/viewport.ts, 0 everywhere the bug doesn't apply. */
+  --vp-gap: 0px;
 
   --font: -apple-system, BlinkMacSystemFont, 'SF Pro Text', system-ui, 'Segoe UI', Roboto,
     'Helvetica Neue', sans-serif;
@@ -237,7 +240,8 @@ p {
    -------------------------------------------------------------------------- */
 
 .app {
-  height: 100%;
+  /* reach the real bottom of the screen even when the layout viewport stops short */
+  height: calc(100% + var(--vp-gap));
   display: flex;
   flex-direction: column;
   background: var(--bg);
@@ -866,7 +870,7 @@ select.input {
 
 .sheet-backdrop {
   position: fixed;
-  inset: 0;
+  inset: 0 0 calc(-1 * var(--vp-gap));
   background: rgba(0, 0, 0, 0.45);
   z-index: 100;
   animation: fade-in 0.18s ease;
@@ -876,7 +880,7 @@ select.input {
   position: fixed;
   left: 0;
   right: 0;
-  bottom: 0;
+  bottom: calc(-1 * var(--vp-gap));
   z-index: 101;
   max-height: 90svh;
   display: flex;
@@ -905,7 +909,7 @@ select.input {
 .sheet-full {
   top: 0;
   border-radius: 0;
-  max-height: 100svh;
+  max-height: calc(100svh + var(--vp-gap));
   padding-top: var(--safe-top);
 }
 
@@ -1039,7 +1043,7 @@ select.input {
   position: fixed;
   left: var(--s4);
   right: var(--s4);
-  bottom: calc(var(--tabbar-h) + var(--safe-bottom) + var(--s3));
+  bottom: calc(var(--tabbar-h) + var(--safe-bottom) + var(--s3) - var(--vp-gap));
   z-index: 120;
   display: flex;
   align-items: center;

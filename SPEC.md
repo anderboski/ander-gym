@@ -832,6 +832,10 @@ precache the same way app-shell icons do.
 
 - `<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">`; all fixed
   chrome uses `env(safe-area-inset-*)`.
+- The shell fills the whole screen in the Home Screen app: on iOS 26 the standalone layout viewport comes up
+  short of the screen (by about the top inset), so `src/viewport.ts` measures `screen.height − innerHeight`
+  (standalone, portrait, ≤ 120 px only) into `--vp-gap`, and the shell, sheets and toast extend by it.
+  The tab bar sits on the bottom edge, above the home indicator — never above an empty strip.
 - Web app manifest: `display: standalone`, portrait, theme + background colours, 180×180 apple-touch-icon,
   192/512 PNG icons, maskable variant.
 - Service worker (`vite-plugin-pwa`, `registerType: 'autoUpdate'`):

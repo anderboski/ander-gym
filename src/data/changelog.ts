@@ -372,6 +372,12 @@ export const CHANGELOG: ChangelogEntry[] = [
       'Importaciones más seguras: un archivo de copia dañado o editado a mano ya no puede hacer que la importación falle a medias ni dejar registros rotos. Lo que no se pueda leer se omite, y la vista previa solo cuenta lo que realmente se va a importar.',
     ],
   },
+  {
+    version: '1.24.2',
+    date: '2026-10-03',
+    en: ['The tab bar now sits at the very bottom of the screen in the Home Screen app, leaving more room for content.'],
+    es: ['La barra de pestañas ahora queda en la parte inferior de la pantalla en la app de inicio, dejando más espacio para el contenido.'],
+  },
 ];
 
 /** Keep in sync with the bootstrap-independent nature of theme/language: this
