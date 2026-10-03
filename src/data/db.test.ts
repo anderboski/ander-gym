@@ -708,6 +708,103 @@ describe('parseBackup validation', () => {
   });
 });
 
+describe('parseBackup record validation', () => {
+  const PNG = 'data:image/png;base64,iVBORw0KGgo=';
+  const parse = (extra: Record<string, unknown>) =>
+    parseBackup(JSON.stringify({ schemaVersion: 1, trainings: [], sessions: [], ...extra }));
+  const validSession = {
+    id: 's1',
+    trainingId: 't-a',
+    trainingLabel: 'Push',
+    startedAt: '2026-08-01T10:00:00.000Z',
+    savedAt: '2026-08-01T11:00:00.000Z',
+    entries: [{ exerciseId: '0001', sets: [{ reps: 5, weight: 60, at: '2026-08-01T10:10:00.000Z' }] }],
+  };
+
+  it('drops sessions missing required fields and malformed sets inside kept ones', () => {
+    const parsed = parse({
+      sessions: [
+        validSession,
+        { ...validSession, id: 's2', entries: 'nope' },
+        { ...validSession, id: 3 },
+        null,
+        {
+          ...validSession,
+          id: 's4',
+          entries: [{ exerciseId: '0002', sets: [{ reps: 'x', weight: 1, at: 'a' }, { reps: 3, weight: 0, at: 'b' }] }, 7],
+        },
+      ],
+    });
+    expect(parsed.sessions.map((s) => s.id)).toEqual(['s1', 's4']);
+    expect(parsed.sessions[0]).toEqual(validSession);
+    expect(parsed.sessions[1]?.entries).toEqual([{ exerciseId: '0002', sets: [{ reps: 3, weight: 0, at: 'b' }] }]);
+  });
+
+  // Dropping a training would strand every session pointing at its id.
+  it('repairs a training with a usable id instead of dropping it', () => {
+    const parsed = parse({
+      trainings: [{ id: 't-a', exerciseIds: ['0001', 2], emoji: 5, kind: 'yoga' }, { label: 'no id' }],
+    });
+    expect(parsed.trainings).toEqual([{ id: 't-a', label: '', order: 0, exerciseIds: ['0001'] }]);
+  });
+
+  it('drops custom-exercise images and check-in photos that are not base64 image data URLs', () => {
+    const parsed = parse({
+      customExercises: [
+        { id: 'c1', name: 'Sled', category: 'legs', equipment: 'sled', target: 'quads', createdAt: 'x', image: PNG },
+        { id: 'c2', name: 'Rope', image: 'javascript:alert(1)' },
+        { id: 'c3', name: 'Bad b64', image: 'data:image/png;base64,@@@' },
+        { name: 'no id' },
+      ],
+      checkins: [
+        { id: 'w1', date: '2026-08-01', weightKg: 80, photos: [PNG, 'data:text/html;base64,PGI+', 1] },
+        { id: 'w2', date: '2026-08-02', weightKg: 81 },
+        { id: 'w3', date: '2026-08-03', weightKg: 'heavy', photos: [] },
+      ],
+    });
+    expect(parsed.customExercises.map((c) => [c.id, c.image])).toEqual([
+      ['c1', PNG],
+      ['c2', null],
+      ['c3', null],
+    ]);
+    expect(parsed.checkins).toEqual([
+      { id: 'w1', date: '2026-08-01', weightKg: 80, photos: [PNG] },
+      { id: 'w2', date: '2026-08-02', weightKg: 81, photos: [] },
+    ]);
+  });
+
+  it('keeps only sport sessions whose kind-specific fields are well formed', () => {
+    const base = { trainingId: 't-s', trainingLabel: 'Sport', date: '2026-08-01', createdAt: 'x' };
+    const parsed = parse({
+      sportSessions: [
+        { ...base, id: 'a', kind: 'cycling', distanceKm: 40, elevationM: 500, avgBpm: 'fast' },
+        { ...base, id: 'b', kind: 'cycling', distanceKm: '40', elevationM: 500, avgBpm: null },
+        { ...base, id: 'c', kind: 'snowboard', weather: 'sunny', snowCondition: 'powder', comments: 'ok' },
+        { ...base, id: 'd', kind: 'snowboard', weather: 'hail', snowCondition: 'powder', comments: '' },
+        { ...base, id: 'e', kind: 'climbing', climbsByGrade: { '3': 2, '5': 'x' } },
+        { ...base, id: 'f', kind: 'surfing' },
+      ],
+    });
+    expect(parsed.sportSessions.map((s) => s.id)).toEqual(['a', 'c', 'e']);
+    expect(parsed.sportSessions[0]).toMatchObject({ avgBpm: null });
+    expect(parsed.sportSessions[2]).toMatchObject({ climbsByGrade: { '3': 2, '4': 0, '5': 0 } });
+  });
+
+  // The failure this exists to prevent: Replace wipes the device, then a bad
+  // photo makes `atob` throw halfway through restoring.
+  it('applies a backup with malformed photos without throwing', async () => {
+    const parsed = parse({
+      customExercises: [{ id: 'c1', name: 'Sled', image: 'data:image/jpeg;base64,!!' }],
+      checkins: [{ id: 'w1', date: '2026-08-01', weightKg: 80, photos: 'not-an-array' }],
+      profile: { name: 'A', photo: 'data:image/jpeg;base64,%%' },
+    });
+    await expect(applyBackup(parsed, 'replace')).resolves.toBeUndefined();
+    expect((await db.getCustomExercises())[0]?.imageBlob).toBeNull();
+    expect((await db.getCheckins())[0]?.photoBlobs).toEqual([]);
+    expect((await db.getProfile()).photoBlob).toBeNull();
+  });
+});
+
 describe('summariseBackup', () => {
   it('counts every store in a real export', async () => {
     await db.createTraining('Leg-abs');

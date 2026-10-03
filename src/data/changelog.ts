@@ -362,6 +362,16 @@ export const CHANGELOG: ChangelogEntry[] = [
       'Foto de perfil: elige una imagen de tu carrete en Editar perfil y sustituirá a tus iniciales en la esquina superior derecha de Inicio y aparecerá junto a tu nombre en tu perfil. Quítala cuando quieras para volver a tus iniciales. Se incluye en las copias de seguridad.',
     ],
   },
+  {
+    version: '1.24.1',
+    date: '2026-10-03',
+    en: [
+      'Safer imports: a damaged or hand-edited backup file can no longer make an import fail halfway or leave broken records behind. Anything unreadable is skipped, and the preview counts only what will actually be imported.',
+    ],
+    es: [
+      'Importaciones más seguras: un archivo de copia dañado o editado a mano ya no puede hacer que la importación falle a medias ni dejar registros rotos. Lo que no se pueda leer se omite, y la vista previa solo cuenta lo que realmente se va a importar.',
+    ],
+  },
 ];
 
 /** Keep in sync with the bootstrap-independent nature of theme/language: this
