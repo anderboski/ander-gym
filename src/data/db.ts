@@ -20,7 +20,7 @@ import {
 
 export const DB_NAME = 'ander-gym';
 export const DB_VERSION = 3;
-export const SCHEMA_VERSION = 3;
+export const SCHEMA_VERSION = 4;
 
 /** The single key used by the activeSession store. */
 const ACTIVE_KEY = 'current';
@@ -323,15 +323,19 @@ export async function putSetting<K extends keyof Settings>(
 
 export async function getProfile(): Promise<Profile> {
   const db = await getDB();
-  const [name, birthdate, heightCm] = await Promise.all([
+  // `profile` is a key-value store, so the photo is just one more key — no
+  // DB_VERSION bump; an install from before it existed reads `undefined` → null.
+  const [name, birthdate, heightCm, photo] = await Promise.all([
     db.get('profile', 'name'),
     db.get('profile', 'birthdate'),
     db.get('profile', 'heightCm'),
+    db.get('profile', 'photo'),
   ]);
   return {
     name: typeof name === 'string' ? name : DEFAULT_PROFILE.name,
     birthdate: typeof birthdate === 'string' ? birthdate : null,
     heightCm: typeof heightCm === 'number' ? heightCm : null,
+    photoBlob: photo instanceof Blob ? photo : null,
   };
 }
 
@@ -343,6 +347,7 @@ export async function putProfile(profile: Profile): Promise<void> {
     tx.store.put(profile.name, 'name'),
     tx.store.put(profile.birthdate, 'birthdate'),
     tx.store.put(profile.heightCm, 'heightCm'),
+    tx.store.put(profile.photoBlob, 'photo'),
     tx.done,
   ]);
 }
@@ -418,6 +423,7 @@ export async function writeAll(snapshot: Snapshot): Promise<void> {
     profile.put(snapshot.profile.name, 'name'),
     profile.put(snapshot.profile.birthdate, 'birthdate'),
     profile.put(snapshot.profile.heightCm, 'heightCm'),
+    profile.put(snapshot.profile.photoBlob, 'photo'),
     tx.done,
   ]);
 }

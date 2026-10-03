@@ -44,8 +44,8 @@ import {
   MoonIcon,
   PlayIcon,
   SunIcon,
-  UserIcon,
 } from '../components/icons';
+import { AvatarFace } from '../components/Avatar';
 import { SettingsSheet } from '../components/SettingsSheet';
 import { Toast } from '../components/Sheet';
 import { useTransient } from '../hooks/useTransient';
@@ -69,16 +69,6 @@ const EXPORT_TOAST_KEY: Record<Exclude<ExportOutcome, 'cancelled'>, TranslationK
   shared: 'common.backupShared',
   downloaded: 'common.backupDownloaded',
 };
-
-/** Up to two initials from a name — "Ander Sainz" → "AS". */
-function initials(name: string): string {
-  return name
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((part) => part.charAt(0).toUpperCase())
-    .join('');
-}
 
 export function HomePage() {
   const { status, error, trainings, sessions, sportSessions, active, settings, profile, startSession, exportNow } =
@@ -157,7 +147,7 @@ export function HomePage() {
             <GearIcon />
           </button>
           <button type="button" className="avatar" onClick={() => navigate('/profile')} aria-label={t('home.greetingAria')}>
-            {name ? initials(name) : <UserIcon />}
+            <AvatarFace name={name} photoBlob={profile.photoBlob} />
           </button>
         </div>
       </header>

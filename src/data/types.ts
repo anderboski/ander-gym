@@ -238,12 +238,15 @@ export type Profile = {
   /** `YYYY-MM-DD`, local. Age is derived from this (derive.ts `ageFrom`), never stored. */
   birthdate: string | null;
   heightCm: number | null;
+  /** Square, downscaled JPEG shown in place of the initials avatar. Null means initials. */
+  photoBlob: Blob | null;
 };
 
 export const DEFAULT_PROFILE: Profile = {
   name: '',
   birthdate: null,
   heightCm: null,
+  photoBlob: null,
 };
 
 export const CHECKIN_ID_PREFIX = 'ck-';

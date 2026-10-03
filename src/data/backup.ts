@@ -25,6 +25,12 @@ export type BackupWeightCheckin = Omit<WeightCheckin, 'photoBlobs'> & {
   photos: string[];
 };
 
+/** The profile with its photo inlined, same reasoning as customExercises. */
+export type BackupProfile = Omit<Profile, 'photoBlob'> & {
+  /** `data:image/jpeg;base64,...` or null. */
+  photo: string | null;
+};
+
 export type BackupFile = {
   schemaVersion: number;
   /** Null for a hand-made or truncated file that carries no usable timestamp. */
@@ -33,7 +39,7 @@ export type BackupFile = {
   sessions: Session[];
   customExercises: BackupCustomExercise[];
   settings: Settings;
-  profile: Profile;
+  profile: BackupProfile;
   checkins: BackupWeightCheckin[];
   sportSessions: SportSession[];
 };
@@ -85,6 +91,8 @@ export async function buildBackup(): Promise<BackupFile> {
     })),
   );
 
+  const { photoBlob, ...profileFields } = profile;
+
   return {
     schemaVersion: SCHEMA_VERSION,
     exportedAt: new Date().toISOString(),
@@ -92,7 +100,7 @@ export async function buildBackup(): Promise<BackupFile> {
     sessions,
     customExercises: withImages,
     settings,
-    profile,
+    profile: { ...profileFields, photo: photoBlob ? await blobToDataUrl(photoBlob) : null },
     checkins: withPhotos,
     sportSessions,
   };
@@ -287,6 +295,13 @@ export function parseBackup(text: string): BackupFile {
       name: typeof b.profile?.name === 'string' ? b.profile.name : '',
       birthdate: typeof b.profile?.birthdate === 'string' ? b.profile.birthdate : null,
       heightCm: typeof b.profile?.heightCm === 'number' ? b.profile.heightCm : null,
+      // Absent from a backup older than schema 4. Only an image data URL is
+      // accepted: it becomes a Blob rendered as an <img>, so anything else in
+      // a hand-edited file is dropped and the avatar falls back to initials.
+      photo:
+        typeof b.profile?.photo === 'string' && b.profile.photo.startsWith('data:image/')
+          ? b.profile.photo
+          : null,
     },
     checkins: Array.isArray(b.checkins) ? b.checkins : [],
     // Absent entirely from a backup written before sport sessions existed —
@@ -314,13 +329,16 @@ export async function applyBackup(backup: BackupFile, mode: ImportMode): Promise
     photoBlobs: photos.map(dataUrlToBlob),
   }));
 
+  const { photo, ...profileFields } = backup.profile;
+  const profile: Profile = { ...profileFields, photoBlob: photo ? dataUrlToBlob(photo) : null };
+
   if (mode === 'replace') await clearAll();
   await writeAll({
     trainings: backup.trainings,
     sessions: backup.sessions,
     customExercises,
     settings: backup.settings,
-    profile: backup.profile,
+    profile,
     checkins,
     sportSessions: backup.sportSessions,
   });

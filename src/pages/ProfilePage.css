@@ -7,6 +7,11 @@
   gap: var(--s3);
 }
 
+.profile-name {
+  flex: 1;
+  min-width: 0;
+}
+
 .profile-stats {
   margin-top: var(--s4);
 }
@@ -95,6 +100,13 @@
 
 /* Native file input, stretched invisibly over its label — same trick as
    .settings-file, but supports picking more than once to add more photos. */
+.profile-photo-field {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: var(--s3);
+}
+
 .profile-photo-add {
   position: relative;
   overflow: hidden;
