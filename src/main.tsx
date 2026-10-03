@@ -8,8 +8,10 @@ import './styles.css';
 import { App } from './App';
 import { GymProvider } from './data/store';
 import { LanguageProvider } from './data/i18n';
+import { installViewportFix } from './viewport';
 
 registerSW({ immediate: true });
+installViewportFix();
 
 createRoot(document.getElementById('root')!).render(
   <StrictMode>

@@ -29,6 +29,9 @@ section 3, which still need a fresh install with no import.
 
 - [ ] On a notched device, the page title clears the notch and the tab bar sits
       above the home indicator, with no content trapped underneath it.
+- [ ] Launched from the Home Screen, there is **no empty strip below the tab bar** — the bar's
+      background runs to the bottom edge, and bottom sheets reach the bottom edge too.
+- [ ] The same URL in a Safari tab still shows the tab bar fully above Safari's toolbar.
 - [ ] Nothing scrolls horizontally on any of the five tabs.
 - [ ] Every tab bar icon and label is legible and tappable without stretching.
 - [ ] Toggle iOS Dark/Light mode. Both themes are fully styled — no white flash,
