@@ -378,6 +378,12 @@ export const CHANGELOG: ChangelogEntry[] = [
     en: ['The tab bar now sits at the very bottom of the screen in the Home Screen app, leaving more room for content.'],
     es: ['La barra de pestañas ahora queda en la parte inferior de la pantalla en la app de inicio, dejando más espacio para el contenido.'],
   },
+  {
+    version: '1.24.3',
+    date: '2026-10-03',
+    en: ['Fixed pop-up sheets and messages sitting too low in the Home Screen app, which cut off their buttons.'],
+    es: ['Corregidas las hojas emergentes y los avisos que quedaban demasiado abajo en la app de inicio y cortaban sus botones.'],
+  },
 ];
 
 /** Keep in sync with the bootstrap-independent nature of theme/language: this

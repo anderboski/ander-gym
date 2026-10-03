@@ -834,7 +834,7 @@ precache the same way app-shell icons do.
   chrome uses `env(safe-area-inset-*)`.
 - The shell fills the whole screen in the Home Screen app: on iOS 26 the standalone layout viewport comes up
   short of the screen (by about the top inset), so `src/viewport.ts` measures `screen.height − innerHeight`
-  (standalone, portrait, ≤ 120 px only) into `--vp-gap`, and the shell, sheets and toast extend by it.
+  (standalone, portrait, ≤ 120 px only) into `--vp-gap`, and only the shell extends by it. Fixed chrome (sheets, backdrop, toast) already resolves to the real bottom edge, so it must *not* add the gap — doing so pushed sheets and their buttons off-screen.
   The tab bar sits on the bottom edge, above the home indicator — never above an empty strip.
 - Web app manifest: `display: standalone`, portrait, theme + background colours, 180×180 apple-touch-icon,
   192/512 PNG icons, maskable variant.
