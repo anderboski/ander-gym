@@ -61,13 +61,45 @@ export async function downscaleImage(file: File, maxEdge = 640, quality = 0.8): 
   const scale = Math.min(1, maxEdge / Math.max(bitmap.width, bitmap.height));
   const w = Math.round(bitmap.width * scale);
   const h = Math.round(bitmap.height * scale);
+  return drawToJpeg(bitmap, 0, 0, bitmap.width, bitmap.height, w, h, quality);
+}
 
+/**
+ * Centre-crop a picked photo to a square and downscale it — the profile
+ * avatar is a circle, so cropping here means every render is a plain
+ * `object-fit: cover` on an already-square image. 256 px covers the largest
+ * avatar at 3× with room to spare while keeping the blob (and its base64 copy
+ * in a backup) to a few tens of KB.
+ */
+export async function squareCropImage(file: File, edge = 256, quality = 0.85): Promise<Blob> {
+  const bitmap = await createImageBitmap(file);
+  const side = Math.min(bitmap.width, bitmap.height);
+  const sx = Math.round((bitmap.width - side) / 2);
+  const sy = Math.round((bitmap.height - side) / 2);
+  const out = Math.min(edge, side);
+  return drawToJpeg(bitmap, sx, sy, side, side, out, out, quality);
+}
+
+/** Draws a source rect of `bitmap` onto a w×h canvas, releases the bitmap, encodes JPEG. */
+async function drawToJpeg(
+  bitmap: ImageBitmap,
+  sx: number,
+  sy: number,
+  sw: number,
+  sh: number,
+  w: number,
+  h: number,
+  quality: number,
+): Promise<Blob> {
   const canvas = document.createElement('canvas');
   canvas.width = w;
   canvas.height = h;
   const ctx = canvas.getContext('2d');
-  if (!ctx) throw new Error('canvas 2d unavailable');
-  ctx.drawImage(bitmap, 0, 0, w, h);
+  if (!ctx) {
+    bitmap.close();
+    throw new Error('canvas 2d unavailable');
+  }
+  ctx.drawImage(bitmap, sx, sy, sw, sh, 0, 0, w, h);
   bitmap.close();
 
   const blob = await new Promise<Blob | null>((resolve) =>

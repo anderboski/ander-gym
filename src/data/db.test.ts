@@ -240,16 +240,29 @@ describe('settings', () => {
 
 describe('profile', () => {
   it('defaults when unset', async () => {
-    expect(await db.getProfile()).toEqual({ name: '', birthdate: null, heightCm: null });
+    expect(await db.getProfile()).toEqual({ name: '', birthdate: null, heightCm: null, photoBlob: null });
   });
 
   it('persists overrides field by field', async () => {
-    await db.putProfile({ name: 'Ander', birthdate: '1990-08-02', heightCm: 178 });
+    await db.putProfile({ name: 'Ander', birthdate: '1990-08-02', heightCm: 178, photoBlob: null });
     expect(await db.getProfile()).toEqual({
       name: 'Ander',
       birthdate: '1990-08-02',
       heightCm: 178,
+      photoBlob: null,
     });
+  });
+
+  it('stores a photo and clears it again', async () => {
+    const photo = new Blob([new Uint8Array([4, 5, 6])], { type: 'image/jpeg' });
+    await db.putProfile({ name: 'Ander', birthdate: null, heightCm: null, photoBlob: photo });
+
+    const stored = (await db.getProfile()).photoBlob;
+    expect(stored).toBeInstanceOf(Blob);
+    expect(new Uint8Array(await stored!.arrayBuffer())).toEqual(new Uint8Array([4, 5, 6]));
+
+    await db.putProfile({ name: 'Ander', birthdate: null, heightCm: null, photoBlob: null });
+    expect((await db.getProfile()).photoBlob).toBeNull();
   });
 });
 
@@ -330,8 +343,8 @@ describe('DB_VERSION 1 -> 2 migration', () => {
     ]);
     expect((await db.getSettings()).weeklyGoal).toBe(5);
 
-    expect(await db.getProfile()).toEqual({ name: '', birthdate: null, heightCm: null });
-    await db.putProfile({ name: 'Ander', birthdate: null, heightCm: null });
+    expect(await db.getProfile()).toEqual({ name: '', birthdate: null, heightCm: null, photoBlob: null });
+    await db.putProfile({ name: 'Ander', birthdate: null, heightCm: null, photoBlob: null });
     expect((await db.getProfile()).name).toBe('Ander');
     expect(await db.getCheckins()).toEqual([]);
   });
@@ -417,20 +430,24 @@ describe('backup round trip', () => {
   });
 
   it('round-trips a profile and a check-in with a photo', async () => {
-    await db.putProfile({ name: 'Ander', birthdate: '1990-08-02', heightCm: 178 });
+    const avatar = new Blob([new Uint8Array([1, 1, 2, 3])], { type: 'image/jpeg' });
+    await db.putProfile({ name: 'Ander', birthdate: '1990-08-02', heightCm: 178, photoBlob: avatar });
 
     const photo = new Blob([new Uint8Array([9, 8, 7])], { type: 'image/jpeg' });
     await db.putCheckin({ id: 'ck-1', date: '2026-08-01', weightKg: 80.5, photoBlobs: [photo] });
 
     const backup = await buildBackup();
-    expect(backup.profile).toEqual({ name: 'Ander', birthdate: '1990-08-02', heightCm: 178 });
+    expect(backup.profile).toMatchObject({ name: 'Ander', birthdate: '1990-08-02', heightCm: 178 });
+    expect(backup.profile.photo).toMatch(/^data:image\/jpeg;base64,/);
     expect(backup.checkins[0]?.photos[0]).toMatch(/^data:image\/jpeg;base64,/);
 
     const restored = parseBackup(JSON.stringify(backup));
     await db.clearAll();
     await applyBackup(restored, 'replace');
 
-    expect(await db.getProfile()).toEqual({ name: 'Ander', birthdate: '1990-08-02', heightCm: 178 });
+    const profile = await db.getProfile();
+    expect(profile).toMatchObject({ name: 'Ander', birthdate: '1990-08-02', heightCm: 178 });
+    expect(new Uint8Array(await profile.photoBlob!.arrayBuffer())).toEqual(new Uint8Array([1, 1, 2, 3]));
     const checkin = (await db.getCheckins())[0];
     expect(checkin?.weightKg).toBe(80.5);
     expect(new Uint8Array(await checkin!.photoBlobs[0]!.arrayBuffer())).toEqual(
@@ -518,8 +535,26 @@ describe('backup round trip', () => {
     );
     await applyBackup(backup, 'replace');
 
-    expect(await db.getProfile()).toEqual({ name: '', birthdate: null, heightCm: null });
+    expect(await db.getProfile()).toEqual({ name: '', birthdate: null, heightCm: null, photoBlob: null });
     expect(await db.getCheckins()).toEqual([]);
+  });
+
+  it('defaults a missing profile photo and drops one that is not an image data URL', async () => {
+    const parse = (photo: unknown) =>
+      parseBackup(
+        JSON.stringify({
+          schemaVersion: 3,
+          trainings: [],
+          sessions: [],
+          profile: { name: 'Ander', birthdate: null, heightCm: null, ...(photo === undefined ? {} : { photo }) },
+        }),
+      ).profile.photo;
+
+    expect(parse(undefined)).toBeNull();
+    expect(parse('javascript:alert(1)')).toBeNull();
+    expect(parse('data:text/html;base64,PGI+')).toBeNull();
+    expect(parse(42)).toBeNull();
+    expect(parse('data:image/jpeg;base64,AQID')).toBe('data:image/jpeg;base64,AQID');
   });
 
   it("round-trips a training day's rest length", async () => {

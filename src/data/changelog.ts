@@ -352,6 +352,16 @@ export const CHANGELOG: ChangelogEntry[] = [
       'Estadísticas: «Ejercicios más frecuentes» pasa a ser «Progreso por ejercicio» — todos los ejercicios que has hecho en el intervalo elegido, cada uno con un pequeño gráfico de cómo ha ido sesión a sesión, de su valor más bajo al más alto. Cambia entre serie máxima y RM estimado; los ejercicios solo con peso corporal muestran repeticiones. Toca una imagen para abrir el historial completo de ese ejercicio.',
     ],
   },
+  {
+    version: '1.24.0',
+    date: '2026-10-03',
+    en: [
+      'Profile photo: pick a picture from your camera roll in Edit profile and it replaces the initials in the top-right corner of Home and sits next to your name on your profile. Remove it any time to go back to your initials. It’s included in backups.',
+    ],
+    es: [
+      'Foto de perfil: elige una imagen de tu carrete en Editar perfil y sustituirá a tus iniciales en la esquina superior derecha de Inicio y aparecerá junto a tu nombre en tu perfil. Quítala cuando quieras para volver a tus iniciales. Se incluye en las copias de seguridad.',
+    ],
+  },
 ];
 
 /** Keep in sync with the bootstrap-independent nature of theme/language: this
