@@ -4,10 +4,14 @@
  */
 import { SCHEMA_VERSION, clearAll, readAll, writeAll } from './db';
 import { firstGrapheme, parseRestSeconds } from './parse';
+import { CLIMB_GRADES, SNOW_CONDITIONS, SPORT_KINDS, WEATHER_CONDITIONS } from './types';
 import type {
+  ClimbGrade,
   CustomExercise,
   Profile,
   Session,
+  SessionEntry,
+  SetEntry,
   Settings,
   SportSession,
   Training,
@@ -245,6 +249,139 @@ function withValidEmoji(training: Training): Training {
   return clean;
 }
 
+/* -------------------------------------------------------------------------- */
+/* Record validation                                                          */
+/* -------------------------------------------------------------------------- */
+
+/*
+ * A backup is user-supplied input: anyone can hand-edit one, and a truncated
+ * or foreign file still parses as JSON. Each collection is filtered here, at
+ * parse time, so a malformed record is dropped before it reaches IndexedDB —
+ * and because the import preview counts the *parsed* file, the numbers shown
+ * before Merge/Replace already exclude anything that will be dropped.
+ */
+
+type Obj = Record<string, unknown>;
+
+const isObj = (v: unknown): v is Obj => typeof v === 'object' && v !== null && !Array.isArray(v);
+const isStr = (v: unknown): v is string => typeof v === 'string';
+const isNum = (v: unknown): v is number => typeof v === 'number' && Number.isFinite(v);
+const strOr = (v: unknown, fallback: string): string => (isStr(v) ? v : fallback);
+
+/**
+ * Only a well-formed base64 image data URL. Checked up front because
+ * `dataUrlToBlob` runs `atob`, which throws on bad base64 — and it runs in
+ * `applyBackup` after the user has already confirmed the import.
+ */
+const IMAGE_DATA_URL = /^data:image\/[\w.+-]+;base64,[A-Za-z0-9+/]*={0,2}$/;
+const isImageDataUrl = (v: unknown): v is string => isStr(v) && IMAGE_DATA_URL.test(v);
+
+/**
+ * Trainings are never dropped for anything but a missing id: a session whose
+ * `trainingId` stops resolving breaks history, so a training with a usable id
+ * is repaired field by field instead (empty label, file position as order).
+ */
+function toTraining(v: unknown, index: number): Training | null {
+  if (!isObj(v) || !isStr(v.id)) return null;
+  const training: Training = {
+    ...(v as Partial<Training>),
+    id: v.id,
+    label: strOr(v.label, ''),
+    order: isNum(v.order) ? v.order : index,
+    exerciseIds: Array.isArray(v.exerciseIds) ? v.exerciseIds.filter(isStr) : [],
+  };
+  if (!isStr(v.emoji)) delete training.emoji;
+  if (typeof v.archived !== 'boolean') delete training.archived;
+  // An unknown kind would match no page; absent already means 'gym'.
+  if (v.kind !== 'gym' && !SPORT_KINDS.some((k) => k === v.kind)) delete training.kind;
+  return training;
+}
+
+function toSet(v: unknown): SetEntry | null {
+  if (!isObj(v) || !isNum(v.reps) || !isNum(v.weight) || !isStr(v.at)) return null;
+  return { reps: v.reps, weight: v.weight, at: v.at };
+}
+
+function toEntry(v: unknown): SessionEntry | null {
+  if (!isObj(v) || !isStr(v.exerciseId)) return null;
+  const sets = Array.isArray(v.sets) ? v.sets.map(toSet).filter((s) => s !== null) : [];
+  return { exerciseId: v.exerciseId, sets };
+}
+
+function toSession(v: unknown): Session | null {
+  if (!isObj(v)) return null;
+  const { id, trainingId, trainingLabel, startedAt, savedAt, entries } = v;
+  if (!isStr(id) || !isStr(trainingId) || !isStr(startedAt) || !isStr(savedAt)) return null;
+  if (!Array.isArray(entries)) return null;
+  return {
+    id,
+    trainingId,
+    trainingLabel: strOr(trainingLabel, ''),
+    startedAt,
+    savedAt,
+    entries: entries.map(toEntry).filter((e) => e !== null),
+  };
+}
+
+function toSportSession(v: unknown): SportSession | null {
+  if (!isObj(v)) return null;
+  const { id, trainingId, trainingLabel, date, createdAt } = v;
+  if (!isStr(id) || !isStr(trainingId) || !isStr(date) || !isStr(createdAt)) return null;
+  const base = { id, trainingId, trainingLabel: strOr(trainingLabel, ''), date, createdAt };
+  switch (v.kind) {
+    case 'snowboard': {
+      const weather = WEATHER_CONDITIONS.find((w) => w === v.weather);
+      const snowCondition = SNOW_CONDITIONS.find((c) => c === v.snowCondition);
+      if (!weather || !snowCondition) return null;
+      return { ...base, kind: 'snowboard', weather, snowCondition, comments: strOr(v.comments, '') };
+    }
+    case 'cycling': {
+      if (!isNum(v.distanceKm) || !isNum(v.elevationM)) return null;
+      const avgBpm = isNum(v.avgBpm) ? v.avgBpm : null;
+      return { ...base, kind: 'cycling', distanceKm: v.distanceKm, elevationM: v.elevationM, avgBpm };
+    }
+    case 'climbing': {
+      const raw = v.climbsByGrade;
+      if (!isObj(raw)) return null;
+      const climbsByGrade = {} as Record<ClimbGrade, number>;
+      for (const grade of CLIMB_GRADES) {
+        const n = raw[grade];
+        climbsByGrade[grade] = isNum(n) ? n : 0;
+      }
+      return { ...base, kind: 'climbing', climbsByGrade };
+    }
+    case 'other':
+      return { ...base, kind: 'other', comments: strOr(v.comments, '') };
+    default:
+      return null;
+  }
+}
+
+function toCustomExercise(v: unknown): BackupCustomExercise | null {
+  if (!isObj(v) || !isStr(v.id) || !isStr(v.name)) return null;
+  return {
+    id: v.id,
+    name: v.name,
+    category: strOr(v.category, ''),
+    equipment: strOr(v.equipment, ''),
+    target: strOr(v.target, ''),
+    createdAt: strOr(v.createdAt, ''),
+    // A bad photo is dropped, not the exercise: sessions may reference its id.
+    image: isImageDataUrl(v.image) ? v.image : null,
+  };
+}
+
+function toCheckin(v: unknown): BackupWeightCheckin | null {
+  if (!isObj(v) || !isStr(v.id) || !isStr(v.date) || !isNum(v.weightKg)) return null;
+  const photos = Array.isArray(v.photos) ? v.photos.filter(isImageDataUrl) : [];
+  return { id: v.id, date: v.date, weightKg: v.weightKg, photos };
+}
+
+/** Map then drop the nulls — `[]` when the collection itself is not an array. */
+function validList<T>(v: unknown, toItem: (item: unknown, index: number) => T | null): T[] {
+  return Array.isArray(v) ? v.map(toItem).filter((item): item is T => item !== null) : [];
+}
+
 export function parseBackup(text: string): BackupFile {
   let data: unknown;
   try {
@@ -275,9 +412,9 @@ export function parseBackup(text: string): BackupFile {
   return {
     schemaVersion: b.schemaVersion,
     exportedAt: typeof b.exportedAt === 'string' ? b.exportedAt : null,
-    trainings: b.trainings.map(withValidRest).map(withValidEmoji),
-    sessions: b.sessions as Session[],
-    customExercises: Array.isArray(b.customExercises) ? b.customExercises : [],
+    trainings: validList(b.trainings, toTraining).map(withValidRest).map(withValidEmoji),
+    sessions: validList(b.sessions, toSession),
+    customExercises: validList(b.customExercises, toCustomExercise),
     settings: {
       weeklyGoal:
         typeof b.settings?.weeklyGoal === 'number' && b.settings.weeklyGoal > 0
@@ -298,15 +435,12 @@ export function parseBackup(text: string): BackupFile {
       // Absent from a backup older than schema 4. Only an image data URL is
       // accepted: it becomes a Blob rendered as an <img>, so anything else in
       // a hand-edited file is dropped and the avatar falls back to initials.
-      photo:
-        typeof b.profile?.photo === 'string' && b.profile.photo.startsWith('data:image/')
-          ? b.profile.photo
-          : null,
+      photo: isImageDataUrl(b.profile?.photo) ? b.profile.photo : null,
     },
-    checkins: Array.isArray(b.checkins) ? b.checkins : [],
+    checkins: validList(b.checkins, toCheckin),
     // Absent entirely from a backup written before sport sessions existed —
     // same "default rather than reject" handling as `checkins`/`profile`.
-    sportSessions: Array.isArray(b.sportSessions) ? b.sportSessions : [],
+    sportSessions: validList(b.sportSessions, toSportSession),
   };
 }
 

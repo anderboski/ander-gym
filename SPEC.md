@@ -153,9 +153,17 @@ Reachable from a gear icon on Home (Settings sheet).
   blobs; absent from an older backup and defaults to `null`. On import anything that is not a
   `data:image/…` URL is dropped to `null` — it becomes an `<img>`, so a hand-edited file must not be able
   to put arbitrary content there, and the avatar simply falls back to initials.
-- `sportSessions` is likewise absent from a backup older than schema `3` and defaults to `[]`. Sport records
-  are trusted as written on import — nothing in them feeds a countdown deadline or renders as a raw UI glyph
-  the way `restSeconds`/`emoji` do, so unlike those two fields there is no validate-or-drop pass.
+- `sportSessions` is likewise absent from a backup older than schema `3` and defaults to `[]`.
+- **Every record is validated on parse** (a backup is user-supplied input — hand-edited, truncated, or not
+  ours at all). A session, sport session, custom exercise or check-in missing a field the app dereferences
+  (ids, dates, `entries`, a sport kind's own fields, a finite `weightKg`) is **dropped**; malformed sets and
+  entries inside a kept session are dropped individually; optional text falls back to `''`. Every inlined
+  photo (custom exercise, check-in, profile) must be a well-formed base64 `data:image/…` URL or it is
+  dropped — `dataUrlToBlob`'s `atob` would otherwise throw *after* Replace has been confirmed. A
+  **training is never dropped for anything but a missing id**: losing one would strand every session whose
+  `trainingId` points at it, so a usable id is kept and the rest repaired (empty label, file position as
+  `order`, unknown `kind`/`emoji` removed). Because the preview counts the parsed file, dropped records are
+  already absent from the numbers shown before Merge/Replace.
 - `restSeconds` travels inside the trainings array, so it needs no format change. On import a value
   that could not run a countdown (non-numeric, zero, negative, `NaN`) is dropped rather than
   corrected — the training falls back to the default, which is what an absent field already means.
