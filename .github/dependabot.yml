@@ -1,7 +1,7 @@
 # Keeps the SHA-pinned actions in .github/workflows/ current. Dependabot
 # understands `@<sha> # vX.Y.Z` pins and rewrites both the SHA and the comment.
-# Only Actions for now: npm deps are few, and bumping them is a reviewed
-# change (see `npm audit` in CLAUDE.md), not a background chore.
+# Actions get routine weekly bumps; npm gets security updates only (see the
+# npm entry below) — routine npm bumps stay a reviewed change, not a chore.
 version: 2
 updates:
   - package-ecosystem: github-actions
@@ -12,5 +12,17 @@ updates:
     groups:
       actions:
         patterns: ['*']
+    commit-message:
+      prefix: chore
+
+  # npm: security updates only. `open-pull-requests-limit: 0` suppresses
+  # routine version bumps (those stay a reviewed change), but Dependabot
+  # security updates ignore the limit and still open a PR when an advisory
+  # lands — so a high-severity fix no longer waits for CI to trip over it.
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+    open-pull-requests-limit: 0
     commit-message:
       prefix: chore
