@@ -11,6 +11,7 @@ import {
   type ActiveSession,
   type ClimbGrade,
   type CyclingSession,
+  type RunningSession,
   type Exercise,
   type Session,
   type SetEntry,
@@ -1298,4 +1299,56 @@ export function cyclingRides(sportSessions: SportSession[], range: StatsRange): 
     .filter((s) => inRange(parseLocalDate(s.date), range))
     .sort((a, b) => b.date.localeCompare(a.date))
     .map((s) => ({ ...s, elevationPerKm: s.distanceKm > 0 ? s.elevationM / s.distanceKm : null }));
+}
+
+/* -------------------------------------------------------------------------- */
+/* Running                                                                     */
+/* -------------------------------------------------------------------------- */
+
+export type RunningSummary = {
+  runs: number;
+  totalDistanceKm: number;
+  totalElevationM: number;
+  /** Mean of the runs that logged a heart rate, or null when none did — heart rate is optional, so absence isn't zero. */
+  avgBpm: number | null;
+  /** Total time over total distance (min/km), not a mean of per-run paces — a 1 km jog must not weigh as much as a 20 km run. Null with no distance. */
+  avgPaceMinPerKm: number | null;
+};
+
+export function runningSummary(sportSessions: SportSession[], range: StatsRange): RunningSummary {
+  let runs = 0;
+  let totalDistanceKm = 0;
+  let totalElevationM = 0;
+  let totalMin = 0;
+  let bpmSum = 0;
+  let bpmCount = 0;
+
+  for (const s of sportSessions) {
+    if (s.kind !== 'running') continue;
+    if (!inRange(parseLocalDate(s.date), range)) continue;
+    runs += 1;
+    totalDistanceKm += s.distanceKm;
+    totalElevationM += s.elevationM;
+    totalMin += s.durationMin;
+    if (s.avgBpm !== null) {
+      bpmSum += s.avgBpm;
+      bpmCount += 1;
+    }
+  }
+
+  return {
+    runs,
+    totalDistanceKm,
+    totalElevationM,
+    avgBpm: bpmCount > 0 ? bpmSum / bpmCount : null,
+    avgPaceMinPerKm: totalDistanceKm > 0 ? totalMin / totalDistanceKm : null,
+  };
+}
+
+/** Individual runs in `range`, newest first. */
+export function runningRuns(sportSessions: SportSession[], range: StatsRange): RunningSession[] {
+  return sportSessions
+    .filter((s): s is RunningSession => s.kind === 'running')
+    .filter((s) => inRange(parseLocalDate(s.date), range))
+    .sort((a, b) => b.date.localeCompare(a.date));
 }

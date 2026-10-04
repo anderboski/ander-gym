@@ -15,6 +15,7 @@ import {
   currentWeekCount,
   cyclingRides,
   cyclingSummary,
+  runningSummary,
   dayKey,
   daysBetween,
   customStatsRange,
@@ -103,6 +104,9 @@ function sportSession(
   }
   if (kind === 'other') {
     return { ...base, kind, comments: '' };
+  }
+  if (kind === 'running') {
+    return { ...base, kind, distanceKm: 10, durationMin: 60, elevationM: 100, avgBpm: null };
   }
   return { ...base, kind, distanceKm: 10, elevationM: 100, avgBpm: null };
 }
@@ -1722,5 +1726,42 @@ describe('adjustRest', () => {
     rest = adjustRest(rest, -30, T0 + 7_000);
     expect(rest.targetMs).toBe(T0 + 90_000);
     expect(rest.totalSeconds).toBe(90);
+  });
+});
+
+describe('runningSummary', () => {
+  const now = new Date(2026, 7, 2, 10);
+  const run = (date: string, distanceKm: number, durationMin: number, elevationM: number, avgBpm: number | null): SportSession => ({
+    ...sportSession(date, 'run-a', 'running'),
+    kind: 'running',
+    distanceKm,
+    durationMin,
+    elevationM,
+    avgBpm,
+  });
+
+  it('is empty with no runs', () => {
+    expect(runningSummary([], trailingRange(30, now))).toEqual({
+      runs: 0,
+      totalDistanceKm: 0,
+      totalElevationM: 0,
+      avgBpm: null,
+      avgPaceMinPerKm: null,
+    });
+  });
+
+  it('weights pace by distance and averages only logged heart rates', () => {
+    const logs = [run('2026-07-30', 20, 120, 200, 150), run('2026-07-28', 5, 20, 50, null), run('2026-07-27', 5, 30, 0, 170)];
+    const s = runningSummary(logs, trailingRange(30, now));
+    expect(s.runs).toBe(3);
+    expect(s.totalDistanceKm).toBe(30);
+    expect(s.totalElevationM).toBe(250);
+    expect(s.avgBpm).toBe(160);
+    expect(s.avgPaceMinPerKm).toBeCloseTo(170 / 30);
+  });
+
+  it('ignores other kinds and runs outside the window', () => {
+    const logs = [sportSession('2026-07-30', 'c', 'cycling'), run('2026-05-01', 10, 50, 0, null)];
+    expect(runningSummary(logs, trailingRange(30, now)).runs).toBe(0);
   });
 });

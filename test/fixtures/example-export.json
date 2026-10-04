@@ -81,6 +81,14 @@
       "exerciseIds": [],
       "kind": "other",
       "emoji": "🎾"
+    },
+    {
+      "id": "t-7d1e2f40-5b0a-4c63-9a21-3c8b1f6e9a10",
+      "label": "Run",
+      "order": 7,
+      "exerciseIds": [],
+      "kind": "running",
+      "emoji": "🏃"
     }
   ],
   "sessions": [
@@ -751,6 +759,42 @@
       "trainingId": "t-9f4b1d2e-5c8a-4e77-b3d1-6a0f2c9e4b15",
       "trainingLabel": "Padel",
       "createdAt": "2026-08-05T19:40:00.000Z"
+    },
+    {
+      "kind": "running",
+      "date": "2026-09-20",
+      "distanceKm": 8.2,
+      "durationMin": 47,
+      "elevationM": 64,
+      "avgBpm": 152,
+      "id": "ss-5c0e1a70-2b4d-4e8f-9a3c-6d1f0b2e7a40",
+      "trainingId": "t-7d1e2f40-5b0a-4c63-9a21-3c8b1f6e9a10",
+      "trainingLabel": "Run",
+      "createdAt": "2026-09-20T08:00:00.000Z"
+    },
+    {
+      "kind": "running",
+      "date": "2026-09-27",
+      "distanceKm": 5,
+      "durationMin": 31.5,
+      "elevationM": 20,
+      "avgBpm": null,
+      "id": "ss-5c0e1a71-2b4d-4e8f-9a3c-6d1f0b2e7a41",
+      "trainingId": "t-7d1e2f40-5b0a-4c63-9a21-3c8b1f6e9a10",
+      "trainingLabel": "Run",
+      "createdAt": "2026-09-27T08:00:00.000Z"
+    },
+    {
+      "kind": "running",
+      "date": "2026-10-02",
+      "distanceKm": 12.4,
+      "durationMin": 70,
+      "elevationM": 140,
+      "avgBpm": 158,
+      "id": "ss-5c0e1a72-2b4d-4e8f-9a3c-6d1f0b2e7a42",
+      "trainingId": "t-7d1e2f40-5b0a-4c63-9a21-3c8b1f6e9a10",
+      "trainingLabel": "Run",
+      "createdAt": "2026-10-02T08:00:00.000Z"
     }
   ]
 }

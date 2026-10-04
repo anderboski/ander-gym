@@ -14,11 +14,24 @@ export function trainingKindLabel(t: TFunc, kind: TrainingKind): string {
       return t('trainingKind.snowboard');
     case 'cycling':
       return t('trainingKind.cycling');
+    case 'running':
+      return t('trainingKind.running');
     case 'climbing':
       return t('trainingKind.climbing');
     case 'other':
       return t('trainingKind.other');
   }
+}
+
+/** `m:ss /km`, or an em dash when there is no distance to divide by. Rounded to whole seconds first so 5:59.6 reads 6:00, not 5:60. */
+export function formatPace(durationMin: number, distanceKm: number): string {
+  if (distanceKm <= 0) return '—';
+  return formatPaceValue(durationMin / distanceKm);
+}
+
+export function formatPaceValue(minPerKm: number): string {
+  const total = Math.round(minPerKm * 60);
+  return `${Math.floor(total / 60)}:${String(total % 60).padStart(2, '0')} /km`;
 }
 
 export function weatherLabel(t: TFunc, weather: WeatherCondition): string {
@@ -36,6 +49,11 @@ export function sportSessionSummary(t: TFunc, s: SportSession): string {
       return `${weatherLabel(t, s.weather)} · ${snowConditionLabel(t, s.snowCondition)}`;
     case 'cycling': {
       const parts = [`${s.distanceKm.toFixed(1)} km`, `${Math.round(s.elevationM)} m`];
+      if (s.avgBpm !== null) parts.push(`${Math.round(s.avgBpm)} bpm`);
+      return parts.join(' · ');
+    }
+    case 'running': {
+      const parts = [`${s.distanceKm.toFixed(1)} km`, formatPace(s.durationMin, s.distanceKm), `${Math.round(s.elevationM)} m`];
       if (s.avgBpm !== null) parts.push(`${Math.round(s.avgBpm)} bpm`);
       return parts.join(' · ');
     }

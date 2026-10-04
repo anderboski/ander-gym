@@ -19,7 +19,7 @@ import { ConfirmSheet } from '../components/Sheet';
 import { StatRow, StatTile } from '../components/StatTile';
 import { formatDayTime, formatDayWithWeekday, useLanguage } from '../data/i18n';
 import { exerciseDisplayName } from '../data/exerciseI18n';
-import { snowConditionLabel, trainingKindLabel, weatherLabel } from '../data/sportLabels';
+import { formatPace, snowConditionLabel, trainingKindLabel, weatherLabel } from '../data/sportLabels';
 import { CLIMB_GRADES, type Exercise, type Session, type SessionEntry, type SportSession } from '../data/types';
 import './HistoryPage.css';
 
@@ -190,6 +190,13 @@ function SportSessionDetail({ session, onDeleted }: { session: SportSession; onD
     ) : session.kind === 'cycling' ? (
       <>
         <StatTile value={`${session.distanceKm.toFixed(1)} km`} label={t('sportLog.distanceLabel')} />
+        <StatTile value={`${Math.round(session.elevationM)} m`} label={t('sportLog.elevationLabel')} />
+        {session.avgBpm !== null && <StatTile value={`${Math.round(session.avgBpm)}`} label={t('sportLog.bpmLabel')} />}
+      </>
+    ) : session.kind === 'running' ? (
+      <>
+        <StatTile value={`${session.distanceKm.toFixed(1)} km`} label={t('sportLog.distanceLabel')} />
+        <StatTile value={formatPace(session.durationMin, session.distanceKm)} label={t('sportLog.paceLabel')} />
         <StatTile value={`${Math.round(session.elevationM)} m`} label={t('sportLog.elevationLabel')} />
         {session.avgBpm !== null && <StatTile value={`${Math.round(session.avgBpm)}`} label={t('sportLog.bpmLabel')} />}
       </>

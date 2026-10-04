@@ -20,7 +20,7 @@ anything written here.
 | D6 | Custom exercise image | Optional photo from camera/library, downscaled, stored as a blob; lettered placeholder otherwise |
 | D7 | Session history | Read-only; whole sessions may be deleted with confirmation |
 | D8 | Units | Kilograms only in v1 |
-| D9 | Sport sessions | A training's `kind` (`gym` default, or `snowboard`/`cycling`/`climbing`/`other`) fixed at creation. A non-`gym` training has no exercises, never joins Home's rotation, and logs to the separate `sportSessions` store — one-shot summary stats entered after the fact, not a live in-progress session — instead of `sessions`. Never counted toward the weekly goal or streak. Shown on Home's calendar (every activity gets a dot, not just one per day) and interleaved into History; immutable like a gym session, delete and re-log to correct. `other` is the user-defined kind — any activity the app has no dedicated form for — and records only a date and free-text notes, so it has no Stats tab (§5.6) |
+| D9 | Sport sessions | A training's `kind` (`gym` default, or `snowboard`/`cycling`/`running`/`climbing`/`other`) fixed at creation. A non-`gym` training has no exercises, never joins Home's rotation, and logs to the separate `sportSessions` store — one-shot summary stats entered after the fact, not a live in-progress session — instead of `sessions`. Never counted toward the weekly goal or streak. Shown on Home's calendar (every activity gets a dot, not just one per day) and interleaved into History; immutable like a gym session, delete and re-log to correct. `other` is the user-defined kind — any activity the app has no dedicated form for — and records only a date and free-text notes, so it has no Stats tab (§5.6) |
 
 **Non-goals for v1:** cross-device sync, accounts, plate calculators,
 video/GIF playback, notifications, unit switching, editing past sets.
@@ -105,6 +105,7 @@ type SportSessionBase = { id: string; trainingId: string; trainingLabel: string;
 
 type SnowboardSession = SportSessionBase & { kind: 'snowboard'; weather: WeatherCondition; snowCondition: SnowCondition; comments: string };
 type CyclingSession   = SportSessionBase & { kind: 'cycling'; distanceKm: number; elevationM: number /* "desnivel" */; avgBpm: number | null };
+type RunningSession   = SportSessionBase & { kind: 'running'; distanceKm: number; durationMin: number; elevationM: number; avgBpm: number | null };
 type ClimbingSession  = SportSessionBase & { kind: 'climbing'; climbsByGrade: Record<'3' | '4' | '5', number> };
 type OtherSession     = SportSessionBase & { kind: 'other'; comments: string };
 
@@ -461,7 +462,7 @@ canonical value.
 ### 5.3 Trainings
 Training days are fully user-managed — there is no fixed list and nothing is seeded.
 
-- **Type.** The "Add training day" sheet has a Type selector — Gym (default), Snowboard, Cycling, or
+- **Type.** The "Add training day" sheet has a Type selector — Gym (default), Snowboard, Cycling, Running, or
   Climbing — fixed for that training's lifetime, no UI to change it later. A non-Gym training has no
   exercises and lives in its own **"Other activities"** section below the rotation list, undraggable and
   excluded from `nextTraining()` (§5.8 covers what its detail view looks like instead of an exercise list).
@@ -719,6 +720,12 @@ enough that most buckets would sit empty, so this follows Climbing's simpler lis
 No cycling sessions ever logged shows a plain empty state instead of the period control, same as Climbing;
 a period with logs elsewhere but none in the window gets its own narrower empty state.
 
+**Running.** Same time-range dropdown and card shape as Cycling: a row of four tiles — total distance (km),
+elevation gain (m), average heart rate (mean of the runs that logged one, "—" if none) and average pace
+(`m:ss /km`) — over a `BarList` of the individual runs, newest first (`runningSummary`, `runningRuns`).
+Average pace is total time over total distance rather than a mean of per-run paces, so a short jog does
+not weigh as much as a long run. No runs ever logged shows a plain empty state instead of the period control.
+
 **Charts** are hand-rolled inline SVG in `components/Chart.tsx` — `Plot` owns the box, the scales, the
 gridlines and the axis labels (per-band labels for a handful of discrete categories like seasons or
 weekdays, edge labels for a continuous timeline; monthly edge labels carry the year, since a year of
@@ -798,6 +805,8 @@ the route, branching on `Training.kind` rather than adding a new one.
     (powder / packed / icy / slushy / spring snow / groomed), and a free-text Comments field.
   - **Cycling** — Distance in km (required, decimal), Elevation gain in m ("desnivel"), and an optional
     average heart rate in bpm.
+  - **Running** — Distance in km and Time in minutes (both required, decimal), Elevation gain in m, and an
+    optional average heart rate in bpm. Pace (min/km) is derived from time over distance, never entered.
   - **Climbing** — a count per grade, whole buckets 3 / 4 / 5 only (no French/Spanish a/b/c subgrades).
   - **Other** — the date and a free-text Comments field, nothing else. The training's own name says what
     the activity was, so there is nothing generic left worth collecting; its History row shows the first
