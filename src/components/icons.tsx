@@ -211,6 +211,14 @@ export const BikeIcon = (p: P) => (
   </svg>
 );
 
+/** A running figure — head, torso and a stride. */
+export const RunIcon = (p: P) => (
+  <svg {...base} {...p}>
+    <circle cx="14.5" cy="4.5" r="1.8" />
+    <path d="m12 8-3 2.5-2 3.5M12 8l3.5 3 3 .5M12 8l-1 5 3.5 3 1 4.5M11 13l-3 3-3.5 1.5" />
+  </svg>
+);
+
 export const SnowflakeIcon = (p: P) => (
   <svg {...base} {...p}>
     <path d="M12 3v18M4.2 7.5l15.6 9M4.2 16.5l15.6-9M12 3l-2.5 2.5M12 3l2.5 2.5M12 21l-2.5-2.5M12 21l2.5-2.5M4.2 7.5l3.4.4M4.2 7.5l.4 3.4M19.8 16.5l-3.4-.4M19.8 16.5l-.4-3.4M4.2 16.5l.4-3.4M4.2 16.5l3.4-.4M19.8 7.5l-.4 3.4M19.8 7.5l-3.4.4" />

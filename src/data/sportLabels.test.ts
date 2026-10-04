@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { interpolate, type TFunc } from './i18n';
 import { en } from './translations/en';
-import { sportSessionSummary } from './sportLabels';
+import { sportSessionSummary, formatPace } from './sportLabels';
 import type { SportSession } from './types';
 
 /** The real English dictionary, without a React provider. */
@@ -31,5 +31,20 @@ describe('sportSessionSummary', () => {
     const other: SportSession = { ...base, kind: 'other', comments: ' Great match \nwith Marta' };
     expect(sportSessionSummary(t, other)).toBe('Great match');
     expect(sportSessionSummary(t, { ...other, comments: '  \n ' })).toBe('Session logged');
+  });
+});
+
+describe('formatPace', () => {
+  it('formats min/km as m:ss', () => {
+    expect(formatPace(30, 5)).toBe('6:00 /km');
+    expect(formatPace(47, 8.2)).toBe('5:44 /km');
+  });
+
+  it('rounds to whole seconds without overflowing to :60', () => {
+    expect(formatPace(5.999 * 10, 10)).toBe('6:00 /km');
+  });
+
+  it('shows a dash with no distance', () => {
+    expect(formatPace(30, 0)).toBe('—');
   });
 });

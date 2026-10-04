@@ -384,6 +384,18 @@ export const CHANGELOG: ChangelogEntry[] = [
     en: ['Fixed pop-up sheets and messages sitting too low in the Home Screen app, which cut off their buttons.'],
     es: ['Corregidas las hojas emergentes y los avisos que quedaban demasiado abajo en la app de inicio y cortaban sus botones.'],
   },
+  {
+    version: '1.25.0',
+    date: '2026-10-04',
+    en: [
+      'Added Running — create a Running training day and log distance, time, elevation gain and average heart rate for each run.',
+      'Running stats show total distance, elevation gain, average heart rate and average pace (min/km), plus a list of your runs.',
+    ],
+    es: [
+      'Se añadió Carrera — crea un día de entrenamiento de Carrera y registra distancia, tiempo, desnivel y pulsaciones medias de cada salida.',
+      'Las estadísticas de Carrera muestran distancia total, desnivel, pulsaciones medias y ritmo medio (min/km), además de la lista de tus carreras.',
+    ],
+  },
 ];
 
 /** Keep in sync with the bootstrap-independent nature of theme/language: this

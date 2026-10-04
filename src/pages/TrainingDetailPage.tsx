@@ -210,6 +210,7 @@ function SportLogSheet({
   const [distanceKm, setDistanceKm] = useState('');
   const [elevationM, setElevationM] = useState('');
   const [avgBpm, setAvgBpm] = useState('');
+  const [durationMin, setDurationMin] = useState('');
 
   // Raw per-grade text, not numbers: a controlled numeric value re-renders as
   // "0" the instant the field is cleared, so the digit can never actually be
@@ -217,7 +218,9 @@ function SportLogSheet({
   // Parsed to a count only at submit time.
   const [climbsByGrade, setClimbsByGrade] = useState<Record<ClimbGrade, string>>({ '3': '', '4': '', '5': '' });
 
-  const canSave = date.length > 0 && !saving && (training.kind !== 'cycling' || distanceKm.trim() !== '');
+  const canSave = date.length > 0 && !saving && (training.kind !== 'cycling' || distanceKm.trim() !== '') &&
+    // Pace is time over distance, so a run missing either would poison the average.
+    (training.kind !== 'running' || (distanceKm.trim() !== '' && durationMin.trim() !== ''));
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -233,6 +236,15 @@ function SportLogSheet({
           kind: 'cycling',
           date,
           distanceKm: Number(distanceKm) || 0,
+          elevationM: Number(elevationM) || 0,
+          avgBpm: avgBpm.trim() ? Number(avgBpm) : null,
+        };
+      } else if (training.kind === 'running') {
+        input = {
+          kind: 'running',
+          date,
+          distanceKm: Number(distanceKm) || 0,
+          durationMin: Number(durationMin) || 0,
           elevationM: Number(elevationM) || 0,
           avgBpm: avgBpm.trim() ? Number(avgBpm) : null,
         };
@@ -325,7 +337,7 @@ function SportLogSheet({
           </>
         )}
 
-        {training.kind === 'cycling' && (
+        {(training.kind === 'cycling' || training.kind === 'running') && (
           <>
             <div className="field">
               <label className="label" htmlFor="sport-log-distance">
@@ -333,6 +345,14 @@ function SportLogSheet({
               </label>
               <input id="sport-log-distance" className="input" type="number" inputMode="decimal" min="0" step="0.1" required value={distanceKm} onChange={(e) => setDistanceKm(e.target.value)} />
             </div>
+            {training.kind === 'running' && (
+              <div className="field">
+                <label className="label" htmlFor="sport-log-duration">
+                  {t('sportLog.durationLabel')}
+                </label>
+                <input id="sport-log-duration" className="input" type="number" inputMode="decimal" min="0" step="0.1" required value={durationMin} onChange={(e) => setDurationMin(e.target.value)} />
+              </div>
+            )}
             <div className="field">
               <label className="label" htmlFor="sport-log-elevation">
                 {t('sportLog.elevationLabel')}

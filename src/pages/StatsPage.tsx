@@ -22,6 +22,8 @@ import {
   climbGradePyramid,
   cyclingRides,
   cyclingSummary,
+  runningRuns,
+  runningSummary,
   dayKey,
   defaultStatsView,
   formatMinutesOfDay,
@@ -42,6 +44,7 @@ import {
   type CustomRangeInput,
   type CyclingRide,
   type CyclingSummary,
+  type RunningSummary,
   type ExerciseTrend,
   type ProgressMetric,
   type PeriodStat,
@@ -54,7 +57,7 @@ import {
 import { formatDurationEstimate } from '../data/derive';
 import { formatCompact, formatKg, formatWeight, titleCase } from '../data/parse';
 import { exerciseDisplayName, translateFacetValue } from '../data/exerciseI18n';
-import { snowConditionLabel, sportSessionSummary, trainingKindLabel, weatherLabel } from '../data/sportLabels';
+import { formatPaceValue, snowConditionLabel, sportSessionSummary, trainingKindLabel, weatherLabel } from '../data/sportLabels';
 import {
   BarList,
   BarStrip,
@@ -67,9 +70,10 @@ import {
   type TimeMarker,
 } from '../components/Chart';
 import { BackButton } from '../components/BackButton';
+import { StatRow, StatTile } from '../components/StatTile';
 import { ExerciseHistorySheet } from '../components/ExerciseCard';
 import { ExerciseThumb } from '../components/ExerciseThumb';
-import { BikeIcon, DumbbellIcon, MountainIcon, SnowflakeIcon } from '../components/icons';
+import { BikeIcon, DumbbellIcon, MountainIcon, RunIcon, SnowflakeIcon } from '../components/icons';
 import { formatDay, useLanguage, type Language, type TranslationKey } from '../data/i18n';
 import {
   SNOW_CONDITIONS,
@@ -92,12 +96,13 @@ import './StatsPage.css';
  * than `TrainingKind[]` so a future kind has to opt into this page instead of
  * silently needing an icon here.
  */
-const KIND_ORDER = ['gym', 'cycling', 'snowboard', 'climbing'] as const satisfies readonly TrainingKind[];
+const KIND_ORDER = ['gym', 'cycling', 'running', 'snowboard', 'climbing'] as const satisfies readonly TrainingKind[];
 type StatsKind = (typeof KIND_ORDER)[number];
 
 const KIND_ICON: Record<StatsKind, (p: { className?: string }) => React.ReactElement> = {
   gym: DumbbellIcon,
   cycling: BikeIcon,
+  running: RunIcon,
   snowboard: SnowflakeIcon,
   climbing: MountainIcon,
 };
@@ -249,6 +254,15 @@ export function StatsPage() {
         ) : (
           range && (
             <CyclingStats sportSessions={sportSessions} range={range} rangeLabel={rangeLabel(t, locale, period, range)} />
+          )
+        ))}
+
+      {kind === 'running' &&
+        (!hasLogs ? (
+          <EmptyKind message={t('stats.runningEmptyState')} />
+        ) : (
+          range && (
+            <RunningStats sportSessions={sportSessions} range={range} rangeLabel={rangeLabel(t, locale, period, range)} />
           )
         ))}
 
@@ -1082,6 +1096,53 @@ function CyclingRides({
         }))}
       />
     </ChartFigure>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+/* Running                                                                     */
+/* -------------------------------------------------------------------------- */
+
+function RunningStats({
+  sportSessions,
+  range,
+  rangeLabel,
+}: {
+  sportSessions: SportSession[];
+  range: StatsRange;
+  rangeLabel: string;
+}) {
+  const { t, locale } = useLanguage();
+  const summary: RunningSummary = useMemo(() => runningSummary(sportSessions, range), [sportSessions, range]);
+  const runs = useMemo(() => runningRuns(sportSessions, range), [sportSessions, range]);
+
+  return (
+    <section className="section">
+      <div className="card card-pad">
+        <ChartFigure title={t('stats.runningTitle', { range: rangeLabel })}>
+          {runs.length === 0 ? (
+            <div className="stats-empty">{t('stats.rangeEmpty')}</div>
+          ) : (
+            <>
+              <StatRow>
+                <StatTile value={`${formatCompact(summary.totalDistanceKm)} km`} label={t('stats.runningTotalKm')} />
+                <StatTile value={`${Math.round(summary.totalElevationM)} m`} label={t('stats.runningElevation')} />
+                <StatTile value={summary.avgBpm !== null ? `${Math.round(summary.avgBpm)} bpm` : '—'} label={t('stats.runningAvgHr')} />
+                <StatTile value={summary.avgPaceMinPerKm !== null ? formatPaceValue(summary.avgPaceMinPerKm) : '—'} label={t('stats.runningAvgPace')} />
+              </StatRow>
+              <BarList
+                rows={runs.map((run) => ({
+                  key: run.id,
+                  label: formatDay(locale, parseLocalDate(run.date)),
+                  value: run.distanceKm,
+                  valueLabel: sportSessionSummary(t, run),
+                }))}
+              />
+            </>
+          )}
+        </ChartFigure>
+      </div>
+    </section>
   );
 }
 

@@ -340,6 +340,11 @@ function toSportSession(v: unknown): SportSession | null {
       const avgBpm = isNum(v.avgBpm) ? v.avgBpm : null;
       return { ...base, kind: 'cycling', distanceKm: v.distanceKm, elevationM: v.elevationM, avgBpm };
     }
+    case 'running': {
+      if (!isNum(v.distanceKm) || !isNum(v.durationMin) || !isNum(v.elevationM)) return null;
+      const avgBpm = isNum(v.avgBpm) ? v.avgBpm : null;
+      return { ...base, kind: 'running', distanceKm: v.distanceKm, durationMin: v.durationMin, elevationM: v.elevationM, avgBpm };
+    }
     case 'climbing': {
       const raw = v.climbsByGrade;
       if (!isObj(raw)) return null;
