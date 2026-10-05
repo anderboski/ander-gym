@@ -1410,15 +1410,25 @@ describe('calendar', () => {
     it('keys sessions by local calendar day', () => {
       const s = session(at(2026, 8, 1));
       const map = sessionsByDay([s]);
-      expect(map.get('2026-08-01')).toBe(s);
+      expect(map.get('2026-08-01')).toEqual([s]);
       expect(map.size).toBe(1);
     });
 
-    it('picks the most recent session when two land on the same day', () => {
+    it('keeps every session on a shared day, oldest first, whatever the input order', () => {
       const earlier = session(at(2026, 8, 1, 9), 'a');
       const later = session(at(2026, 8, 1, 18), 'b');
-      const map = sessionsByDay([earlier, later]);
-      expect(map.get('2026-08-01')).toBe(later);
+      const nextDay = session(at(2026, 8, 2, 7), 'a');
+      const map = sessionsByDay([later, nextDay, earlier]);
+      expect(map.get('2026-08-01')).toEqual([earlier, later]);
+      expect(map.get('2026-08-02')).toEqual([nextDay]);
+    });
+
+    it('splits by local day, not UTC', () => {
+      const lateNight = session(at(2026, 8, 1, 23, 30));
+      const earlyMorning = session(at(2026, 8, 2, 0, 30));
+      const map = sessionsByDay([lateNight, earlyMorning]);
+      expect(map.get('2026-08-01')).toEqual([lateNight]);
+      expect(map.get('2026-08-02')).toEqual([earlyMorning]);
     });
   });
 
@@ -1429,7 +1439,7 @@ describe('calendar', () => {
       expect(map.get('2026-08-01')).toEqual([s]);
     });
 
-    it('keeps every entry on a day with more than one, unlike sessionsByDay', () => {
+    it('keeps every entry on a day with more than one', () => {
       const a = sportSession('2026-08-01', 'a', 'cycling');
       const b = sportSession('2026-08-01', 'b', 'climbing');
       const map = sportSessionsByDay([a, b]);

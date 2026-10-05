@@ -90,7 +90,8 @@ in `tabOf`, and render it in `App.tsx`.
 [`test/fixtures/example-export.json`](test/fixtures/example-export.json) is a trimmed, obfuscated
 export in the `BackupFile` shape (`src/data/backup.ts`) — a couple of trainings/sessions per training
 type (gym + each sport kind), a bodyweight set, an in-progress-looking session with empty-set entries,
-custom exercises (with and without a photo), two weigh-ins, decimal weights. **Use it instead of
+custom exercises (with and without a photo), two weigh-ins, decimal weights, and one day with two gym
+sessions plus a sport session (the calendar medallion). **Use it instead of
 hand-creating trainings and sessions** when you need a populated app to test against: Settings →
 Import → pick the file → Replace. Don't add real personal data to it; if a bug needs a shape this file
 doesn't cover, extend the fixture instead of typing data into the UI by hand.

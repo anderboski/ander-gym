@@ -7,7 +7,7 @@
  * All maths comes from data/derive.ts. `now` is captured once per render so the
  * week counter, streak and "days ago" lines can never disagree with each other.
  */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useGym } from '../data/store';
 import {
   addMonths,
@@ -351,11 +351,18 @@ function GoalRing({ count, goal }: { count: number; goal: number }) {
 /** One calendar-day badge: a resolvable id to open, an icon, and a label for the day's aria description. */
 type DayBadge = { id: string; badge: string; label: string };
 
+/** How long each face of a multi-activity day's medallion shows before it flips to the next. */
+const MEDALLION_STEP_MS = 2500;
+
+/** Pips under a medallion beyond this collapse into "+N" — a day cell is ~48 pt wide. */
+const PIP_CAP = 5;
+
 /**
- * Month calendar: one primary activity per day (the gym session if there is
- * one, else the first sport session), with a pip for each further activity.
- * Tapping a trained day opens its primary entry in History; the month in view
- * is local state, independent of `now`.
+ * Month calendar. A day with one activity shows its badge; a day with several
+ * shows a medallion that flips through every one of them (gym sessions oldest
+ * first, then sport sessions), with a pip per activity marking which face is
+ * up. Tapping a day opens whichever activity is showing at that moment. The
+ * month in view is local state, independent of `now`.
  */
 function HomeCalendar({
   sessions,
@@ -377,12 +384,35 @@ function HomeCalendar({
   const trainingsById = useMemo(() => new Map(trainings.map((tr) => [tr.id, tr])), [trainings]);
   const grid = useMemo(() => monthGrid(month), [month]);
 
+  const cells = useMemo(
+    () =>
+      grid.map(({ date, inMonth }) => {
+        const key = dayKey(date);
+        const badges: DayBadge[] = [...(byDay.get(key) ?? []), ...(sportByDay.get(key) ?? [])].map((s) => ({
+          id: s.id,
+          badge: trainingBadge(trainingsById.get(s.trainingId), s.trainingLabel),
+          label: s.trainingLabel,
+        }));
+        return { date, inMonth, key, badges };
+      }),
+    [grid, byDay, sportByDay, trainingsById],
+  );
+
+  // One counter shared by every medallion, so the whole month flips in step
+  // rather than each cell on its own phase. The timer only runs while the
+  // month in view has something to flip.
+  const [step, setStep] = useState(0);
+  const anyMulti = cells.some((c) => c.badges.length > 1);
+  useEffect(() => {
+    if (!anyMulti) return;
+    const id = window.setInterval(() => setStep((n) => n + 1), MEDALLION_STEP_MS);
+    return () => window.clearInterval(id);
+  }, [anyMulti]);
+
   const weekdays = grid.slice(0, 7).map(({ date }) => ({
     narrow: date.toLocaleDateString(locale, { weekday: 'narrow' }),
     full: date.toLocaleDateString(locale, { weekday: 'long' }),
   }));
-
-  const PIP_CAP = 3;
 
   return (
     <div className="card card-pad home-cal">
@@ -407,31 +437,16 @@ function HomeCalendar({
       </div>
 
       <div className="home-cal-grid">
-        {grid.map(({ date, inMonth }) => {
-          const key = dayKey(date);
-          const session = byDay.get(key);
-          const sports = sportByDay.get(key) ?? [];
+        {cells.map(({ date, inMonth, key, badges }) => {
           const classes = ['home-cal-day'];
           if (!inMonth) classes.push('home-cal-day-out');
           if (isSameDay(date, now)) classes.push('home-cal-day-today');
 
-          const badges: DayBadge[] = [];
-          if (session) {
-            badges.push({
-              id: session.id,
-              badge: trainingBadge(trainingsById.get(session.trainingId), session.trainingLabel),
-              label: session.trainingLabel,
-            });
-          }
-          for (const s of sports) {
-            badges.push({
-              id: s.id,
-              badge: trainingBadge(trainingsById.get(s.trainingId), s.trainingLabel),
-              label: s.trainingLabel,
-            });
-          }
+          const multi = badges.length > 1;
+          const face = step % Math.max(badges.length, 1);
+          const current = badges[face];
 
-          if (badges.length === 0) {
+          if (!current) {
             return (
               <div className={classes.join(' ')} key={key}>
                 <span className="home-cal-daynum">{date.getDate()}</span>
@@ -440,27 +455,32 @@ function HomeCalendar({
           }
 
           classes.push('home-cal-day-trained');
-          const primary = badges[0]!;
-          const extra = badges.slice(1);
 
           return (
             <button
               type="button"
               className={classes.join(' ')}
               key={key}
-              onClick={() => navigate(`/history/${primary.id}`)}
+              // `current` comes from the same render that drew the face, so the
+              // activity a tap opens is always the one on screen.
+              onClick={() => navigate(`/history/${current.id}`)}
               aria-label={`${date.toLocaleDateString(locale, { day: 'numeric', month: 'long' })}, ${badges.map((b) => b.label).join(', ')}`}
             >
               <span className="home-cal-daynum">{date.getDate()}</span>
               <span className="home-cal-dot" aria-hidden="true">
-                {primary.badge}
+                {/* Keyed by id so each new face remounts and replays the flip;
+                    the first face skips it, so opening Home doesn't set every
+                    medallion turning at once. */}
+                <span key={current.id} className={multi && step > 0 ? 'home-cal-face home-cal-face-flip' : 'home-cal-face'}>
+                  {current.badge}
+                </span>
               </span>
-              {extra.length > 0 && (
+              {multi && (
                 <span className="home-cal-pips" aria-hidden="true">
-                  {extra.slice(0, PIP_CAP).map((b) => (
-                    <span className="home-cal-pip" key={b.id} />
+                  {badges.slice(0, PIP_CAP).map((b, i) => (
+                    <span className={i === face ? 'home-cal-pip home-cal-pip-on' : 'home-cal-pip'} key={b.id} />
                   ))}
-                  {extra.length > PIP_CAP && <span className="home-cal-pip-more">+{extra.length - PIP_CAP}</span>}
+                  {badges.length > PIP_CAP && <span className="home-cal-pip-more">+{badges.length - PIP_CAP}</span>}
                 </span>
               )}
             </button>

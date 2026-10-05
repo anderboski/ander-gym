@@ -13,8 +13,9 @@ sessions on every pass, seed the device once from
 [`test/fixtures/example-export.json`](../test/fixtures/example-export.json): Home → gear →
 **Import**, pick the file, choose **Replace**. It gives you a couple of trainings and sessions
 of each kind (gym + sport), custom exercises, weigh-ins, and edge cases like bodyweight sets
-and decimal weights — everything sections 3–3e exercise except the empty-state checks in
-section 3, which still need a fresh install with no import.
+and decimal weights, plus a day (5 August) with two gym sessions and a sport session — everything
+sections 3–3e exercise except the empty-state checks in section 3, which still need a fresh
+install with no import.
 
 ## 1. Install to Home Screen
 
@@ -175,8 +176,16 @@ Only a phone can tell you whether a 320-unit chart is legible in a hand.
       bicycle, snowflake, mountain) — **Other** has none, and its logs change
       nothing on any of the four.
 - [ ] Log a gym session and a sport session on the same date. The calendar
-      cell shows the gym badge plus a small dot for the sport session
-      underneath, rather than only one or the other.
+      cell's badge flips between the two every ~2.5 s, with two pips under it
+      and the one for the face showing filled in.
+- [ ] With two gym sessions and a sport session on one date (the seed file's
+      5 August has exactly that), the medallion cycles through all three. The
+      flip looks smooth, not janky, and several medallions in one month flip
+      together.
+- [ ] Tap the day while each face is showing: every tap opens the activity
+      whose badge was on screen, not always the same one.
+- [ ] Settings → Accessibility → Motion → **Reduce Motion** on: the faces
+      still change but swap instantly, with no turning.
 - [ ] Confirm there is no way to change a training's Type after creation.
 
 ## 4. Keyboard behaviour

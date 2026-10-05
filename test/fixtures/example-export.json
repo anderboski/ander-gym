@@ -610,6 +610,30 @@
       ],
       "id": "16239182-76c2-4831-88f1-1d217f1539c4",
       "savedAt": "2026-07-22T16:00:03.000Z"
+    },
+    {
+      "trainingId": "leg-abs",
+      "trainingLabel": "Leg & Abs",
+      "startedAt": "2026-08-05T07:10:00.000Z",
+      "entries": [
+        {
+          "exerciseId": "0743",
+          "sets": [
+            {
+              "reps": 12,
+              "weight": 50,
+              "at": "2026-08-05T07:15:00.000Z"
+            },
+            {
+              "reps": 10,
+              "weight": 55,
+              "at": "2026-08-05T07:19:30.000Z"
+            }
+          ]
+        }
+      ],
+      "id": "example-same-day-0001",
+      "savedAt": "2026-08-05T07:40:00.000Z"
     }
   ],
   "customExercises": [
