@@ -396,6 +396,18 @@ export const CHANGELOG: ChangelogEntry[] = [
       'Las estadísticas de Carrera muestran distancia total, desnivel, pulsaciones medias y ritmo medio (min/km), además de la lista de tus carreras.',
     ],
   },
+  {
+    version: '1.26.0',
+    date: '2026-10-05',
+    en: [
+      'Days with more than one session on the Home calendar now show a spinning medallion that flips through every training you did that day — including two gym sessions on the same day, which used to show only one.',
+      'Tap the day to open whichever session is showing at that moment.',
+    ],
+    es: [
+      'Los días con más de una sesión en el calendario de Inicio muestran ahora un medallón giratorio que pasa por cada entrenamiento de ese día — incluidas dos sesiones de gimnasio el mismo día, que antes mostraban solo una.',
+      'Toca el día para abrir la sesión que se esté mostrando en ese momento.',
+    ],
+  },
 ];
 
 /** Keep in sync with the bootstrap-independent nature of theme/language: this

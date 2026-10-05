@@ -428,15 +428,19 @@ export function averageSessionMinutes(trainingId: string, sessions: Session[]): 
 }
 
 /**
- * The Home calendar shows at most one training per day, so where two sessions
- * land on the same date the later one wins — same rule as `completedToday`.
- * Keyed by `formatDate`, which is already local-time `YYYY-MM-DD`.
+ * Every saved gym session on a given day, oldest first — the Home calendar's
+ * medallion cycles through all of them (§5.1) rather than letting a later
+ * session hide an earlier one. Keyed by `dayKey`, local-time `YYYY-MM-DD`.
  */
-export function sessionsByDay(sessions: Session[]): Map<string, Session> {
-  const out = new Map<string, Session>();
-  for (const s of sortSessions(sessions)) {
+export function sessionsByDay(sessions: Session[]): Map<string, Session[]> {
+  const out = new Map<string, Session[]>();
+  // sortSessions is newest first; reverse it so each day's list reads in the
+  // order the sessions happened.
+  for (const s of sortSessions(sessions).reverse()) {
     const key = dayKey(new Date(s.startedAt));
-    if (!out.has(key)) out.set(key, s);
+    const list = out.get(key) ?? [];
+    list.push(s);
+    out.set(key, list);
   }
   return out;
 }
@@ -445,9 +449,8 @@ export function sessionsByDay(sessions: Session[]): Map<string, Session> {
  * Every sport session on a given day, keyed by `SportSession.date` directly —
  * that field is already local `YYYY-MM-DD`, the same shape `dayKey` produces,
  * so no `Date` round-trip is needed the way `sessionsByDay` needs one for
- * `Session.startedAt` (a full timestamp). Unlike `sessionsByDay`, a day here
- * keeps every entry rather than picking one "later wins" winner: the whole
- * point of showing sports on the calendar is seeing all of them.
+ * `Session.startedAt` (a full timestamp). Kept in stored order: a sport
+ * session has a date but no time of day to sort by.
  */
 export function sportSessionsByDay(sportSessions: SportSession[]): Map<string, SportSession[]> {
   const out = new Map<string, SportSession[]>();

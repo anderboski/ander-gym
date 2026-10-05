@@ -352,11 +352,27 @@
   line-height: 1;
   font-weight: 700;
   color: var(--accent);
+  perspective: 120px;
 }
 
-/* A day with more than one logged activity: the primary badge above stays,
-   these pips call out that there's more without needing their own tap target —
-   the whole day cell already opens the primary one. */
+/* inline-block so the face can take a transform. Each new face turns in from
+   edge-on, like a coin landing on its next side. */
+.home-cal-face {
+  display: inline-block;
+}
+
+.home-cal-face-flip {
+  animation: home-cal-flip 0.45s ease-out;
+}
+
+@keyframes home-cal-flip {
+  from {
+    transform: rotateY(90deg);
+  }
+}
+
+/* One pip per activity on a multi-activity day, the face currently up filled
+   in: the static cue that the day holds more than the one face showing. */
 .home-cal-pips {
   display: flex;
   align-items: center;
@@ -367,6 +383,10 @@
   width: 4px;
   height: 4px;
   border-radius: var(--r-full);
+  background: var(--text-faint);
+}
+
+.home-cal-pip-on {
   background: var(--accent);
 }
 
@@ -375,6 +395,15 @@
   font-weight: 700;
   color: var(--text-dim);
   line-height: 1;
+}
+
+/* Faces still change under Reduce Motion (otherwise every activity but the
+   first would be unreachable from the calendar); they just swap instead of
+   turning. */
+@media (prefers-reduced-motion: reduce) {
+  .home-cal-face-flip {
+    animation: none;
+  }
 }
 
 /* --------------------------------------------------------------------------

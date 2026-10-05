@@ -209,8 +209,10 @@ one, both when picking the no-history fallback and when walking forward from the
   eligible training.
 
 **`sportSessionsByDay(sportSessions)`** — every sport session on a given day, keyed by the `date` field
-directly (already local `YYYY-MM-DD`). Unlike `sessionsByDay`, keeps every entry rather than picking a
-"later wins" winner — the whole point of the calendar showing sports is seeing all of them (§5.1).
+directly (already local `YYYY-MM-DD`), kept in stored order — a sport session has no time of day to sort by.
+
+**`sessionsByDay(sessions)`** — every saved gym session on a given day, keyed by `dayKey` of `startedAt`,
+oldest first. Nothing is dropped: two gym sessions on one day both reach the calendar's medallion (§5.1).
 
 **`lastSportSessionForTraining(trainingId, sportSessions)`** — the most recent log for one sport training,
 same idea as `lastSessionForTraining` but comparing `date` strings instead of `Date`s.
@@ -338,13 +340,17 @@ the fixed bottom nav.
   empty state.
 - **Calendar** — below Today, a month grid (Monday-start, six fixed rows so paging never changes the card's
   height). Prev/next chevrons above the grid step one month at a time, unbounded in either direction. A day
-  with a saved gym session or a logged sport session shows a small circular badge with that training's icon,
-  or its initial if no icon has been set; today's cell is outlined.
-  A day's badge picks one "primary" activity to show as that circle and to open on tap — the saved gym
-  session if there is one that day, otherwise the first sport session — same "later wins" rule as before
-  for two gym sessions on one day. Unlike a gym-only day, every *other* activity logged that same day still
-  gets a small dot underneath (capped at 3, then `+N`): the point of putting sports on this calendar is
-  seeing all of them, not collapsing the day to one winner. Tapping a day opens its primary entry in History
+  with a saved gym session or a logged sport session shows a small badge with that training's icon, or its
+  initial if no icon has been set; today's cell is outlined.
+  A day with more than one activity — any mix of gym sessions and sport sessions — shows a **medallion**
+  instead: the badge flips, coin-style, to the next activity every 2.5 s, cycling through all of them (gym
+  sessions oldest first, then sport sessions). Every medallion in the month shares one clock, so they flip
+  in step rather than each on its own phase, and the timer only runs while the month in view has one.
+  Under a medallion, one pip per activity (capped at 5, then `+N`) with the face currently showing filled
+  in — the static cue that the day holds more than the face on screen. With Reduce Motion on, faces still
+  change on the same clock but swap without turning: freezing them would leave every activity but the first
+  unreachable from the calendar.
+  Tapping a day opens **the activity whose badge is showing at that moment** in History
   (`#/history/<id>`); untrained days are inert. Hidden until at least one gym or sport session exists,
   matching the Stats shortcut.
 - **Backup banner** — shown per `backupStatus` (§4): `lastExportAt` unset with ≥1 session, older than 30
