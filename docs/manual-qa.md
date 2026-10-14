@@ -158,8 +158,9 @@ Only a phone can tell you whether a 320-unit chart is legible in a hand.
       and cannot be pushed into the future. Fill in distance, elevation, and
       heart rate → Save. The log appears in a list on this same page.
 - [ ] Home → today's calendar cell shows a dot for it, even though no gym
-      training exists yet — and the week counter still reads `0 trainings`
-      (a sport session never counts toward the goal or the streak).
+      training exists yet — and the week counter reads `1 training`
+      (every activity counts toward the goal and the streak), its ring
+      advancing one step.
 - [ ] History → the log appears in the same reverse-chronological list as gym
       sessions, with a one-line summary (`10.0 km · 100 m · 142 bpm`).
 - [ ] Tap it → the detail view shows the same fields as stat tiles and a

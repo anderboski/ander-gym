@@ -91,8 +91,8 @@ export function HomePage() {
   const name = profile.name.trim();
   const greeting = t(GREETING_KEYS[greetingBucket(now)]);
   const goal = settings.weeklyGoal;
-  const weekCount = currentWeekCount(sessions, now);
-  const streak = weeklyStreak(sessions, goal, now);
+  const weekCount = currentWeekCount(sessions, sportSessions, now);
+  const streak = weeklyStreak(sessions, sportSessions, goal, now);
   const today = nextTraining(trainings, sessions);
   const doneToday = completedToday(sessions, now);
   const lastForToday = today ? lastSessionForTraining(today.id, sessions) : null;

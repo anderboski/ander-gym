@@ -94,7 +94,7 @@ export const TRAINING_ID_PREFIX = 't-';
  *
  * `'other'` is the escape hatch for any activity the app has no dedicated
  * kind for — padel, surfing, a hike. It behaves exactly like the named sport
- * kinds (History, calendar, never counted toward the weekly goal) but records
+ * kinds (History, calendar, counted toward the weekly goal) but records
  * nothing measurable beyond a date and free-text notes, so it has no Stats
  * tab: what the sport even is varies per training, and there is nothing
  * comparable to chart across them.

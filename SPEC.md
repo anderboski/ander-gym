@@ -20,7 +20,7 @@ anything written here.
 | D6 | Custom exercise image | Optional photo from camera/library, downscaled, stored as a blob; lettered placeholder otherwise |
 | D7 | Session history | Read-only; whole sessions may be deleted with confirmation |
 | D8 | Units | Kilograms only in v1 |
-| D9 | Sport sessions | A training's `kind` (`gym` default, or `snowboard`/`cycling`/`running`/`climbing`/`other`) fixed at creation. A non-`gym` training has no exercises, never joins Home's rotation, and logs to the separate `sportSessions` store — one-shot summary stats entered after the fact, not a live in-progress session — instead of `sessions`. Never counted toward the weekly goal or streak. Shown on Home's calendar (every activity gets a dot, not just one per day) and interleaved into History; immutable like a gym session, delete and re-log to correct. `other` is the user-defined kind — any activity the app has no dedicated form for — and records only a date and free-text notes, so it has no Stats tab (§5.6) |
+| D9 | Sport sessions | A training's `kind` (`gym` default, or `snowboard`/`cycling`/`running`/`climbing`/`other`) fixed at creation. A non-`gym` training has no exercises, never joins Home's rotation, and logs to the separate `sportSessions` store — one-shot summary stats entered after the fact, not a live in-progress session — instead of `sessions`. Counted toward the weekly goal and streak like a gym session (originally excluded; changed in 1.27.0 — the goal measures any activity). Shown on Home's calendar (every activity gets a dot, not just one per day) and interleaved into History; immutable like a gym session, delete and re-log to correct. `other` is the user-defined kind — any activity the app has no dedicated form for — and records only a date and free-text notes, so it has no Stats tab (§5.6) |
 
 **Non-goals for v1:** cross-device sync, accounts, plate calculators,
 video/GIF playback, notifications, unit switching, editing past sets.
@@ -196,8 +196,10 @@ All dates are handled in the device's local timezone. `derive.ts` produces keys 
 which write the year only when it is not the current one. Chart geometry — axis domains, tick steps,
 marker lane assignment — is its own pure module, `chart.ts`, so it is unit-tested without an SVG.
 
-**`currentWeekCount(sessions, now)`** — number of saved sessions whose `startedAt` falls in the current
-ISO week (Monday 00:00 → Sunday 23:59:59).
+**`currentWeekCount(sessions, sportSessions, now)`** — number of activities in the current ISO week
+(Monday 00:00 → Sunday 23:59:59): saved gym sessions by `startedAt`, plus sport sessions by `date` at local
+midnight. Every activity counts toward the weekly goal, whatever its kind — the goal measures showing up,
+not which training it was.
 
 **`nextTraining(trainings, sessions)`** — strict rotation over `order` (the drag-reordered sequence), among
 `'gym'`-kind (or kind-absent) trainings only — a non-`'gym'` training is skipped exactly like an archived
@@ -229,8 +231,8 @@ logged since, whichever comes first: an export from 29 days ago says nothing abo
 logged since, and the session count is what actually measures what a wipe would cost. A fresh install with
 nothing logged is never due — there is nothing to lose before the first session.
 
-**`weeklyStreak(sessions, goal, now)`** — count of consecutive ISO weeks, walking backwards from last week,
-where the session count ≥ `goal`. The current week is included only if it already meets the goal (so a
+**`weeklyStreak(sessions, sportSessions, goal, now)`** — count of consecutive ISO weeks, walking backwards
+from last week, where the activity count (gym + sport, same as `currentWeekCount`) ≥ `goal`. The current week is included only if it already meets the goal (so a
 streak is never broken mid-week).
 
 **`latestFor(exerciseId, sessions)`** — most recent saved session containing that exercise; returns
@@ -652,7 +654,9 @@ one drops out of the set; that is derived per render, not corrected in the chang
 with a custom range the allowed set moves as the dates move.
 
 **Gym.** Six visuals:
-- **Sessions per bucket** (`statsBuckets`) — a bar strip. On the weekly view only, the weekly goal is drawn
+- **Sessions per bucket** (`statsBuckets`, its `activities` count) — a bar strip of every activity, gym
+  sessions and sport logs alike, because that is what the weekly goal counts and the two must agree; the
+  volume and duration charts stay gym-only. On the weekly view only, the weekly goal is drawn
   as a reference line and bars that met it wear the accent, the rest go recessive — the daily and monthly
   views aren't the unit the goal is set in, so they get a plain count instead. A bucket with nothing logged
   is a flat stub, not a gap. Buckets run from the one containing the window's first day to the one
@@ -819,9 +823,10 @@ the route, branching on `Training.kind` rather than adding a new one.
     line of those notes as its summary, or "Session logged" when they are empty, and its detail view has
     no stat tiles.
 - **Immutable**, same rule as a gym session (D7) — no editing, only delete-and-re-log to correct a mistake.
-- **Never affects Home's rotation, weekly goal, or streak** — those all read `sessions` only; sport sessions
-  live in the separate `sportSessions` store precisely so they fall out of that maths for free rather than
-  needing a filter.
+- **Counts toward the weekly goal and streak** (§4 `currentWeekCount`/`weeklyStreak`), the same as a gym
+  session — any activity is progress toward the week. **Never affects Home's rotation**: `nextTraining()`
+  reads `sessions` only, and sport sessions live in the separate `sportSessions` store so they fall out of
+  that maths for free rather than needing a filter.
 - Shown on Home's calendar (§5.1) and interleaved into History (§5.5); a training's chosen icon (§5.3) is
   reused as the calendar/History badge — no separate icon set for sport kinds.
 

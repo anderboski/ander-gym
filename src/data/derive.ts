@@ -234,28 +234,43 @@ export function totalVolume(session: Pick<Session, 'entries'>): number {
   );
 }
 
-/** Sessions started within the ISO week containing `now`. */
-export function currentWeekCount(sessions: Session[], now: Date): number {
+/**
+ * When each logged activity happened, gym and sport alike — what the weekly
+ * goal and streak count. A sport session has only a `date`, so it lands at
+ * local midnight (`parseLocalDate`), which is enough to place it in a week.
+ */
+function activityDates(sessions: Session[], sportSessions: SportSession[]): Date[] {
+  return [...sessions.map((s) => new Date(s.startedAt)), ...sportSessions.map((s) => parseLocalDate(s.date))];
+}
+
+/** Activities (gym sessions + sport logs) within the ISO week containing `now`. */
+export function currentWeekCount(sessions: Session[], sportSessions: SportSession[], now: Date): number {
   const from = startOfWeek(now).getTime();
   const to = addWeeks(startOfWeek(now), 1).getTime();
-  return sessions.filter((s) => {
-    const t = new Date(s.startedAt).getTime();
+  return activityDates(sessions, sportSessions).filter((d) => {
+    const t = d.getTime();
     return t >= from && t < to;
   }).length;
 }
 
 /**
- * Consecutive weeks meeting `goal`, counting backwards.
+ * Consecutive weeks meeting `goal`, counting backwards. Every activity counts,
+ * gym or sport — the goal is about showing up, not about which kind.
  *
  * The current week is included only if it already meets the goal, so a streak
  * is never reported as broken halfway through the week you're still in.
  */
-export function weeklyStreak(sessions: Session[], goal: number, now: Date): number {
+export function weeklyStreak(
+  sessions: Session[],
+  sportSessions: SportSession[],
+  goal: number,
+  now: Date,
+): number {
   if (goal <= 0) return 0;
 
   const perWeek = new Map<number, number>();
-  for (const s of sessions) {
-    const key = startOfWeek(new Date(s.startedAt)).getTime();
+  for (const d of activityDates(sessions, sportSessions)) {
+    const key = startOfWeek(d).getTime();
     perWeek.set(key, (perWeek.get(key) ?? 0) + 1);
   }
 
@@ -947,7 +962,10 @@ export function defaultStatsView(range: StatsRange): StatsView {
 /** One time-series bucket for the sessions-count and duration charts. */
 export type PeriodStat = {
   start: string;
+  /** Gym sessions only — the denominator behind volume and duration. */
   sessions: number;
+  /** Gym sessions plus sport logs — what the weekly goal counts, so what the sessions chart draws. */
+  activities: number;
   volume: number;
   /** Average minutes across sessions in the bucket with a positive `savedAt - startedAt`, or null with none to average — same "positive only" rule as `averageSessionMinutes`. */
   avgMinutes: number | null;
@@ -967,7 +985,8 @@ function stepBucket(view: StatsView, d: Date, n: number): Date {
 }
 
 /**
- * Sessions bucketed by day/week/month across `range`, oldest first.
+ * Sessions bucketed by day/week/month across `range`, oldest first. Sport logs
+ * only add to `activities` — they have no volume or duration to contribute.
  *
  * The buckets run from the one containing `range.start` to the one containing
  * its last day, so the edges are whole buckets even when the window cuts a
@@ -977,15 +996,28 @@ function stepBucket(view: StatsView, d: Date, n: number): Date {
  * never happened. Empty buckets are present with zeros, same reasoning as
  * `weeklySummary`: a gap in training is the point.
  */
-export function statsBuckets(sessions: Session[], range: StatsRange, view: StatsView): PeriodStat[] {
-  const buckets = new Map<number, { sessions: number; volume: number; minutes: number[] }>();
+export function statsBuckets(
+  sessions: Session[],
+  range: StatsRange,
+  view: StatsView,
+  sportSessions: SportSession[] = [],
+): PeriodStat[] {
+  const empty = () => ({ sessions: 0, activities: 0, volume: 0, minutes: [] as number[] });
+  const buckets = new Map<number, ReturnType<typeof empty>>();
   for (const s of sessions) {
     const key = bucketStartOf(view, new Date(s.startedAt)).getTime();
-    const bucket = buckets.get(key) ?? { sessions: 0, volume: 0, minutes: [] };
+    const bucket = buckets.get(key) ?? empty();
     bucket.sessions += 1;
+    bucket.activities += 1;
     bucket.volume += totalVolume(s);
     const minutes = (new Date(s.savedAt).getTime() - new Date(s.startedAt).getTime()) / 60_000;
     if (minutes > 0) bucket.minutes.push(minutes);
+    buckets.set(key, bucket);
+  }
+  for (const s of sportSessions) {
+    const key = bucketStartOf(view, parseLocalDate(s.date)).getTime();
+    const bucket = buckets.get(key) ?? empty();
+    bucket.activities += 1;
     buckets.set(key, bucket);
   }
 
@@ -997,6 +1029,7 @@ export function statsBuckets(sessions: Session[], range: StatsRange, view: Stats
     out.push({
       start: start.toISOString(),
       sessions: bucket?.sessions ?? 0,
+      activities: bucket?.activities ?? 0,
       volume: bucket?.volume ?? 0,
       avgMinutes:
         bucket && bucket.minutes.length > 0

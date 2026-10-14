@@ -190,15 +190,25 @@ describe('currentWeekCount', () => {
       session(at(2026, 8, 2, 9)), // Sun, in
       session(at(2026, 7, 26, 23, 59)), // previous Sunday, out
     ];
-    expect(currentWeekCount(sessions, now)).toBe(3);
+    expect(currentWeekCount(sessions, [], now)).toBe(3);
   });
 
   it('excludes the following Monday', () => {
-    expect(currentWeekCount([session(at(2026, 8, 3))], now)).toBe(0);
+    expect(currentWeekCount([session(at(2026, 8, 3))], [], now)).toBe(0);
   });
 
   it('is zero with no history', () => {
-    expect(currentWeekCount([], now)).toBe(0);
+    expect(currentWeekCount([], [], now)).toBe(0);
+  });
+
+  it('counts sport logs alongside gym sessions', () => {
+    const sessions = [session(at(2026, 7, 28))];
+    const sport = [
+      sportSession('2026-07-27'), // Mon, in
+      sportSession('2026-08-02', 'padel', 'other'), // Sun, in
+      sportSession('2026-07-26'), // previous Sunday, out
+    ];
+    expect(currentWeekCount(sessions, sport, now)).toBe(3);
   });
 });
 
@@ -215,26 +225,32 @@ describe('weeklyStreak', () => {
   it('does not break a streak mid-week', () => {
     // Current week has only 1 of 3 so far, but the two prior weeks were complete.
     const sessions = [...week(0, 1), ...week(1, 3), ...week(2, 3)];
-    expect(weeklyStreak(sessions, 3, now)).toBe(2);
+    expect(weeklyStreak(sessions, [], 3, now)).toBe(2);
   });
 
   it('includes the current week once it meets the goal', () => {
     const sessions = [...week(0, 3), ...week(1, 3)];
-    expect(weeklyStreak(sessions, 3, now)).toBe(2);
+    expect(weeklyStreak(sessions, [], 3, now)).toBe(2);
   });
 
   it('stops at the first week below goal', () => {
     const sessions = [...week(1, 3), ...week(2, 2), ...week(3, 3)];
-    expect(weeklyStreak(sessions, 3, now)).toBe(1);
+    expect(weeklyStreak(sessions, [], 3, now)).toBe(1);
   });
 
   it('is zero when nothing qualifies', () => {
-    expect(weeklyStreak(week(1, 1), 3, now)).toBe(0);
-    expect(weeklyStreak([], 3, now)).toBe(0);
+    expect(weeklyStreak(week(1, 1), [], 3, now)).toBe(0);
+    expect(weeklyStreak([], [], 3, now)).toBe(0);
+  });
+
+  it('counts sport logs toward the goal', () => {
+    const sport = [sportSession('2026-07-21'), sportSession('2026-07-23', 'climb', 'climbing')];
+    expect(weeklyStreak(week(1, 1), [], 3, now)).toBe(0);
+    expect(weeklyStreak(week(1, 1), sport, 3, now)).toBe(1);
   });
 
   it('is zero for a non-positive goal', () => {
-    expect(weeklyStreak(week(1, 5), 0, now)).toBe(0);
+    expect(weeklyStreak(week(1, 5), [], 0, now)).toBe(0);
   });
 });
 
@@ -825,6 +841,17 @@ describe('statsBuckets', () => {
     const buckets = statsBuckets([lifted(at(2026, 7, 28), 10)], trailingRange(30, now), 'weekly');
     expect(buckets).toHaveLength(5);
     expect(buckets[4]?.sessions).toBe(1);
+  });
+
+  it('counts sport logs as activities without touching gym figures', () => {
+    const buckets = statsBuckets(
+      [lifted(at(2026, 7, 28), 10, 30)],
+      trailingRange(7, now),
+      'weekly',
+      [sportSession('2026-07-29'), sportSession('2026-07-20')],
+    );
+    expect(buckets).toHaveLength(1);
+    expect(buckets[0]).toMatchObject({ sessions: 1, activities: 2, volume: 100, avgMinutes: 30 });
   });
 
   it('covers every calendar month the window touches, including a partial edge', () => {
@@ -1558,9 +1585,8 @@ describe('mergedHistory', () => {
 
 /**
  * The "no analytics" half of the 'other' kind (SPEC §5.7): it has to reach
- * History and the calendar, and it has to reach nothing else. The weekly goal
- * and the streak are safe by construction (they take `Session[]`, and sport
- * logs live in a different store), but the stats aggregates all take
+ * History, the calendar and the weekly goal (every activity counts toward it),
+ * and it has to reach nothing else. The stats aggregates all take
  * `SportSession[]` and filter by kind — so this is the regression guard for
  * an aggregate that forgets to filter.
  */
