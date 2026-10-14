@@ -408,6 +408,18 @@ export const CHANGELOG: ChangelogEntry[] = [
       'Toca el día para abrir la sesión que se esté mostrando en ese momento.',
     ],
   },
+  {
+    version: '1.27.0',
+    date: '2026-10-14',
+    en: [
+      'Your weekly goal and streak now count every activity — a ride, a run, a climbing or snowboard day, or any other activity counts the same as a gym session.',
+      'The sessions-per-week chart in Stats includes those activities too, so it matches the counter on Home.',
+    ],
+    es: [
+      'Tu objetivo semanal y tu racha cuentan ahora cualquier actividad — una salida en bici, una carrera, un día de escalada o de snowboard, o cualquier otra actividad cuenta igual que una sesión de gimnasio.',
+      'El gráfico de sesiones por semana en Estadísticas incluye también esas actividades, así que coincide con el contador de Inicio.',
+    ],
+  },
 ];
 
 /** Keep in sync with the bootstrap-independent nature of theme/language: this

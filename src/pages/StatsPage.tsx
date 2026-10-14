@@ -234,6 +234,7 @@ export function StatsPage() {
           range && (
             <GymStats
               sessions={sessions}
+              sportSessions={sportSessions}
               trainings={trainings}
               exerciseById={exerciseById}
               weeklyGoal={settings.weeklyGoal}
@@ -423,6 +424,7 @@ function rangeLabel(t: (key: TranslationKey) => string, locale: string, period: 
 
 function GymStats({
   sessions,
+  sportSessions,
   trainings,
   exerciseById,
   weeklyGoal,
@@ -433,6 +435,8 @@ function GymStats({
   locale,
 }: {
   sessions: Session[];
+  /** Only for the sessions chart: the weekly goal counts every activity, so its bars do too. */
+  sportSessions: SportSession[];
   trainings: Training[];
   exerciseById: Map<string, Exercise>;
   weeklyGoal: number;
@@ -445,7 +449,10 @@ function GymStats({
   const { t, language } = useLanguage();
   const includesToday = now.getTime() < range.end.getTime();
 
-  const buckets = useMemo(() => statsBuckets(sessions, range, view), [sessions, range, view]);
+  const buckets = useMemo(
+    () => statsBuckets(sessions, range, view, sportSessions),
+    [sessions, range, view, sportSessions],
+  );
   const balance = useMemo(() => volumeByTarget(sessions, exerciseById, range), [sessions, exerciseById, range]);
   const timeMap = useMemo(() => trainingTimeOfDay(sessions, trainings, range), [sessions, trainings, range]);
 
@@ -511,7 +518,8 @@ function edgeLabels(buckets: { start: string }[], view: StatsView, locale: strin
 }
 
 /**
- * Sessions per bucket. The weekly goal only reads as a reference line on the
+ * Activities per bucket — gym sessions and sport logs, since that is what the
+ * weekly goal counts. The goal only reads as a reference line on the
  * weekly view — a daily or monthly bucket isn't the unit the goal is set in
  * — so the emphasis/reference line and the "goal met" caption only appear
  * there; other views get a plain count.
@@ -531,7 +539,8 @@ function SessionsChart({
   locale: string;
 }) {
   const { t } = useLanguage();
-  const values = buckets.map((b) => b.sessions);
+  // Activities, not gym sessions: the goal line counts sport logs too (Home's ring does), so the bars must.
+  const values = buckets.map((b) => b.activities);
   const current = values[values.length - 1] ?? 0;
   const total = values.reduce((s, v) => s + v, 0);
   const reference = view === 'weekly' ? goal : undefined;
