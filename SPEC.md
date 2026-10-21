@@ -817,6 +817,9 @@ the route, branching on `Training.kind` rather than adding a new one.
     average heart rate in bpm.
   - **Running** — Distance in km and Time in minutes (both required, decimal), Elevation gain in m, and an
     optional average heart rate in bpm. Pace (min/km) is derived from time over distance, never entered.
+  - Distance and Time accept any number of decimal places, typed with either a dot or a comma (iOS's
+    decimal keypad types "," in Spanish). They are text fields with `inputmode="decimal"`, not
+    `type="number"`, which on Safari drops a comma value and rejects a second decimal place.
   - **Climbing** — a count per grade, whole buckets 3 / 4 / 5 only (no French/Spanish a/b/c subgrades).
   - **Other** — the date and a free-text Comments field, nothing else. The training's own name says what
     the activity was, so there is nothing generic left worth collecting; its History row shows the first

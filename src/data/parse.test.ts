@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import {
+  parseDecimal,
   firstGrapheme,
   formatCompact,
   formatKg,
@@ -42,6 +43,23 @@ describe('formatting', () => {
     expect(formatCompact(4200)).toBe('4.2k');
     expect(formatCompact(12_400)).toBe('12k');
     expect(formatCompact(-4200)).toBe('-4.2k');
+  });
+});
+
+describe('parseDecimal', () => {
+  it('parses dot and comma decimals', () => {
+    expect(parseDecimal('12.25')).toBe(12.25);
+    expect(parseDecimal(' 12,25 ')).toBe(12.25);
+    expect(parseDecimal('45')).toBe(45);
+    expect(parseDecimal('0,5')).toBe(0.5);
+  });
+
+  it('rejects empty, garbage and negative input', () => {
+    expect(parseDecimal('')).toBeNull();
+    expect(parseDecimal('   ')).toBeNull();
+    expect(parseDecimal('abc')).toBeNull();
+    expect(parseDecimal('1,2,3')).toBeNull();
+    expect(parseDecimal('-3')).toBeNull();
   });
 });
 
