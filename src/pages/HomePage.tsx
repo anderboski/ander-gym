@@ -19,6 +19,7 @@ import {
   daysBetween,
   formatDurationEstimate,
   greetingBucket,
+  parseLocalDate,
   isSameDay,
   lastSessionForTraining,
   lifetimeStats,
@@ -31,6 +32,7 @@ import {
   weeklyStreak,
 } from '../data/derive';
 import { formatCompact } from '../data/parse';
+import { trainingKindLabel } from '../data/sportLabels';
 import type { ExportOutcome } from '../data/backup';
 import { navigate } from '../router';
 import {
@@ -47,10 +49,11 @@ import {
 } from '../components/icons';
 import { AvatarFace } from '../components/Avatar';
 import { SettingsSheet } from '../components/SettingsSheet';
-import { Toast } from '../components/Sheet';
+import { Sheet, Toast } from '../components/Sheet';
+import { SportLogSheet } from '../components/SportLogSheet';
 import { useTransient } from '../hooks/useTransient';
 import { getTheme, otherTheme, setTheme, type Theme } from '../data/theme';
-import { daysAgoLabel, formatDay, formatLongDate, formatMonthYear, useLanguage, type TranslationKey } from '../data/i18n';
+import { daysAgoLabel, formatDay, formatDayWithWeekday, formatLongDate, formatMonthYear, useLanguage, type TranslationKey } from '../data/i18n';
 import type { Session, SportSession, Training } from '../data/types';
 import './HomePage.css';
 
@@ -71,8 +74,19 @@ const EXPORT_TOAST_KEY: Record<Exclude<ExportOutcome, 'cancelled'>, TranslationK
 };
 
 export function HomePage() {
-  const { status, error, trainings, sessions, sportSessions, active, settings, profile, startSession, exportNow } =
-    useGym();
+  const {
+    status,
+    error,
+    trainings,
+    sessions,
+    sportSessions,
+    active,
+    settings,
+    profile,
+    startSession,
+    exportNow,
+    logSportSession,
+  } = useGym();
 
   const { t, locale } = useLanguage();
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -80,6 +94,10 @@ export function HomePage() {
   const [busy, setBusy] = useState(false);
   const [toast, setToast] = useTransient<string>(3200);
   const [theme, setThemeState] = useState<Theme>(() => getTheme());
+  // Logging from an empty calendar day (§5.1): pick the activity, then its log
+  // sheet opens with that day already filled in.
+  const [pickingFor, setPickingFor] = useState<string | null>(null);
+  const [logging, setLogging] = useState<{ training: Training; date: string } | null>(null);
 
   function toggleTheme() {
     const next = otherTheme(theme);
@@ -98,6 +116,8 @@ export function HomePage() {
   const lastForToday = today ? lastSessionForTraining(today.id, sessions) : null;
   const durationEstimate = today ? averageSessionMinutes(today.id, sessions) : null;
   const lifetime = lifetimeStats(sessions);
+  // The Trainings page's "Other activities" section, same filter.
+  const otherActivities = trainings.filter((tr) => !tr.archived && (tr.kind ?? 'gym') !== 'gym');
 
   const lastExportAt = settings.lastExportAt;
   const backup = backupStatus(sessions, lastExportAt, now);
@@ -272,7 +292,14 @@ export function HomePage() {
           {(sessions.length > 0 || sportSessions.length > 0) && (
             <section className="section">
               <div className="section-title">{t('home.calendarSection')}</div>
-              <HomeCalendar sessions={sessions} sportSessions={sportSessions} trainings={trainings} now={now} locale={locale} />
+              <HomeCalendar
+                sessions={sessions}
+                sportSessions={sportSessions}
+                trainings={trainings}
+                now={now}
+                locale={locale}
+                onLogDay={otherActivities.length > 0 ? setPickingFor : undefined}
+              />
             </section>
           )}
 
@@ -313,6 +340,43 @@ export function HomePage() {
       )}
 
       {settingsOpen && <SettingsSheet onClose={() => setSettingsOpen(false)} />}
+      {pickingFor && (
+        <Sheet title={t('home.logActivityTitle')} onClose={() => setPickingFor(null)}>
+          <p className="hint home-pick-hint">
+            {t('home.logActivityDay', { date: formatDayWithWeekday(locale, parseLocalDate(pickingFor), now) })}
+          </p>
+          <div className="card">
+            {otherActivities.map((tr) => (
+              <button
+                key={tr.id}
+                type="button"
+                className="home-pick-row card-row"
+                onClick={() => {
+                  setLogging({ training: tr, date: pickingFor });
+                  setPickingFor(null);
+                }}
+              >
+                <span className="home-pick-badge" aria-hidden="true">
+                  {trainingBadge(tr)}
+                </span>
+                <span className="home-pick-text">
+                  <span className="home-pick-label">{tr.label}</span>
+                  <span className="home-pick-kind">{trainingKindLabel(t, tr.kind ?? 'gym')}</span>
+                </span>
+                <ChevronRightIcon className="home-pick-chevron" />
+              </button>
+            ))}
+          </div>
+        </Sheet>
+      )}
+      {logging && (
+        <SportLogSheet
+          training={logging.training}
+          initialDate={logging.date}
+          onClose={() => setLogging(null)}
+          onSubmit={(input) => logSportSession(logging.training.id, input)}
+        />
+      )}
       {toast && <Toast message={toast} />}
     </div>
   );
@@ -361,8 +425,9 @@ const PIP_CAP = 5;
  * Month calendar. A day with one activity shows its badge; a day with several
  * shows a medallion that flips through every one of them (gym sessions oldest
  * first, then sport sessions), with a pip per activity marking which face is
- * up. Tapping a day opens whichever activity is showing at that moment. The
- * month in view is local state, independent of `now`.
+ * up. Tapping a day opens whichever activity is showing at that moment; tapping
+ * an empty day up to today hands it to `onLogDay`. The month in view is local
+ * state, independent of `now`.
  */
 function HomeCalendar({
   sessions,
@@ -370,12 +435,15 @@ function HomeCalendar({
   trainings,
   now,
   locale,
+  onLogDay,
 }: {
   sessions: Session[];
   sportSessions: SportSession[];
   trainings: Training[];
   now: Date;
   locale: string;
+  /** Absent when there is no activity to log, which leaves empty days inert. */
+  onLogDay?: (date: string) => void;
 }) {
   const { t } = useLanguage();
   const [month, setMonth] = useState<Date>(() => startOfMonth(now));
@@ -447,6 +515,22 @@ function HomeCalendar({
           const current = badges[face];
 
           if (!current) {
+            // Sport logs are capped at today (§5.8), so a future day stays inert
+            // rather than opening a form that cannot save it. Keys compare as
+            // strings: `YYYY-MM-DD` sorts chronologically.
+            if (onLogDay && key <= dayKey(now)) {
+              return (
+                <button
+                  type="button"
+                  className={[...classes, 'home-cal-day-loggable'].join(' ')}
+                  key={key}
+                  onClick={() => onLogDay(key)}
+                  aria-label={t('home.logActivityAria', { date: date.toLocaleDateString(locale, { day: 'numeric', month: 'long' }) })}
+                >
+                  <span className="home-cal-daynum">{date.getDate()}</span>
+                </button>
+              );
+            }
             return (
               <div className={classes.join(' ')} key={key}>
                 <span className="home-cal-daynum">{date.getDate()}</span>

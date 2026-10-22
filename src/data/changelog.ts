@@ -426,6 +426,12 @@ export const CHANGELOG: ChangelogEntry[] = [
     en: ['Bike and running distance, and running time, accept decimals — with a dot or a comma, and as many decimal places as you like.'],
     es: ['La distancia en bici y en carrera, y el tiempo de carrera, admiten decimales — con punto o con coma, y con tantos decimales como quieras.'],
   },
+  {
+    version: '1.28.0',
+    date: '2026-10-22',
+    en: ['Tap an empty day on Home’s calendar to log one of your other activities for that day — pick the activity and its form opens with the date already filled in.'],
+    es: ['Toca un día vacío en el calendario de Inicio para registrar una de tus otras actividades ese día — elige la actividad y su formulario se abre con la fecha ya puesta.'],
+  },
 ];
 
 /** Keep in sync with the bootstrap-independent nature of theme/language: this

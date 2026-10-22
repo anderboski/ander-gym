@@ -73,6 +73,9 @@ export const es: Record<TranslationKey, string> = {
   'home.lifetimeSince': 'desde {date}',
   'home.prevMonth': 'Mes anterior',
   'home.nextMonth': 'Mes siguiente',
+  'home.logActivityTitle': 'Registrar una actividad',
+  'home.logActivityDay': '¿Qué hiciste el {date}?',
+  'home.logActivityAria': '{date}, registrar una actividad',
 
   'settings.title': 'Ajustes',
   'settings.weeklyGoal': 'Objetivo semanal',

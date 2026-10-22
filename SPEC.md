@@ -353,8 +353,13 @@ the fixed bottom nav.
   change on the same clock but swap without turning: freezing them would leave every activity but the first
   unreachable from the calendar.
   Tapping a day opens **the activity whose badge is showing at that moment** in History
-  (`#/history/<id>`); untrained days are inert. Hidden until at least one gym or sport session exists,
-  matching the Stats shortcut.
+  (`#/history/<id>`). Tapping an **empty day up to and including today** opens a "Log an activity" sheet
+  listing the unarchived trainings from Trainings' "Other activities" section (§5.3) — badge, name, kind;
+  picking one opens that training's log sheet (§5.8) with the date preset to the tapped day, still editable.
+  Gym sessions are not offered: they are live, set-by-set, and can only be started now. Future days stay
+  inert (sport logs are capped at today), and so does every empty day while there is no unarchived
+  non-Gym training to log. Hidden until at least one gym or sport session exists, matching the Stats
+  shortcut.
 - **Backup banner** — shown per `backupStatus` (§4): `lastExportAt` unset with ≥1 session, older than 30
   days, or 5+ sessions logged since the last export. Its body states the count when there is one ("12
   sessions logged since your last backup live only on this iPhone") and falls back to the generic warning
@@ -807,8 +812,8 @@ the route, branching on `Training.kind` rather than adding a new one.
 
 - No exercise list, no drag-reorder. Just a **"Log a session"** button and a reverse-chronological list of
   past logs for that training, each a row opening its own detail in History (§5.5).
-- **Logging is one shot**, not a live in-progress session: a sheet collects a date (defaults to today,
-  native `<input type="date">`, capped at today — no logging into the future) plus fields specific to the
+- **Logging is one shot**, not a live in-progress session: a sheet collects a date (defaults to today, or
+  to the tapped day when opened from an empty day on Home's calendar (§5.1); native `<input type="date">`, capped at today — no logging into the future) plus fields specific to the
   training's kind, and Save writes the record immediately. There is no `activeSession` equivalent and
   nothing to resume.
   - **Snowboard** — a Weather dropdown (sunny / cloudy / snowing / foggy / windy), a Snow condition dropdown
