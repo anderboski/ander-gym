@@ -18,6 +18,23 @@ export function parseRestSeconds(value: unknown): number | null {
   return Math.min(REST_MAX_SECONDS, Math.max(REST_MIN_SECONDS, whole));
 }
 
+/**
+ * A user-typed decimal (distance, time) from a text field. Returns null for an
+ * empty or unparseable value, or a negative one.
+ *
+ * Accepts a decimal comma: iOS's decimal keypad types "," in Spanish and most
+ * other European locales, and `Number("12,5")` is NaN. The fields are
+ * `type="text"`, not `type="number"`, for the same reason — Safari hands a
+ * number input's comma value back as "", and its `step` validation blocks a
+ * second decimal place outright.
+ */
+export function parseDecimal(raw: string): number | null {
+  const text = raw.trim().replace(',', '.');
+  if (text === '') return null;
+  const value = Number(text);
+  return Number.isFinite(value) && value >= 0 ? value : null;
+}
+
 /** `10 x 25 kg`, or `10 reps` when the weight is zero (bodyweight). */
 export function formatSet(reps: number, weight: number): string {
   return weight > 0 ? `${reps}x${formatWeight(weight)}kg` : `${reps} reps`;

@@ -198,7 +198,11 @@ Only a phone can tell you whether a 320-unit chart is legible in a hand.
 - [ ] The reps field brings up the number pad; the weight field brings up the
       decimal pad.
 - [ ] Dismissing the keyboard restores the layout with no leftover gap.
-- [ ] The sport-log sheet's distance field brings up the decimal pad; elevation,
+- [ ] With the phone set to Spanish, log a Bike and a Running session typing
+      decimals with the keypad's comma (distance `12,35`, running time `47,5`).
+      Save is enabled, and the saved log shows the decimal distance (and, for
+      the run, a pace computed from the decimal time) — not 0.
+- [ ] The sport-log sheet's distance and running time fields bring up the decimal pad; elevation,
       heart rate, and the climbing grade counts bring up the number pad —
       none of them zoom the viewport on focus.
 - [ ] Open the Snowboard log sheet and tap the **Weather** field the instant it

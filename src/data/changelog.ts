@@ -420,6 +420,12 @@ export const CHANGELOG: ChangelogEntry[] = [
       'El gráfico de sesiones por semana en Estadísticas incluye también esas actividades, así que coincide con el contador de Inicio.',
     ],
   },
+  {
+    version: '1.27.1',
+    date: '2026-10-21',
+    en: ['Bike and running distance, and running time, accept decimals — with a dot or a comma, and as many decimal places as you like.'],
+    es: ['La distancia en bici y en carrera, y el tiempo de carrera, admiten decimales — con punto o con coma, y con tantos decimales como quieras.'],
+  },
 ];
 
 /** Keep in sync with the bootstrap-independent nature of theme/language: this
