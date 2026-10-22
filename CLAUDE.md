@@ -13,6 +13,19 @@ and is superseded by it. Read the relevant SPEC section before changing behaviou
 per-section acceptance criteria and the "locked decisions" table (§1) records things that were
 deliberately chosen, not accidents.
 
+## Ask before guessing
+
+**When a request is ambiguous, ask before building.** If a requirement could reasonably be read two
+ways, leaves out a decision the user would have an opinion on (which screen, which data, what happens
+in an edge case, whether it should count toward the goal/streak), or seems to conflict with `SPEC.md`
+or a locked decision, stop and ask a short, specific question — offer the options and say which one
+you'd pick and why. A wrong guess costs a PR round trip and Ander's review time; a question costs one
+message.
+
+Don't ask about things the codebase or SPEC already answers, or about conventions this file sets
+(branch names, version bumps, changelog). For small, low-stakes choices, pick the sensible default,
+carry on, and list it under "Decisions worth reviewing" in the PR instead.
+
 ## Commands
 
 ```bash
