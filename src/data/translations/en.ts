@@ -78,6 +78,9 @@ export const en = {
   'home.lifetimeSince': 'since {date}',
   'home.prevMonth': 'Previous month',
   'home.nextMonth': 'Next month',
+  'home.logActivityTitle': 'Log an activity',
+  'home.logActivityDay': 'What did you do on {date}?',
+  'home.logActivityAria': '{date}, log an activity',
 
   'settings.title': 'Settings',
   'settings.weeklyGoal': 'Weekly goal',

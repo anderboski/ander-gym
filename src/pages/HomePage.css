@@ -347,6 +347,12 @@
   background: var(--bg-raised-2);
 }
 
+/* An empty day that opens the log-an-activity picker: no fill at rest, so the
+   month still reads as "trained vs not", only the press shows it is live. */
+.home-cal-day-loggable:active {
+  background: var(--bg-raised-2);
+}
+
 .home-cal-dot {
   font-size: 12px;
   line-height: 1;
@@ -404,6 +410,67 @@
   .home-cal-face-flip {
     animation: none;
   }
+}
+
+/* --- log-an-activity picker (empty calendar day) -------------------------- */
+
+.home-pick-hint {
+  margin: 0 0 var(--s3);
+}
+
+.home-pick-row {
+  width: 100%;
+  min-height: 64px;
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  padding: var(--s3) var(--s3) var(--s3) var(--s4);
+  text-align: left;
+  color: var(--text);
+}
+
+.home-pick-row:active {
+  background: var(--bg-raised-2);
+}
+
+.home-pick-badge {
+  flex: none;
+  width: 40px;
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-sm);
+  background: var(--bg-raised-2);
+  font-size: 20px;
+  font-weight: 700;
+}
+
+.home-pick-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.home-pick-label {
+  display: block;
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  overflow-wrap: anywhere;
+}
+
+.home-pick-kind {
+  display: block;
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.home-pick-chevron {
+  flex: none;
+  width: 18px;
+  height: 18px;
+  color: var(--text-faint);
 }
 
 /* --------------------------------------------------------------------------

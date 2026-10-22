@@ -221,30 +221,3 @@
   padding: 0 var(--s4);
   margin-bottom: var(--s6);
 }
-
-/* --- sport log form: climbing grade steppers ----------------------------- */
-
-.sportlog-grades {
-  display: flex;
-  flex-direction: column;
-  gap: var(--s2);
-}
-
-.sportlog-grade-row {
-  display: flex;
-  align-items: center;
-  gap: var(--s3);
-}
-
-.sportlog-grade-label {
-  flex: none;
-  width: 40px;
-  font-size: 15px;
-  font-weight: 600;
-  color: var(--text-dim);
-  padding-left: var(--s1);
-}
-
-.sportlog-grade-row .input {
-  flex: 1;
-}
