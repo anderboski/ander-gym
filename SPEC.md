@@ -15,7 +15,7 @@ anything written here.
 | D1 | Navigation | 5 bottom tabs: Home · Exercises · Trainings · Session · History |
 | D2 | Stack | Vite + React + TypeScript, `vite-plugin-pwa`, deployed to GitHub Pages via Actions. Hash routing, hand-rolled (~50 lines) — every React Router 7.x release carries an open advisory, and hash routing also avoids the Pages reload-404 |
 | D3 | Training days | Fully user-managed: create as many as you like, rename anytime, reorder by drag. A training with any session history is never deletable — a training's id must always resolve so session history stays intact — but it can be archived, which drops it out of Home's rotation and the default Trainings list without touching history. A training with zero sessions and no session currently in progress has nothing to protect and can be deleted outright instead (undoable). Exercise membership is editable in-app |
-| D4 | Home extras | Weekly goal + streak; backup reminder; a month calendar of past sessions. (No last-session recap in v1. PR tracking was deferred in v1 and has since landed — see §4 `personalRecords`) |
+| D4 | Home extras | Weekly goal + streak; backup reminder; a month calendar of past sessions, where future days can be planned ahead (§5.1). (No last-session recap in v1. PR tracking was deferred in v1 and has since landed — see §4 `personalRecords`) |
 | D5 | Offline | Lazy cache-first for images; app shell + `exercises.json` precached |
 | D6 | Custom exercise image | Optional photo from camera/library, downscaled, stored as a blob; lettered placeholder otherwise |
 | D7 | Session history | Read-only; whole sessions may be deleted with confirmation |
@@ -72,7 +72,7 @@ URLs are built as `` `${import.meta.env.BASE_URL}data/…` `` so they survive th
 
 ## 3. Persistence
 
-IndexedDB via `idb`. Database `ander-gym`, version 3.
+IndexedDB via `idb`. Database `ander-gym`, version 4.
 
 | Store | Key | Value |
 |---|---|---|
@@ -84,8 +84,10 @@ IndexedDB via `idb`. Database `ander-gym`, version 3.
 | `profile` | key string | `name` (default `''`), `birthdate` (default `null`), `heightCm` (default `null`), `photo` (`Blob`, default `null`) — see §5.7 |
 | `checkins` | `id` (`ck-<uuid>`) | `{ id, date, weightKg, photoBlobs: Blob[] }` — index on `date`, see §5.7 |
 | `sportSessions` | `id` (`ss-<uuid>`) | one of the `SportSession` shapes below — index on `date`, see §5.8 |
+| `plans` | `date` (`YYYY-MM-DD`, local) | `{ date, trainingId }` — at most one plan per day, see §5.1 |
 
-**Migrations.** `DB_VERSION` went `1` → `2` for `profile`/`checkins`, then `2` → `3` for `sportSessions`.
+**Migrations.** `DB_VERSION` went `1` → `2` for `profile`/`checkins`, then `2` → `3` for `sportSessions`,
+then `3` → `4` for `plans`.
 `upgrade()` is keyed on `oldVersion` (`if (oldVersion < 1) …`, `if (oldVersion < 2) …`, `if (oldVersion < 3)
 …`), so it only ever creates a store once; existing stores and their data are untouched by a later bump. Any
 future store addition follows the same shape: a new `if (oldVersion < N)` block, never rewriting the ones
@@ -155,6 +157,9 @@ Reachable from a gear icon on Home (Settings sheet).
   `data:image/…` URL is dropped to `null` — it becomes an `<img>`, so a hand-edited file must not be able
   to put arbitrary content there, and the avatar simply falls back to initials.
 - `sportSessions` is likewise absent from a backup older than schema `3` and defaults to `[]`.
+- `plans` (schema `5`) is absent from an older backup and defaults to `[]`. A plan whose `date` is not a
+  `YYYY-MM-DD` string or that has no `trainingId` is dropped; its training is not required to resolve (Home
+  skips a plan whose training is gone), and a plan for a day already past is pruned on the next load.
 - **Every record is validated on parse** (a backup is user-supplied input — hand-edited, truncated, or not
   ours at all). A session, sport session, custom exercise or check-in missing a field the app dereferences
   (ids, dates, `entries`, a sport kind's own fields, a finite `weightKg`) is **dropped**; malformed sets and
@@ -334,6 +339,11 @@ the fixed bottom nav.
   - If a session was already saved today, show a "Completed today · <label>" pill beside the section
     title; the card still offers the next training in rotation.
   - If a session is currently active, the card is replaced by "Resume session →".
+  - **A training planned for today** (see Calendar below) takes the card over from the rotation, with a
+    "Planned" pill beside its badge. A gym plan starts its session like the rotation card; a non-gym plan
+    shows its kind and last-logged date instead of a duration, and tapping it opens its log sheet (§5.8)
+    with today's date. A quiet "Skip today's plan" button under the card removes the plan (undoable, 5 s
+    toast) and the card falls back to the rotation — the way to do something else instead.
   - **Duration estimate** — "usually ~45m", the average of `savedAt − startedAt` across every past saved
     session for that training (`averageSessionMinutes`). Omitted when the training has no saved sessions
     yet, since there is nothing to average.
@@ -356,10 +366,23 @@ the fixed bottom nav.
   (`#/history/<id>`). Tapping an **empty day up to and including today** opens a "Log an activity" sheet
   listing the unarchived trainings from Trainings' "Other activities" section (§5.3) — badge, name, kind;
   picking one opens that training's log sheet (§5.8) with the date preset to the tapped day, still editable.
-  Gym sessions are not offered: they are live, set-by-set, and can only be started now. Future days stay
-  inert (sport logs are capped at today), and so does every empty day while there is no unarchived
-  non-Gym training to log. Hidden until at least one gym or sport session exists, matching the Stats
-  shortcut.
+  Gym sessions are not offered: they are live, set-by-set, and can only be started now. Every empty past
+  day stays inert while there is no unarchived non-Gym training to log.
+  **Planning ahead.** Tapping an empty day **after today** opens a "Plan a training" sheet listing every
+  unarchived training, gym first then other activities (badge, name, kind); picking one plans it for that
+  day. A planned day is shaded (raised fill, dashed accent outline) with the training's badge dimmed, so a
+  plan never reads as something already done. Tapping a planned future day reopens the sheet with the
+  planned training ticked: pick another to replace it (one plan per day), or "Remove plan" (undoable, 5 s
+  toast). Tapping **today's** planned day acts on the plan exactly like the Today card (with a session
+  already in progress, a gym plan resumes that session instead of replacing it). Today and past days can't
+  be planned — today's empty cell keeps logging as above.
+  A plan is **cleared once any activity is logged on its day** — the planned training or another one, gym
+  session (on save, not on start, so a discarded session leaves the plan) or sport log — so the day shows
+  only what was actually done. A plan whose day **passes with nothing logged is simply removed**: hidden
+  from the moment the day ends and deleted from storage on the next launch. There is no "missed" state.
+  Plans are not activities: they never count toward the weekly goal or streak, nor appear in History or
+  Stats. A plan whose training is archived or deleted is not shown. Exported and imported with the backup.
+  Hidden until at least one gym or sport session (or a plan) exists, matching the Stats shortcut.
 - **Backup banner** — shown per `backupStatus` (§4): `lastExportAt` unset with ≥1 session, older than 30
   days, or 5+ sessions logged since the last export. Its body states the count when there is one ("12
   sessions logged since your last backup live only on this iPhone") and falls back to the generic warning

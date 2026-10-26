@@ -64,6 +64,7 @@ import {
   trainingTimeOfDay,
   UNKNOWN_TARGET,
   viewsForRange,
+  upcomingPlans,
   volumeByTarget,
   weeklyStreak,
 } from './derive';
@@ -331,6 +332,38 @@ describe('nextTraining', () => {
   it('never returns a non-gym training as the fallback first', () => {
     const withSport = [{ ...trainings[0]!, kind: 'snowboard' as const }, trainings[1]!, trainings[2]!];
     expect(nextTraining(withSport, [])?.id).toBe('leg-abs');
+  });
+});
+
+describe('upcomingPlans', () => {
+  const now = new Date(2026, 9, 26, 23, 30);
+
+  it('keeps today and later, resolved to the training, and drops days already gone', () => {
+    const plans = upcomingPlans(
+      [
+        { date: '2026-10-25', trainingId: 'leg-abs' },
+        { date: '2026-10-26', trainingId: 'pecs-back' },
+        { date: '2026-11-03', trainingId: 'leg-abs' },
+      ],
+      trainings,
+      now,
+    );
+    expect([...plans.keys()]).toEqual(['2026-10-26', '2026-11-03']);
+    expect(plans.get('2026-10-26')?.label).toBe('Pecs-back');
+  });
+
+  it('skips a plan whose training is gone or archived', () => {
+    const withArchived: Training[] = [...trainings, { id: 'old', label: 'Old', order: 3, exerciseIds: [], archived: true }];
+    const plans = upcomingPlans(
+      [
+        { date: '2026-10-27', trainingId: 'deleted' },
+        { date: '2026-10-28', trainingId: 'old' },
+        { date: '2026-10-29', trainingId: 'leg-abs' },
+      ],
+      withArchived,
+      now,
+    );
+    expect([...plans.keys()]).toEqual(['2026-10-29']);
   });
 });
 

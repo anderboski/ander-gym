@@ -22,6 +22,7 @@ import {
   parseLocalDate,
   isSameDay,
   lastSessionForTraining,
+  lastSportSessionForTraining,
   lifetimeStats,
   monthGrid,
   nextTraining,
@@ -29,6 +30,7 @@ import {
   sportSessionsByDay,
   startOfMonth,
   trainingBadge,
+  upcomingPlans,
   weeklyStreak,
 } from '../data/derive';
 import { formatCompact } from '../data/parse';
@@ -38,6 +40,7 @@ import { navigate } from '../router';
 import {
   AlertIcon,
   ChartIcon,
+  CheckIcon,
   ChevronLeftIcon,
   ChevronRightIcon,
   CloseIcon,
@@ -45,6 +48,7 @@ import {
   GearIcon,
   MoonIcon,
   PlayIcon,
+  PlusIcon,
   SunIcon,
 } from '../components/icons';
 import { AvatarFace } from '../components/Avatar';
@@ -54,7 +58,7 @@ import { SportLogSheet } from '../components/SportLogSheet';
 import { useTransient } from '../hooks/useTransient';
 import { getTheme, otherTheme, setTheme, type Theme } from '../data/theme';
 import { daysAgoLabel, formatDay, formatDayWithWeekday, formatLongDate, formatMonthYear, useLanguage, type TranslationKey } from '../data/i18n';
-import type { Session, SportSession, Training } from '../data/types';
+import type { Session, SportSession, Training, TrainingPlan } from '../data/types';
 import './HomePage.css';
 
 const GREETING_KEYS: Record<ReturnType<typeof greetingBucket>, TranslationKey> = {
@@ -86,6 +90,9 @@ export function HomePage() {
     startSession,
     exportNow,
     logSportSession,
+    plans,
+    planTraining,
+    clearPlan,
   } = useGym();
 
   const { t, locale } = useLanguage();
@@ -98,6 +105,9 @@ export function HomePage() {
   // sheet opens with that day already filled in.
   const [pickingFor, setPickingFor] = useState<string | null>(null);
   const [logging, setLogging] = useState<{ training: Training; date: string } | null>(null);
+  // Planning a future calendar day (§5.1), and the undo offer after a plan is removed.
+  const [planningFor, setPlanningFor] = useState<string | null>(null);
+  const [undoPlan, setUndoPlan] = useTransient<TrainingPlan>(5000);
 
   function toggleTheme() {
     const next = otherTheme(theme);
@@ -113,11 +123,22 @@ export function HomePage() {
   const streak = weeklyStreak(sessions, sportSessions, goal, now);
   const today = nextTraining(trainings, sessions);
   const doneToday = completedToday(sessions, now);
-  const lastForToday = today ? lastSessionForTraining(today.id, sessions) : null;
-  const durationEstimate = today ? averageSessionMinutes(today.id, sessions) : null;
   const lifetime = lifetimeStats(sessions);
   // The Trainings page's "Other activities" section, same filter.
   const otherActivities = trainings.filter((tr) => !tr.archived && (tr.kind ?? 'gym') !== 'gym');
+  // Anything can be planned, gym or not — listed in the Trainings page's own
+  // section order: gym trainings first, then other activities.
+  const plannable = [...trainings.filter((tr) => !tr.archived && (tr.kind ?? 'gym') === 'gym'), ...otherActivities];
+  const todayKey = dayKey(now);
+  const plansByDay = upcomingPlans(plans, trainings, now);
+  const todayPlan = plansByDay.get(todayKey) ?? null;
+  // A plan for today takes the Today card over from the rotation (§5.1).
+  const cardTraining = todayPlan ?? today;
+  const cardIsGym = (cardTraining?.kind ?? 'gym') === 'gym';
+  const lastForCard = cardTraining && cardIsGym ? lastSessionForTraining(cardTraining.id, sessions) : null;
+  const lastSportForCard = cardTraining && !cardIsGym ? lastSportSessionForTraining(cardTraining.id, sportSessions) : null;
+  const lastCardDate = lastForCard ? new Date(lastForCard.startedAt) : lastSportForCard ? parseLocalDate(lastSportForCard.date) : null;
+  const durationEstimate = cardTraining && cardIsGym ? averageSessionMinutes(cardTraining.id, sessions) : null;
 
   const lastExportAt = settings.lastExportAt;
   const backup = backupStatus(sessions, lastExportAt, now);
@@ -132,6 +153,40 @@ export function HomePage() {
       setToast(e instanceof Error ? e.message : t('common.couldNotStartSession'));
     } finally {
       setBusy(false);
+    }
+  }
+
+  /**
+   * Acting on a plan: a gym training starts its live session now; anything
+   * else opens its log sheet for today. With a session already in progress a
+   * gym plan resumes that one instead — starting would silently replace it.
+   */
+  function confirmPlan(training: Training) {
+    if ((training.kind ?? 'gym') !== 'gym') {
+      setLogging({ training, date: todayKey });
+    } else if (active) {
+      navigate('/session');
+    } else {
+      void handleStart(training.id);
+    }
+  }
+
+  async function handlePlan(date: string, trainingId: string) {
+    setPlanningFor(null);
+    try {
+      await planTraining(date, trainingId);
+    } catch (e) {
+      setToast(e instanceof Error ? e.message : t('common.unknownError'));
+    }
+  }
+
+  async function handleClearPlan(date: string) {
+    setPlanningFor(null);
+    try {
+      const removed = await clearPlan(date);
+      if (removed) setUndoPlan(removed);
+    } catch (e) {
+      setToast(e instanceof Error ? e.message : t('common.unknownError'));
     }
   }
 
@@ -249,35 +304,58 @@ export function HomePage() {
                   </div>
                 </div>
               </button>
-            ) : today ? (
-              <button className="card card-tappable home-card" disabled={busy} onClick={() => void handleStart(today.id)} aria-label={`${t('home.startSession')}: ${today.label}`}>
-                <div className="home-card-main">
-                  <div className="home-card-badge" aria-hidden="true">
-                    {trainingBadge(today)}
+            ) : cardTraining ? (
+              <>
+                <button
+                  className="card card-tappable home-card"
+                  disabled={busy}
+                  onClick={() => (todayPlan ? confirmPlan(todayPlan) : void handleStart(cardTraining.id))}
+                  aria-label={`${cardIsGym ? t('home.startSession') : t('home.logActivityTitle')}: ${cardTraining.label}`}
+                >
+                  <div className="home-card-main">
+                    <div className="home-card-top">
+                      <div className="home-card-badge" aria-hidden="true">
+                        {trainingBadge(cardTraining)}
+                      </div>
+                      {todayPlan && <span className="pill pill-accent">{t('home.plannedPill')}</span>}
+                    </div>
+                    <div className="home-card-title">{cardTraining.label}</div>
+                    <div className="home-card-last">
+                      {!cardIsGym && (
+                        <>
+                          <span>{trainingKindLabel(t, cardTraining.kind ?? 'gym')}</span>
+                          <span className="home-card-dot">·</span>
+                        </>
+                      )}
+                      {lastCardDate ? (
+                        <>
+                          <span>{formatDay(locale, lastCardDate, now)}</span>
+                          <span className="home-card-dot">·</span>
+                          <span>{daysAgoLabel(t, daysBetween(lastCardDate, now))}</span>
+                        </>
+                      ) : (
+                        <span>{t('home.neverDone')}</span>
+                      )}
+                      {durationEstimate !== null && (
+                        <>
+                          <span className="home-card-dot">·</span>
+                          <span>{t('home.usuallyDuration', { duration: formatDurationEstimate(durationEstimate) })}</span>
+                        </>
+                      )}
+                    </div>
                   </div>
-                  <div className="home-card-title">{today.label}</div>
-                  <div className="home-card-last">
-                    {lastForToday ? (
-                      <>
-                        <span>{formatDay(locale, lastForToday.startedAt, now)}</span>
-                        <span className="home-card-dot">·</span>
-                        <span>{daysAgoLabel(t, daysBetween(new Date(lastForToday.startedAt), now))}</span>
-                      </>
-                    ) : (
-                      <span>{t('home.neverDone')}</span>
-                    )}
-                    {durationEstimate !== null && (
-                      <>
-                        <span className="home-card-dot">·</span>
-                        <span>{t('home.usuallyDuration', { duration: formatDurationEstimate(durationEstimate) })}</span>
-                      </>
-                    )}
+                  <div className="home-card-play" aria-hidden="true">
+                    {cardIsGym ? <PlayIcon /> : <PlusIcon />}
                   </div>
-                </div>
-                <div className="home-card-play" aria-hidden="true">
-                  <PlayIcon />
-                </div>
-              </button>
+                </button>
+                {/* The way out of a plan on the day itself: drops it, and the card
+                    falls back to the rotation. */}
+                {todayPlan && (
+                  <button type="button" className="btn btn-ghost btn-sm home-plan-skip" onClick={() => void handleClearPlan(todayKey)}>
+                    {t('home.planSkip')}
+                  </button>
+                )}
+              </>
             ) : (
               <div className="card card-pad home-empty">
                 <p className="home-empty-text">{t('home.noTrainingsYet')}</p>
@@ -289,7 +367,7 @@ export function HomePage() {
           </section>
 
           {/* --- calendar --------------------------------------------------- */}
-          {(sessions.length > 0 || sportSessions.length > 0) && (
+          {(sessions.length > 0 || sportSessions.length > 0 || plansByDay.size > 0) && (
             <section className="section">
               <div className="section-title">{t('home.calendarSection')}</div>
               <HomeCalendar
@@ -299,6 +377,9 @@ export function HomePage() {
                 now={now}
                 locale={locale}
                 onLogDay={otherActivities.length > 0 ? setPickingFor : undefined}
+                plans={plansByDay}
+                onPlanDay={plannable.length > 0 ? setPlanningFor : undefined}
+                onConfirmPlan={confirmPlan}
               />
             </section>
           )}
@@ -369,6 +450,17 @@ export function HomePage() {
           </div>
         </Sheet>
       )}
+      {planningFor && (
+        <PlanSheet
+          date={planningFor}
+          now={now}
+          trainings={plannable}
+          plannedId={plansByDay.get(planningFor)?.id ?? null}
+          onPick={(trainingId) => void handlePlan(planningFor, trainingId)}
+          onRemove={() => void handleClearPlan(planningFor)}
+          onClose={() => setPlanningFor(null)}
+        />
+      )}
       {logging && (
         <SportLogSheet
           training={logging.training}
@@ -377,8 +469,83 @@ export function HomePage() {
           onSubmit={(input) => logSportSession(logging.training.id, input)}
         />
       )}
-      {toast && <Toast message={toast} />}
+      {undoPlan ? (
+        <Toast
+          message={t('home.planRemoved')}
+          actionLabel={t('common.undo')}
+          onAction={() => {
+            setUndoPlan(null);
+            void handlePlan(undoPlan.date, undoPlan.trainingId);
+          }}
+        />
+      ) : (
+        toast && <Toast message={toast} />
+      )}
     </div>
+  );
+}
+
+/* -------------------------------------------------------------------------- */
+
+/**
+ * Plan a future day (§5.1): every unarchived training, gym or not, with the
+ * one already planned for that day ticked. Picking another replaces it.
+ */
+function PlanSheet({
+  date,
+  now,
+  trainings,
+  plannedId,
+  onPick,
+  onRemove,
+  onClose,
+}: {
+  date: string;
+  now: Date;
+  trainings: Training[];
+  plannedId: string | null;
+  onPick: (trainingId: string) => void;
+  onRemove: () => void;
+  onClose: () => void;
+}) {
+  const { t, locale } = useLanguage();
+
+  return (
+    <Sheet
+      title={t('home.planTitle')}
+      onClose={onClose}
+      footer={
+        plannedId ? (
+          <button type="button" className="btn btn-danger btn-block" onClick={onRemove}>
+            {t('home.planRemove')}
+          </button>
+        ) : undefined
+      }
+    >
+      <p className="hint home-pick-hint">
+        {t('home.planDay', { date: formatDayWithWeekday(locale, parseLocalDate(date), now) })}
+      </p>
+      <div className="card">
+        {trainings.map((tr) => (
+          <button
+            key={tr.id}
+            type="button"
+            className="home-pick-row card-row"
+            aria-pressed={tr.id === plannedId}
+            onClick={() => (tr.id === plannedId ? onClose() : onPick(tr.id))}
+          >
+            <span className="home-pick-badge" aria-hidden="true">
+              {trainingBadge(tr)}
+            </span>
+            <span className="home-pick-text">
+              <span className="home-pick-label">{tr.label}</span>
+              <span className="home-pick-kind">{trainingKindLabel(t, tr.kind ?? 'gym')}</span>
+            </span>
+            {tr.id === plannedId && <CheckIcon className="home-pick-check" />}
+          </button>
+        ))}
+      </div>
+    </Sheet>
   );
 }
 
@@ -426,8 +593,10 @@ const PIP_CAP = 5;
  * shows a medallion that flips through every one of them (gym sessions oldest
  * first, then sport sessions), with a pip per activity marking which face is
  * up. Tapping a day opens whichever activity is showing at that moment; tapping
- * an empty day up to today hands it to `onLogDay`. The month in view is local
- * state, independent of `now`.
+ * an empty day up to today hands it to `onLogDay`, and a later one to
+ * `onPlanDay`. A planned day is shaded with its training's badge; tapping it
+ * acts on the plan when it is today and re-plans it when it is later. The
+ * month in view is local state, independent of `now`.
  */
 function HomeCalendar({
   sessions,
@@ -436,14 +605,23 @@ function HomeCalendar({
   now,
   locale,
   onLogDay,
+  plans,
+  onPlanDay,
+  onConfirmPlan,
 }: {
   sessions: Session[];
   sportSessions: SportSession[];
   trainings: Training[];
   now: Date;
   locale: string;
-  /** Absent when there is no activity to log, which leaves empty days inert. */
+  /** Absent when there is no activity to log, which leaves empty past days inert. */
   onLogDay?: (date: string) => void;
+  /** Today's and later plans by day, from `upcomingPlans`. */
+  plans: Map<string, Training>;
+  /** Absent when there is no training to plan, which leaves empty future days inert. */
+  onPlanDay?: (date: string) => void;
+  /** Today's planned cell acts on the plan, same as the Today card. */
+  onConfirmPlan: (training: Training) => void;
 }) {
   const { t } = useLanguage();
   const [month, setMonth] = useState<Date>(() => startOfMonth(now));
@@ -515,17 +693,52 @@ function HomeCalendar({
           const current = badges[face];
 
           if (!current) {
-            // Sport logs are capped at today (§5.8), so a future day stays inert
-            // rather than opening a form that cannot save it. Keys compare as
-            // strings: `YYYY-MM-DD` sorts chronologically.
-            if (onLogDay && key <= dayKey(now)) {
+            const dayLabel = date.toLocaleDateString(locale, { day: 'numeric', month: 'long' });
+            const todayKey = dayKey(now);
+            // `plans` only holds today onward, and logging anything on a day
+            // clears its plan, so a planned cell is always otherwise empty.
+            const planned = plans.get(key);
+            if (planned) {
+              return (
+                <button
+                  type="button"
+                  className={[...classes, 'home-cal-day-planned'].join(' ')}
+                  key={key}
+                  // Today's plan is due now; a later one can still be changed.
+                  onClick={() => (key === todayKey ? onConfirmPlan(planned) : onPlanDay?.(key))}
+                  aria-label={t('home.plannedAria', { date: dayLabel, label: planned.label })}
+                >
+                  <span className="home-cal-daynum">{date.getDate()}</span>
+                  <span className="home-cal-dot home-cal-dot-planned" aria-hidden="true">
+                    {trainingBadge(planned)}
+                  </span>
+                </button>
+              );
+            }
+            // A future day is for planning, not logging — sport logs are capped
+            // at today (§5.8) and a gym session can only start now. Keys compare
+            // as strings: `YYYY-MM-DD` sorts chronologically.
+            if (onPlanDay && key > todayKey) {
+              return (
+                <button
+                  type="button"
+                  className={[...classes, 'home-cal-day-loggable'].join(' ')}
+                  key={key}
+                  onClick={() => onPlanDay(key)}
+                  aria-label={t('home.planAria', { date: dayLabel })}
+                >
+                  <span className="home-cal-daynum">{date.getDate()}</span>
+                </button>
+              );
+            }
+            if (onLogDay && key <= todayKey) {
               return (
                 <button
                   type="button"
                   className={[...classes, 'home-cal-day-loggable'].join(' ')}
                   key={key}
                   onClick={() => onLogDay(key)}
-                  aria-label={t('home.logActivityAria', { date: date.toLocaleDateString(locale, { day: 'numeric', month: 'long' }) })}
+                  aria-label={t('home.logActivityAria', { date: dayLabel })}
                 >
                   <span className="home-cal-daynum">{date.getDate()}</span>
                 </button>

@@ -76,6 +76,14 @@ export const es: Record<TranslationKey, string> = {
   'home.logActivityTitle': 'Registrar una actividad',
   'home.logActivityDay': '¿Qué hiciste el {date}?',
   'home.logActivityAria': '{date}, registrar una actividad',
+  'home.plannedPill': 'Planificado',
+  'home.planSkip': 'Saltar el plan de hoy',
+  'home.planRemoved': 'Plan eliminado',
+  'home.planTitle': 'Planificar un entrenamiento',
+  'home.planDay': '¿Qué harás el {date}?',
+  'home.planRemove': 'Quitar plan',
+  'home.planAria': '{date}, planificar un entrenamiento',
+  'home.plannedAria': '{date}, planificado: {label}',
 
   'settings.title': 'Ajustes',
   'settings.weeklyGoal': 'Objetivo semanal',
@@ -490,7 +498,7 @@ export const es: Record<TranslationKey, string> = {
   'help.subtitle': 'Un recorrido rápido por las cinco pestañas, en el orden en que las usarías.',
   'help.home.title': 'Inicio — empieza el entrenamiento de hoy',
   'help.home.body':
-    'Inicio muestra el próximo entrenamiento en tu rotación, tu progreso semanal y un calendario de sesiones pasadas. Toca la tarjeta para empezar una sesión ese día.',
+    'Inicio muestra el próximo entrenamiento en tu rotación, tu progreso semanal y un calendario de sesiones pasadas. Toca la tarjeta para empezar una sesión ese día. Toca un día futuro en el calendario para planificar un entrenamiento: ese día, la tarjeta te ofrece ese entrenamiento.',
   'help.exercises.title': 'Ejercicios — explora el catálogo',
   'help.exercises.body':
     'Busca o filtra por categoría, equipamiento y músculo objetivo entre más de 1300 ejercicios. Toca la imagen de una tarjeta para ver su historial completo y el gráfico de progreso.',
