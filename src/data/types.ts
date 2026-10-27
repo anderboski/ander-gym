@@ -139,6 +139,15 @@ export type Session = ActiveSession & {
   savedAt: string;
 };
 
+/**
+ * A training pencilled in for a day ahead — SPEC §5.1. Keyed by `date`
+ * (`YYYY-MM-DD`, local), so a day holds at most one plan and re-planning it
+ * simply overwrites. Not an activity: it never counts toward the weekly goal
+ * or streak, and it is cleared once any activity is logged on its day or the
+ * day goes by without one.
+ */
+export type TrainingPlan = { date: string; trainingId: string };
+
 export const SPORT_SESSION_ID_PREFIX = 'ss-';
 
 export type WeatherCondition = 'sunny' | 'cloudy' | 'snowing' | 'foggy' | 'windy';

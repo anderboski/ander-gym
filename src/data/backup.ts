@@ -15,6 +15,7 @@ import type {
   Settings,
   SportSession,
   Training,
+  TrainingPlan,
   WeightCheckin,
 } from './types';
 
@@ -46,6 +47,7 @@ export type BackupFile = {
   profile: BackupProfile;
   checkins: BackupWeightCheckin[];
   sportSessions: SportSession[];
+  plans: TrainingPlan[];
 };
 
 export type ImportMode = 'merge' | 'replace';
@@ -78,7 +80,7 @@ export function dataUrlToBlob(dataUrl: string): Blob {
 /* -------------------------------------------------------------------------- */
 
 export async function buildBackup(): Promise<BackupFile> {
-  const { trainings, sessions, customExercises, settings, profile, checkins, sportSessions } =
+  const { trainings, sessions, customExercises, settings, profile, checkins, sportSessions, plans } =
     await readAll();
 
   const withImages: BackupCustomExercise[] = await Promise.all(
@@ -107,6 +109,7 @@ export async function buildBackup(): Promise<BackupFile> {
     profile: { ...profileFields, photo: photoBlob ? await blobToDataUrl(photoBlob) : null },
     checkins: withPhotos,
     sportSessions,
+    plans,
   };
 }
 
@@ -382,6 +385,19 @@ function toCheckin(v: unknown): BackupWeightCheckin | null {
   return { id: v.id, date: v.date, weightKg: v.weightKg, photos };
 }
 
+const DATE_KEY = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Only a `YYYY-MM-DD` date: it is the store's key and is compared as a string
+ * against today's `dayKey`, so any other shape would never prune or match.
+ * The training is not required to resolve — Home already skips a plan whose
+ * training is gone, and a past-dated plan is pruned on the next load anyway.
+ */
+function toPlan(v: unknown): TrainingPlan | null {
+  if (!isObj(v) || !isStr(v.date) || !DATE_KEY.test(v.date) || !isStr(v.trainingId)) return null;
+  return { date: v.date, trainingId: v.trainingId };
+}
+
 /** Map then drop the nulls — `[]` when the collection itself is not an array. */
 function validList<T>(v: unknown, toItem: (item: unknown, index: number) => T | null): T[] {
   return Array.isArray(v) ? v.map(toItem).filter((item): item is T => item !== null) : [];
@@ -446,6 +462,8 @@ export function parseBackup(text: string): BackupFile {
     // Absent entirely from a backup written before sport sessions existed —
     // same "default rather than reject" handling as `checkins`/`profile`.
     sportSessions: validList(b.sportSessions, toSportSession),
+    // Absent from a backup older than schema 5, before plans existed.
+    plans: validList(b.plans, toPlan),
   };
 }
 
@@ -480,5 +498,6 @@ export async function applyBackup(backup: BackupFile, mode: ImportMode): Promise
     profile,
     checkins,
     sportSessions: backup.sportSessions,
+    plans: backup.plans,
   });
 }

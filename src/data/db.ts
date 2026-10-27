@@ -15,12 +15,13 @@ import {
   type SportSession,
   type Training,
   type TrainingKind,
+  type TrainingPlan,
   type WeightCheckin,
 } from './types';
 
 export const DB_NAME = 'ander-gym';
-export const DB_VERSION = 3;
-export const SCHEMA_VERSION = 4;
+export const DB_VERSION = 4;
+export const SCHEMA_VERSION = 5;
 
 /** The single key used by the activeSession store. */
 const ACTIVE_KEY = 'current';
@@ -34,6 +35,7 @@ interface GymDB extends DBSchema {
   profile: { key: string; value: unknown };
   checkins: { key: string; value: WeightCheckin; indexes: { date: string } };
   sportSessions: { key: string; value: SportSession; indexes: { date: string } };
+  plans: { key: string; value: TrainingPlan };
 }
 
 /** Every user store, in one place so `clearAll` and the upgrade path cannot drift apart. */
@@ -46,6 +48,7 @@ const ALL_STORES: StoreNames<GymDB>[] = [
   'profile',
   'checkins',
   'sportSessions',
+  'plans',
 ];
 
 let dbPromise: Promise<IDBPDatabase<GymDB>> | null = null;
@@ -72,6 +75,11 @@ export function getDB(): Promise<IDBPDatabase<GymDB>> {
       if (oldVersion < 3) {
         const sportSessions = db.createObjectStore('sportSessions', { keyPath: 'id' });
         sportSessions.createIndex('date', 'date');
+      }
+      if (oldVersion < 4) {
+        // Keyed by the day itself: one plan per day, and `YYYY-MM-DD` keys sort
+        // chronologically, so pruning past days is a single key range.
+        db.createObjectStore('plans', { keyPath: 'date' });
       }
     },
     // A second tab holding an older connection open would otherwise block the
@@ -281,6 +289,38 @@ export async function deleteSportSession(id: string): Promise<void> {
 }
 
 /* -------------------------------------------------------------------------- */
+/* Plans                                                                       */
+/* -------------------------------------------------------------------------- */
+
+export async function getPlans(): Promise<TrainingPlan[]> {
+  return (await getDB()).getAll('plans');
+}
+
+/** Overwrites whatever was planned for that day — one plan per day. */
+export async function putPlan(plan: TrainingPlan): Promise<void> {
+  await (await getDB()).put('plans', plan);
+}
+
+/** Removes the day's plan, returning it (or null when nothing was planned) so the caller can offer undo. */
+export async function deletePlan(date: string): Promise<TrainingPlan | null> {
+  const db = await getDB();
+  const tx = db.transaction('plans', 'readwrite');
+  const existing = (await tx.store.get(date)) ?? null;
+  if (existing) await tx.store.delete(date);
+  await tx.done;
+  return existing;
+}
+
+/**
+ * Drops every plan for a day before `date`. A plan whose day passed with
+ * nothing logged is simply gone (SPEC §5.1) — there is no "missed" state to
+ * keep, and leaving them would grow the store and every backup forever.
+ */
+export async function deletePlansBefore(date: string): Promise<void> {
+  await (await getDB()).delete('plans', IDBKeyRange.upperBound(date, true));
+}
+
+/* -------------------------------------------------------------------------- */
 /* Custom exercises                                                            */
 /* -------------------------------------------------------------------------- */
 
@@ -380,10 +420,11 @@ export type Snapshot = {
   profile: Profile;
   checkins: WeightCheckin[];
   sportSessions: SportSession[];
+  plans: TrainingPlan[];
 };
 
 export async function readAll(): Promise<Snapshot> {
-  const [trainings, sessions, customExercises, settings, profile, checkins, sportSessions] =
+  const [trainings, sessions, customExercises, settings, profile, checkins, sportSessions, plans] =
     await Promise.all([
       getTrainings(),
       getSessions(),
@@ -392,8 +433,9 @@ export async function readAll(): Promise<Snapshot> {
       getProfile(),
       getCheckins(),
       getSportSessions(),
+      getPlans(),
     ]);
-  return { trainings, sessions, customExercises, settings, profile, checkins, sportSessions };
+  return { trainings, sessions, customExercises, settings, profile, checkins, sportSessions, plans };
 }
 
 /**
@@ -406,7 +448,7 @@ export async function readAll(): Promise<Snapshot> {
 export async function writeAll(snapshot: Snapshot): Promise<void> {
   const db = await getDB();
   const tx = db.transaction(
-    ['trainings', 'sessions', 'customExercises', 'settings', 'profile', 'checkins', 'sportSessions'],
+    ['trainings', 'sessions', 'customExercises', 'settings', 'profile', 'checkins', 'sportSessions', 'plans'],
     'readwrite',
   );
   const settings = tx.objectStore('settings');
@@ -417,6 +459,7 @@ export async function writeAll(snapshot: Snapshot): Promise<void> {
     ...snapshot.customExercises.map((c) => tx.objectStore('customExercises').put(c)),
     ...snapshot.checkins.map((c) => tx.objectStore('checkins').put(c)),
     ...snapshot.sportSessions.map((s) => tx.objectStore('sportSessions').put(s)),
+    ...snapshot.plans.map((p) => tx.objectStore('plans').put(p)),
     settings.put(snapshot.settings.weeklyGoal, 'weeklyGoal'),
     settings.put(snapshot.settings.lastExportAt, 'lastExportAt'),
     settings.put(snapshot.settings.favoriteExerciseIds, 'favoriteExerciseIds'),

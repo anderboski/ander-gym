@@ -81,6 +81,14 @@ export const en = {
   'home.logActivityTitle': 'Log an activity',
   'home.logActivityDay': 'What did you do on {date}?',
   'home.logActivityAria': '{date}, log an activity',
+  'home.plannedPill': 'Planned',
+  'home.planSkip': 'Skip today’s plan',
+  'home.planRemoved': 'Plan removed',
+  'home.planTitle': 'Plan a training',
+  'home.planDay': 'What will you do on {date}?',
+  'home.planRemove': 'Remove plan',
+  'home.planAria': '{date}, plan a training',
+  'home.plannedAria': '{date}, planned: {label}',
 
   'settings.title': 'Settings',
   'settings.weeklyGoal': 'Weekly goal',
@@ -488,7 +496,7 @@ export const en = {
   'help.subtitle': 'A quick tour of the five tabs, in the order you’d naturally hit them.',
   'help.home.title': 'Home — start today’s training',
   'help.home.body':
-    'Home shows the training day next up in your rotation, your weekly progress, and a calendar of past sessions. Tap the card to start a session for that day.',
+    'Home shows the training day next up in your rotation, your weekly progress, and a calendar of past sessions. Tap the card to start a session for that day. Tap a future day on the calendar to plan a training for it: on the day, the card offers that training instead.',
   'help.exercises.title': 'Exercises — browse the catalogue',
   'help.exercises.body':
     'Search or filter by category, equipment and target muscle across more than 1,300 exercises. Tap a card’s image to see its full history and progress chart.',

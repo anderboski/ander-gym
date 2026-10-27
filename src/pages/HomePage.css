@@ -193,6 +193,24 @@
   margin-bottom: var(--s2);
 }
 
+.home-card-top {
+  display: flex;
+  align-items: center;
+  gap: var(--s2);
+  margin-bottom: var(--s2);
+}
+
+.home-card-top .home-card-badge {
+  margin-bottom: 0;
+}
+
+/* Sits under the card, right-aligned and quiet: skipping a plan is the
+   exception, the card itself is the main action. */
+.home-plan-skip {
+  display: block;
+  margin: var(--s2) 0 0 auto;
+}
+
 .home-card-title {
   font-size: 22px;
   font-weight: 700;
@@ -347,6 +365,22 @@
   background: var(--bg-raised-2);
 }
 
+/* A day with a training planned (§5.1): shaded and dash-outlined rather than
+   filled, so a plan never reads as something already done. */
+.home-cal-day-planned {
+  background: var(--bg-raised-2);
+  outline: 1px dashed var(--accent);
+  outline-offset: -1px;
+}
+
+.home-cal-day-planned:active {
+  background: var(--bg-sunken);
+}
+
+.home-cal-dot-planned {
+  color: var(--text-dim);
+}
+
 /* An empty day that opens the log-an-activity picker: no fill at rest, so the
    month still reads as "trained vs not", only the press shows it is live. */
 .home-cal-day-loggable:active {
@@ -464,6 +498,13 @@
   margin-top: 2px;
   font-size: 13px;
   color: var(--text-dim);
+}
+
+.home-pick-check {
+  flex: none;
+  width: 20px;
+  height: 20px;
+  color: var(--accent);
 }
 
 .home-pick-chevron {

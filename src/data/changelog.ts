@@ -432,6 +432,18 @@ export const CHANGELOG: ChangelogEntry[] = [
     en: ['Tap an empty day on Home’s calendar to log one of your other activities for that day — pick the activity and its form opens with the date already filled in.'],
     es: ['Toca un día vacío en el calendario de Inicio para registrar una de tus otras actividades ese día — elige la actividad y su formulario se abre con la fecha ya puesta.'],
   },
+  {
+    version: '1.29.0',
+    date: '2026-10-26',
+    en: [
+      'Plan your month ahead: tap a future day on Home’s calendar and pick a training — it shows shaded on that day.',
+      'On the day, the Today card offers the planned training. Start it, skip it, or do something else — logging any activity clears the plan, and a plan you don’t act on disappears once the day is over.',
+    ],
+    es: [
+      'Planifica tu mes: toca un día futuro en el calendario de Inicio y elige un entrenamiento — aparece sombreado ese día.',
+      'Ese día, la tarjeta de Hoy te ofrece el entrenamiento planificado. Empiézalo, sáltalo o haz otra cosa — registrar cualquier actividad quita el plan, y un plan que no uses desaparece cuando termina el día.',
+    ],
+  },
 ];
 
 /** Keep in sync with the bootstrap-independent nature of theme/language: this

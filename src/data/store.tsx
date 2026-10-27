@@ -22,6 +22,7 @@ import {
 import {
   allLatestFor,
   allPersonalRecords,
+  dayKey,
   sortSessions,
   type LatestByExercise,
   type RecordsByExercise,
@@ -49,6 +50,7 @@ import {
   type SportSession,
   type Training,
   type TrainingKind,
+  type TrainingPlan,
   type WeightCheckin,
 } from './types';
 
@@ -69,8 +71,10 @@ export type GymState = {
   profile: Profile;
   /** Weight check-ins, newest first — same convention as `sessions`. */
   checkins: WeightCheckin[];
-  /** Logged sport activities, newest first. Never counted in streak/week-goal maths. */
+  /** Logged sport activities, newest first. */
   sportSessions: SportSession[];
+  /** Trainings pencilled in for today or later (SPEC §5.1), oldest day first. */
+  plans: TrainingPlan[];
 };
 
 export type NewCustomExercise = {
@@ -166,6 +170,11 @@ type Mutations = {
   logSportSession: (trainingId: string, input: NewSportSession) => Promise<SportSession>;
   /** Immutable, like `deleteSession` — no editing, only delete and re-log. */
   deleteSportSession: (id: string) => Promise<void>;
+
+  /** Plans `trainingId` for `date` (`YYYY-MM-DD`), replacing whatever that day already held. */
+  planTraining: (date: string, trainingId: string) => Promise<void>;
+  /** Removes the day's plan. Returns it (or null) so the caller can offer undo via `planTraining`. */
+  clearPlan: (date: string) => Promise<TrainingPlan | null>;
 };
 
 type Lookups = {
@@ -196,6 +205,7 @@ const INITIAL: GymState = {
   profile: DEFAULT_PROFILE,
   checkins: [],
   sportSessions: [],
+  plans: [],
 };
 
 /** `date` is `YYYY-MM-DD`, so a plain string sort is already chronological. */
@@ -208,6 +218,16 @@ function byNewestSport(sportSessions: SportSession[]): SportSession[] {
   return [...sportSessions].sort(
     (a, b) => b.date.localeCompare(a.date) || b.createdAt.localeCompare(a.createdAt),
   );
+}
+
+function byDate(plans: TrainingPlan[]): TrainingPlan[] {
+  return [...plans].sort((a, b) => a.date.localeCompare(b.date));
+}
+
+/** Swaps the day's plan for `plan`, or just drops it when `plan` is null. */
+function withPlan(plans: TrainingPlan[], date: string, plan: TrainingPlan | null): TrainingPlan[] {
+  const rest = plans.filter((p) => p.date !== date);
+  return plan ? byDate([...rest, plan]) : rest;
 }
 
 function byOrder(trainings: Training[]): Training[] {
@@ -228,7 +248,11 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
 
   /** Full reload from disk. Used on boot and after an import. */
   const reload = useCallback(async () => {
-    const [rawExercises, trainings, custom, sessions, active, settings, profile, checkins, sportSessions] =
+    // A plan whose day went by with nothing logged is simply gone (SPEC §5.1).
+    // Pruned here — on launch and after an import — rather than on a timer:
+    // `upcomingPlans` already hides it from the UI the moment midnight passes.
+    await db.deletePlansBefore(dayKey(new Date()));
+    const [rawExercises, trainings, custom, sessions, active, settings, profile, checkins, sportSessions, plans] =
       await Promise.all([
         fetchRawExercises(),
         db.getTrainings(),
@@ -239,6 +263,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
         db.getProfile(),
         db.getCheckins(),
         db.getSportSessions(),
+        db.getPlans(),
       ]);
 
     revokeCustomUrls(liveCustomExercises.current);
@@ -259,6 +284,7 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
       profile,
       checkins: byNewestCheckin(checkins),
       sportSessions: byNewestSport(sportSessions),
+      plans: byDate(plans),
     });
   }, []);
 
@@ -457,9 +483,18 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
         };
         await db.putSession(session);
         await db.clearActiveSession();
+        // Any activity on a planned day uses the plan up, whichever training it
+        // was — the day then shows only what was actually done (SPEC §5.1).
+        const day = dayKey(new Date(session.startedAt));
+        await db.deletePlan(day);
         void db.requestPersistence();
 
-        setState((s) => ({ ...s, active: null, sessions: sortSessions([session, ...s.sessions]) }));
+        setState((s) => ({
+          ...s,
+          active: null,
+          sessions: sortSessions([session, ...s.sessions]),
+          plans: withPlan(s.plans, day, null),
+        }));
         return session;
       },
 
@@ -541,13 +576,31 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
           createdAt: new Date().toISOString(),
         } as SportSession;
         await db.putSportSession(record);
-        setState((s) => ({ ...s, sportSessions: byNewestSport([...s.sportSessions, record]) }));
+        // Same as `saveSession`: logging anything on a planned day clears it.
+        await db.deletePlan(record.date);
+        setState((s) => ({
+          ...s,
+          sportSessions: byNewestSport([...s.sportSessions, record]),
+          plans: withPlan(s.plans, record.date, null),
+        }));
         return record;
       },
 
       async deleteSportSession(id) {
         await db.deleteSportSession(id);
         setState((s) => ({ ...s, sportSessions: s.sportSessions.filter((x) => x.id !== id) }));
+      },
+
+      async planTraining(date, trainingId) {
+        const plan: TrainingPlan = { date, trainingId };
+        await db.putPlan(plan);
+        setState((s) => ({ ...s, plans: withPlan(s.plans, date, plan) }));
+      },
+
+      async clearPlan(date) {
+        const removed = await db.deletePlan(date);
+        setState((s) => ({ ...s, plans: withPlan(s.plans, date, null) }));
+        return removed;
       },
     };
     return m;

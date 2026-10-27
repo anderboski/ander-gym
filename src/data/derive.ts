@@ -17,6 +17,7 @@ import {
   type SetEntry,
   type SportSession,
   type Training,
+  type TrainingPlan,
 } from './types';
 
 /* -------------------------------------------------------------------------- */
@@ -473,6 +474,30 @@ export function sportSessionsByDay(sportSessions: SportSession[]): Map<string, S
     const list = out.get(s.date) ?? [];
     list.push(s);
     out.set(s.date, list);
+  }
+  return out;
+}
+
+/**
+ * The plans Home should still show, keyed by day, each resolved to its
+ * training. A plan is dropped when its day is already behind `now` (the store
+ * prunes those on load, but the app can stay open across midnight), when its
+ * training no longer exists, or when that training is archived — an archived
+ * training can't be started or logged from Home, so offering it would be a
+ * dead end. Keys compare as strings: `YYYY-MM-DD` sorts chronologically.
+ */
+export function upcomingPlans(
+  plans: TrainingPlan[],
+  trainings: Training[],
+  now: Date,
+): Map<string, Training> {
+  const today = dayKey(now);
+  const byId = new Map(trainings.map((t) => [t.id, t]));
+  const out = new Map<string, Training>();
+  for (const plan of plans) {
+    if (plan.date < today) continue;
+    const training = byId.get(plan.trainingId);
+    if (training && !training.archived) out.set(plan.date, training);
   }
   return out;
 }

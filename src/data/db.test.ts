@@ -390,6 +390,63 @@ describe('DB_VERSION 2 -> 3 migration', () => {
   });
 });
 
+describe('plans', () => {
+  it('keeps one plan per day, overwriting on re-plan', async () => {
+    await db.putPlan({ date: '2026-11-02', trainingId: 't-a' });
+    await db.putPlan({ date: '2026-11-02', trainingId: 't-b' });
+    await db.putPlan({ date: '2026-11-04', trainingId: 't-a' });
+    expect(await db.getPlans()).toEqual([
+      { date: '2026-11-02', trainingId: 't-b' },
+      { date: '2026-11-04', trainingId: 't-a' },
+    ]);
+  });
+
+  it('deletePlan returns what it removed, or null when nothing was planned', async () => {
+    await db.putPlan({ date: '2026-11-02', trainingId: 't-a' });
+    expect(await db.deletePlan('2026-11-02')).toEqual({ date: '2026-11-02', trainingId: 't-a' });
+    expect(await db.deletePlan('2026-11-02')).toBeNull();
+    expect(await db.getPlans()).toEqual([]);
+  });
+
+  it('deletePlansBefore drops past days and keeps that day onward', async () => {
+    await db.putPlan({ date: '2026-10-01', trainingId: 't-a' });
+    await db.putPlan({ date: '2026-10-25', trainingId: 't-a' });
+    await db.putPlan({ date: '2026-10-26', trainingId: 't-b' });
+    await db.putPlan({ date: '2026-12-01', trainingId: 't-a' });
+    await db.deletePlansBefore('2026-10-26');
+    expect((await db.getPlans()).map((p) => p.date)).toEqual(['2026-10-26', '2026-12-01']);
+  });
+});
+
+describe('DB_VERSION 3 -> 4 migration', () => {
+  it('preserves existing data and adds the plans store', async () => {
+    const v3 = await openDB(db.DB_NAME, 3, {
+      upgrade(rawDb) {
+        rawDb.createObjectStore('trainings', { keyPath: 'id' });
+        const sessions = rawDb.createObjectStore('sessions', { keyPath: 'id' });
+        sessions.createIndex('startedAt', 'startedAt');
+        rawDb.createObjectStore('activeSession');
+        rawDb.createObjectStore('customExercises', { keyPath: 'id' });
+        rawDb.createObjectStore('settings');
+        rawDb.createObjectStore('profile');
+        const checkins = rawDb.createObjectStore('checkins', { keyPath: 'id' });
+        checkins.createIndex('date', 'date');
+        const sportSessions = rawDb.createObjectStore('sportSessions', { keyPath: 'id' });
+        sportSessions.createIndex('date', 'date');
+      },
+    });
+    await v3.put('trainings', { id: 't-1', label: 'Push day', order: 0, exerciseIds: [] });
+    await v3.put('sessions', session('s1', 't-1'));
+    v3.close();
+
+    expect(await db.getTrainings()).toHaveLength(1);
+    expect(await db.getSessions()).toEqual([session('s1', 't-1')]);
+    expect(await db.getPlans()).toEqual([]);
+    await db.putPlan({ date: '2026-11-02', trainingId: 't-1' });
+    expect(await db.getPlans()).toHaveLength(1);
+  });
+});
+
 describe('backup round trip', () => {
   it('exports and restores everything, including a custom-exercise photo', async () => {
     await db.putTraining({ id: 'leg-abs', label: 'Leg-abs', order: 1, exerciseIds: ['0001'] });
@@ -494,6 +551,32 @@ describe('backup round trip', () => {
       sessions: [],
     };
     expect(parseBackup(JSON.stringify(legacy)).sportSessions).toEqual([]);
+  });
+
+  it('round-trips plans, defaults them to [] for an older backup, and drops malformed ones', async () => {
+    await db.putPlan({ date: '2026-11-02', trainingId: 't-a' });
+
+    const restored = parseBackup(JSON.stringify(await buildBackup()));
+    expect(restored.plans).toEqual([{ date: '2026-11-02', trainingId: 't-a' }]);
+    await db.clearAll();
+    expect(await db.getPlans()).toEqual([]);
+    await applyBackup(restored, 'replace');
+    expect(await db.getPlans()).toEqual([{ date: '2026-11-02', trainingId: 't-a' }]);
+
+    const legacy = { schemaVersion: 4, exportedAt: null, trainings: [], sessions: [] };
+    expect(parseBackup(JSON.stringify(legacy)).plans).toEqual([]);
+
+    const messy = {
+      ...legacy,
+      schemaVersion: 5,
+      plans: [
+        { date: '2026-11-02', trainingId: 't-a' },
+        { date: 'next tuesday', trainingId: 't-a' },
+        { date: '2026-11-03' },
+        'nope',
+      ],
+    };
+    expect(parseBackup(JSON.stringify(messy)).plans).toEqual([{ date: '2026-11-02', trainingId: 't-a' }]);
   });
 
   it('round-trips favorited exercises', async () => {
