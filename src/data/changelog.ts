@@ -444,6 +444,12 @@ export const CHANGELOG: ChangelogEntry[] = [
       'Ese día, la tarjeta de Hoy te ofrece el entrenamiento planificado. Empiézalo, sáltalo o haz otra cosa — registrar cualquier actividad quita el plan, y un plan que no uses desaparece cuando termina el día.',
     ],
   },
+  {
+    version: '1.29.1',
+    date: '2026-10-27',
+    en: ['Month headings in Spanish now read “Octubre 2026” instead of “Octubre De 2026”.'],
+    es: ['Los títulos de mes en castellano ahora dicen «Octubre 2026» en lugar de «Octubre De 2026».'],
+  },
 ];
 
 /** Keep in sync with the bootstrap-independent nature of theme/language: this

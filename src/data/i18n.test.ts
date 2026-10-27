@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { interpolate } from './i18n';
+import { formatMonthYear, interpolate } from './i18n';
 
 describe('interpolate', () => {
   it('substitutes named placeholders', () => {
@@ -12,5 +12,12 @@ describe('interpolate', () => {
 
   it('leaves an unmatched placeholder as-is', () => {
     expect(interpolate('{missing} thing', { count: 1 })).toBe('{missing} thing');
+  });
+});
+
+describe('formatMonthYear', () => {
+  it('writes month and year with no connective', () => {
+    expect(formatMonthYear('es-ES', new Date(2026, 9, 15))).toBe('octubre 2026');
+    expect(formatMonthYear('en-GB', new Date(2026, 7, 5))).toBe('August 2026');
   });
 });

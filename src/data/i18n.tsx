@@ -151,7 +151,15 @@ export function formatLongDate(locale: string, d: Date | string): string {
   return toDate(d).toLocaleDateString(locale, { weekday: 'long', day: 'numeric', month: 'long' });
 }
 
-/** `August 2026` — month headings. */
+/**
+ * `August 2026` · `agosto 2026` — month headings. Spanish CLDR writes
+ * `agosto de 2026`, and the headings' `text-transform: capitalize` then turns
+ * that into `Agosto De 2026`; keeping only the month and year parts drops the
+ * connective in every locale.
+ */
 export function formatMonthYear(locale: string, d: Date | string): string {
-  return toDate(d).toLocaleDateString(locale, { month: 'long', year: 'numeric' });
+  const parts = new Intl.DateTimeFormat(locale, { month: 'long', year: 'numeric' }).formatToParts(toDate(d));
+  const month = parts.find((p) => p.type === 'month')?.value ?? '';
+  const year = parts.find((p) => p.type === 'year')?.value ?? '';
+  return `${month} ${year}`.trim();
 }
