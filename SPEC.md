@@ -198,7 +198,8 @@ Reachable from a gear icon on Home (Settings sheet).
 All dates are handled in the device's local timezone. `derive.ts` produces keys and numbers (`dayKey`,
 `daysBetween`, `formatElapsed`); anything a person reads goes through the locale-aware formatters in
 `i18n.tsx` (`formatDay`, `formatDayWithWeekday`, `formatDayTime`, `formatLongDate`, `formatMonthYear`),
-which write the year only when it is not the current one. Chart geometry — axis domains, tick steps,
+which write the year only when it is not the current one. `formatMonthYear` keeps only the month and
+year ("octubre 2026", never "octubre de 2026"). Chart geometry — axis domains, tick steps,
 marker lane assignment — is its own pure module, `chart.ts`, so it is unit-tested without an SVG.
 
 **`currentWeekCount(sessions, sportSessions, now)`** — number of activities in the current ISO week
