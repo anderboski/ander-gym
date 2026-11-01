@@ -2,7 +2,7 @@
  * "What's new" popup (auto-shown after an update) and the full changelog
  * sheet reachable from Settings. Both read from data/changelog.ts.
  */
-import { useEffect, useState } from 'react';
+import { useEffect, useState, type ReactNode } from 'react';
 import { CHANGELOG, getLastSeenVersion, setLastSeenVersion, unseenEntries, type ChangelogEntry } from '../data/changelog';
 import { parseLocalDate } from '../data/derive';
 import { formatDay, useLanguage } from '../data/i18n';
@@ -19,8 +19,11 @@ function notesFor(entry: ChangelogEntry, language: 'en' | 'es'): string[] {
  * (via the button, the "×", Escape, or the backdrop) advances to the next
  * and persists progress, so a partially-worked-through queue survives the
  * app being closed mid-way.
+ *
+ * `children` render only once the queue is empty, so another launch-time
+ * sheet (the weekly recap) waits its turn instead of stacking on top.
  */
-export function WhatsNewGate() {
+export function WhatsNewGate({ children }: { children?: ReactNode }) {
   const { language, t } = useLanguage();
   // Read once, via a lazy initializer — a pure read, so it stays correct
   // even though StrictMode invokes it twice in dev. The queue derives from
@@ -41,7 +44,7 @@ export function WhatsNewGate() {
   }, [lastSeenAtLoad]);
 
   const current = queue[0];
-  if (!current) return null;
+  if (!current) return <>{children}</>;
 
   function dismiss() {
     setLastSeenVersion(current!.version);

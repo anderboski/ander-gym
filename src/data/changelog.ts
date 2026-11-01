@@ -450,6 +450,16 @@ export const CHANGELOG: ChangelogEntry[] = [
     en: ['Month headings in Spanish now read “Octubre 2026” instead of “Octubre De 2026”.'],
     es: ['Los títulos de mes en castellano ahora dicen «Octubre 2026» en lugar de «Octubre De 2026».'],
   },
+  {
+    version: '1.30.0',
+    date: '2026-11-01',
+    en: [
+      'Weekly recap: the first time you open the app each week, a summary of last week pops up — what you did and how often, how many days you were active, and the personal records you beat.',
+    ],
+    es: [
+      'Resumen semanal: la primera vez que abres la app cada semana aparece un resumen de la semana anterior — qué hiciste y cuántas veces, cuántos días estuviste activo y los récords personales que superaste.',
+    ],
+  },
 ];
 
 /** Keep in sync with the bootstrap-independent nature of theme/language: this

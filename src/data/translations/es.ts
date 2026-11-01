@@ -455,6 +455,17 @@ export const es: Record<TranslationKey, string> = {
   'changelog.title': 'Historial de cambios',
   'changelog.viewAria': 'Ver historial de cambios',
 
+  'recap.title': 'La semana pasada',
+  'recap.done': '¡Vamos!',
+  'recap.empty': 'No registraste nada la semana pasada. Empieza una semana nueva.',
+  'recap.activities': 'Actividades',
+  'recap.activeDays': 'Días activos',
+  'recap.records': 'Récords nuevos',
+  'recap.byTraining': 'Lo que hiciste',
+  'recap.newRecords': 'Récords personales nuevos',
+  'recap.recordHeaviest': 'El más pesado',
+  'recap.recordReps': 'Mejor a {reps} repeticiones',
+
   'home.greetingMorning': 'Buenos días',
   'home.greetingDay': 'Hola de nuevo',
   'home.greetingEvening': 'Buenas noches',

@@ -1,0 +1,102 @@
+/* Weekly recap sheet (SPEC §5.1). Tokens only. */
+
+.recap {
+  padding: 0 var(--s5);
+}
+
+.recap-range {
+  margin: 0 0 var(--s4);
+  font-size: 15px;
+  color: var(--text-dim);
+}
+
+/* The sheet itself is --bg-raised, so tiles step up one level to stay visible. */
+.recap .stat-tile {
+  background: var(--bg-raised-2);
+}
+
+.recap-empty {
+  margin: 0;
+  font-size: 15px;
+  line-height: 1.5;
+  color: var(--text-dim);
+}
+
+.recap-section {
+  margin-top: var(--s6);
+}
+
+.recap-section-title {
+  margin: 0 0 var(--s2);
+  font-size: 13px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--text-dim);
+}
+
+.recap-list {
+  border-radius: var(--r-md);
+  background: var(--bg-raised-2);
+  overflow: hidden;
+}
+
+.recap-row {
+  display: flex;
+  align-items: center;
+  gap: var(--s3);
+  min-height: 56px;
+  padding: var(--s2) var(--s3);
+}
+
+.recap-row + .recap-row {
+  border-top: 1px solid var(--border);
+}
+
+.recap-badge {
+  flex: none;
+  width: 36px;
+  height: 36px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-sm);
+  background: var(--bg-raised);
+  font-size: 18px;
+  font-weight: 700;
+}
+
+.recap-thumb {
+  flex: none;
+  width: 36px;
+  height: 36px;
+}
+
+.recap-text {
+  flex: 1;
+  min-width: 0;
+}
+
+.recap-label {
+  display: block;
+  font-size: 16px;
+  font-weight: 600;
+  overflow-wrap: anywhere;
+}
+
+.recap-sub {
+  display: block;
+  margin-top: 2px;
+  font-size: 13px;
+  color: var(--text-dim);
+}
+
+.recap-count {
+  flex: none;
+  font-size: 17px;
+  font-weight: 700;
+}
+
+.recap-row .pill {
+  flex: none;
+}

@@ -17,6 +17,7 @@ import {
   type SetEntry,
   type SportSession,
   type Training,
+  type TrainingKind,
   type TrainingPlan,
 } from './types';
 
@@ -1412,4 +1413,162 @@ export function runningRuns(sportSessions: SportSession[], range: StatsRange): R
     .filter((s): s is RunningSession => s.kind === 'running')
     .filter((s) => inRange(parseLocalDate(s.date), range))
     .sort((a, b) => b.date.localeCompare(a.date));
+}
+
+/* -------------------------------------------------------------------------- */
+/* Weekly recap                                                                */
+/* -------------------------------------------------------------------------- */
+
+/** Monday 00:00 of the week before the one containing `now` — the week a recap covers. */
+export function previousWeekStart(now: Date): Date {
+  return addWeeks(startOfWeek(now), -1);
+}
+
+/**
+ * The week whose recap is due on this launch, as its Monday, or null.
+ *
+ * Due on the first launch of a new week, whatever day that falls on — tying it
+ * to Mondays alone would silently skip every week the app wasn't opened on one.
+ * `lastRecapWeek` is the `dayKey` of the last week already shown (null when
+ * none has been); only the most recent finished week is ever offered, so a
+ * month away brings back one recap, not four.
+ *
+ * Never due before the user has logged anything ahead of this week: a fresh
+ * install has no "last week" to recap. Once they have, a week with nothing in
+ * it still gets its (empty) recap — that was asked for explicitly.
+ */
+export function recapWeekDue(
+  lastRecapWeek: string | null,
+  now: Date,
+  sessions: Session[],
+  sportSessions: SportSession[],
+): Date | null {
+  const week = previousWeekStart(now);
+  // `YYYY-MM-DD` sorts chronologically as a string.
+  if (lastRecapWeek !== null && lastRecapWeek >= dayKey(week)) return null;
+  const thisWeek = startOfWeek(now).getTime();
+  const usedBefore = activityDates(sessions, sportSessions).some((d) => d.getTime() < thisWeek);
+  return usedBefore ? week : null;
+}
+
+export type RecapTraining = {
+  trainingId: string;
+  label: string;
+  badge: string;
+  kind: TrainingKind;
+  count: number;
+};
+
+export type RecapRecord = {
+  exerciseId: string;
+  /** The week's best record-beating set for this exercise. */
+  set: SetEntry;
+  /** `heaviest`: heavier than anything ever logged. `reps`: best yet at `set.reps`. */
+  type: 'heaviest' | 'reps';
+};
+
+export type WeeklyRecap = {
+  /** Monday 00:00 of the recapped week. */
+  weekStart: Date;
+  /** Sunday of the same week (a day to display, not an exclusive bound). */
+  weekEnd: Date;
+  /** Gym sessions + sport logs — the same count the weekly goal uses. */
+  activities: number;
+  /** Distinct calendar days with at least one activity. */
+  activeDays: number;
+  /** One row per training done that week, most often first. */
+  byTraining: RecapTraining[];
+  /** At most one per exercise, in the order they were first set. */
+  records: RecapRecord[];
+};
+
+/**
+ * Everything logged in the week starting `weekStart`: activities per training,
+ * active days, and personal records beaten.
+ *
+ * Records use `beatsPersonalRecord` — the same rule as the in-session "New
+ * record" toast — against everything saved before each set, including earlier
+ * sets of the same week, so the recap never announces a PR the toast didn't.
+ * An exercise that beat its record several times shows only its best set:
+ * three ascending sets of one lift are one achievement in a summary.
+ */
+export function weeklyRecap(
+  sessions: Session[],
+  sportSessions: SportSession[],
+  trainings: Training[],
+  weekStart: Date,
+): WeeklyRecap {
+  const from = startOfWeek(weekStart);
+  const to = addWeeks(from, 1);
+  const inWeek = (d: Date) => d.getTime() >= from.getTime() && d.getTime() < to.getTime();
+  const byId = new Map(trainings.map((t) => [t.id, t]));
+
+  const rows = new Map<string, RecapTraining>();
+  const days = new Set<string>();
+  const bump = (trainingId: string, snapshotLabel: string, fallbackKind: TrainingKind) => {
+    const row = rows.get(trainingId);
+    if (row) {
+      row.count += 1;
+      return;
+    }
+    const training = byId.get(trainingId);
+    rows.set(trainingId, {
+      trainingId,
+      label: training?.label ?? snapshotLabel,
+      badge: trainingBadge(training, snapshotLabel),
+      kind: training?.kind ?? fallbackKind,
+      count: 1,
+    });
+  };
+
+  for (const s of sessions) {
+    const d = new Date(s.startedAt);
+    if (!inWeek(d)) continue;
+    days.add(dayKey(d));
+    bump(s.trainingId, s.trainingLabel, 'gym');
+  }
+  for (const s of sportSessions) {
+    const d = parseLocalDate(s.date);
+    if (!inWeek(d)) continue;
+    days.add(s.date);
+    bump(s.trainingId, s.trainingLabel, s.kind);
+  }
+
+  // Replay history oldest-first so each set is judged against exactly what
+  // existed before it; sessions after the week can't affect the result.
+  const records: RecordsByExercise = new Map();
+  const best = new Map<string, RecapRecord>();
+  for (const session of chronological(sessions)) {
+    const started = new Date(session.startedAt);
+    if (started.getTime() >= to.getTime()) break;
+    const counting = inWeek(started);
+    for (const entry of session.entries) {
+      for (const set of entry.sets) {
+        if (counting) {
+          const existing = records.get(entry.exerciseId) ?? null;
+          if (beatsPersonalRecord(set, existing)) {
+            const type = existing && set.weight > existing.heaviest.weight ? 'heaviest' : 'reps';
+            const prior = best.get(entry.exerciseId);
+            // Strictly heavier replaces, so a tie keeps the earlier set — same rule as the records themselves.
+            if (!prior || set.weight > prior.set.weight) {
+              best.set(entry.exerciseId, { exerciseId: entry.exerciseId, set, type });
+            }
+          }
+        }
+        absorb(records, entry.exerciseId, set);
+      }
+    }
+  }
+
+  const weekEnd = new Date(to);
+  weekEnd.setDate(weekEnd.getDate() - 1);
+
+  return {
+    weekStart: from,
+    weekEnd,
+    activities: [...rows.values()].reduce((n, r) => n + r.count, 0),
+    activeDays: days.size,
+    byTraining: [...rows.values()].sort((a, b) => b.count - a.count || a.label.localeCompare(b.label)),
+    records: [...best.values()],
+  };
 }
