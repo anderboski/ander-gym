@@ -39,6 +39,8 @@ import {
   monthGrid,
   nextTraining,
   parseLocalDate,
+  previousWeekStart,
+  recapWeekDue,
   personalRecords,
   rangeDays,
   remainingSeconds,
@@ -66,6 +68,7 @@ import {
   viewsForRange,
   upcomingPlans,
   volumeByTarget,
+  weeklyRecap,
   weeklyStreak,
 } from './derive';
 import type { ClimbGrade, Session, SessionEntry, SetEntry, SnowCondition, SportSession, Training, WeatherCondition } from './types';
@@ -1832,5 +1835,118 @@ describe('runningSummary', () => {
   it('ignores other kinds and runs outside the window', () => {
     const logs = [sportSession('2026-07-30', 'c', 'cycling'), run('2026-05-01', 10, 50, 0, null)];
     expect(runningSummary(logs, trailingRange(30, now)).runs).toBe(0);
+  });
+});
+
+describe('weekly recap', () => {
+  // Sun 1 Nov 2026 is the last day of the week starting Mon 26 Oct.
+  const monday = new Date(2026, 10, 2, 9); // Mon 2 Nov
+  const lastWeek = new Date(2026, 9, 26);
+  const set = (reps: number, weight: number): SetEntry => ({ reps, weight, at: '' });
+  const entry = (exerciseId: string, ...sets: SetEntry[]): SessionEntry => ({ exerciseId, sets });
+
+  describe('previousWeekStart', () => {
+    it('is the Monday before the current week, on any day of it', () => {
+      expect(previousWeekStart(monday)).toEqual(lastWeek);
+      expect(previousWeekStart(new Date(2026, 10, 8, 23))).toEqual(lastWeek); // Sun 8 Nov
+    });
+  });
+
+  describe('recapWeekDue', () => {
+    const old = [session(at(2026, 10, 20))];
+
+    it('is due on the first launch of a new week, whatever the day', () => {
+      expect(recapWeekDue(null, monday, old, [])).toEqual(lastWeek);
+      expect(recapWeekDue('2026-10-19', new Date(2026, 10, 5), old, [])).toEqual(lastWeek); // Thursday
+    });
+
+    it('is not due again once that week has been shown', () => {
+      expect(recapWeekDue('2026-10-26', monday, old, [])).toBeNull();
+      expect(recapWeekDue('2026-10-26', new Date(2026, 10, 8), old, [])).toBeNull();
+    });
+
+    it('offers only the most recent finished week after a long absence', () => {
+      expect(recapWeekDue('2026-08-03', monday, old, [])).toEqual(lastWeek);
+    });
+
+    it('is never due before anything was logged ahead of this week', () => {
+      expect(recapWeekDue(null, monday, [], [])).toBeNull();
+      expect(recapWeekDue(null, monday, [session(at(2026, 11, 2, 8))], [])).toBeNull();
+    });
+
+    it('counts a sport log as prior use', () => {
+      expect(recapWeekDue(null, monday, [], [sportSession('2026-10-01')])).toEqual(lastWeek);
+    });
+
+    it('is still due for a week with nothing in it', () => {
+      expect(recapWeekDue(null, monday, [session(at(2026, 9, 1))], [])).toEqual(lastWeek);
+    });
+  });
+
+  describe('weeklyRecap', () => {
+    const named: Training[] = [
+      { id: 'push', label: 'Push', order: 0, exerciseIds: [], emoji: '💪' },
+      { id: 'run', label: 'Run', order: 1, exerciseIds: [], kind: 'running' },
+    ];
+
+    it('counts activities per training and distinct active days, inside the week only', () => {
+      const sessions = [
+        session(at(2026, 10, 26, 8), 'push'),
+        session(at(2026, 10, 26, 19), 'push'),
+        session(at(2026, 10, 29), 'push'),
+        session(at(2026, 10, 25, 23, 59), 'push'), // Sunday before
+        session(at(2026, 11, 2, 0, 0), 'push'), // Monday after
+      ];
+      const sports = [sportSession('2026-11-01', 'run', 'running'), sportSession('2026-10-25', 'run', 'running')];
+      const recap = weeklyRecap(sessions, sports, named, lastWeek);
+      expect(recap.activities).toBe(4);
+      expect(recap.activeDays).toBe(3);
+      expect(recap.byTraining).toEqual([
+        { trainingId: 'push', label: 'Push', badge: '💪', kind: 'gym', count: 3 },
+        { trainingId: 'run', label: 'Run', badge: 'R', kind: 'running', count: 1 },
+      ]);
+      expect(recap.weekStart).toEqual(lastWeek);
+      expect(recap.weekEnd).toEqual(new Date(2026, 10, 1));
+    });
+
+    it('falls back to the snapshot label when a training no longer resolves', () => {
+      const recap = weeklyRecap([session(at(2026, 10, 27), 'gone')], [sportSession('2026-10-28', 'x', 'climbing')], [], lastWeek);
+      expect(recap.byTraining.map((r) => [r.label, r.kind])).toEqual([
+        ['gone', 'gym'],
+        ['x', 'climbing'],
+      ]);
+    });
+
+    it('is empty for a week with nothing logged', () => {
+      const recap = weeklyRecap([session(at(2026, 10, 1))], [], named, lastWeek);
+      expect(recap).toMatchObject({ activities: 0, activeDays: 0, byTraining: [], records: [] });
+    });
+
+    it('reports only sets that beat a record that existed before them', () => {
+      const sessions = [
+        session(at(2026, 10, 19), 'push', [entry('bench', set(8, 50), set(5, 55)), entry('row', set(10, 40))]),
+        session(at(2026, 10, 27), 'push', [
+          entry('bench', set(8, 52.5)), // best at 8 reps, not heaviest
+          entry('row', set(10, 40)), // a tie is not a record
+          entry('curl', set(10, 12)), // first ever: nothing beaten
+          entry('pullup', set(10, 0)), // bodyweight never counts
+        ]),
+      ];
+      expect(weeklyRecap(sessions, [], named, lastWeek).records).toEqual([
+        { exerciseId: 'bench', set: set(8, 52.5), type: 'reps' },
+      ]);
+    });
+
+    it('keeps one record per exercise — the heaviest of the week', () => {
+      const sessions = [
+        session(at(2026, 10, 19), 'push', [entry('bench', set(5, 60))]),
+        session(at(2026, 10, 27), 'push', [entry('bench', set(5, 62.5), set(5, 65))]),
+        session(at(2026, 10, 30), 'push', [entry('bench', set(3, 67.5))]),
+        session(at(2026, 11, 3), 'push', [entry('bench', set(3, 80))]), // after the week
+      ];
+      expect(weeklyRecap(sessions, [], named, lastWeek).records).toEqual([
+        { exerciseId: 'bench', set: set(3, 67.5), type: 'heaviest' },
+      ]);
+    });
   });
 });

@@ -15,7 +15,7 @@ anything written here.
 | D1 | Navigation | 5 bottom tabs: Home · Exercises · Trainings · Session · History |
 | D2 | Stack | Vite + React + TypeScript, `vite-plugin-pwa`, deployed to GitHub Pages via Actions. Hash routing, hand-rolled (~50 lines) — every React Router 7.x release carries an open advisory, and hash routing also avoids the Pages reload-404 |
 | D3 | Training days | Fully user-managed: create as many as you like, rename anytime, reorder by drag. A training with any session history is never deletable — a training's id must always resolve so session history stays intact — but it can be archived, which drops it out of Home's rotation and the default Trainings list without touching history. A training with zero sessions and no session currently in progress has nothing to protect and can be deleted outright instead (undoable). Exercise membership is editable in-app |
-| D4 | Home extras | Weekly goal + streak; backup reminder; a month calendar of past sessions, where future days can be planned ahead (§5.1). (No last-session recap in v1. PR tracking was deferred in v1 and has since landed — see §4 `personalRecords`) |
+| D4 | Home extras | Weekly goal + streak; backup reminder; a month calendar of past sessions, where future days can be planned ahead (§5.1); a recap of the previous week on the first launch of each week (§5.1). (No last-session recap in v1. PR tracking was deferred in v1 and has since landed — see §4 `personalRecords`) |
 | D5 | Offline | Lazy cache-first for images; app shell + `exercises.json` precached |
 | D6 | Custom exercise image | Optional photo from camera/library, downscaled, stored as a blob; lettered placeholder otherwise |
 | D7 | Session history | Read-only; whole sessions may be deleted with confirmation |
@@ -279,6 +279,14 @@ heaviest ever, or the best at its own rep count. Deliberately narrower than "set
 set, or the first at some rep count, becomes the record but beat nothing, and announcing those would fire
 on nearly every set a new user logs.
 
+**`weeklyRecap(sessions, sportSessions, trainings, weekStart)`** — the week's activities grouped per
+training (live label/badge/kind, falling back to the session's snapshot when the training no longer
+resolves), distinct active days, and the personal records beaten: history is replayed oldest-first so each
+set is judged by `beatsPersonalRecord` against everything logged before it, earlier sets of the same week
+included; one row per exercise, its heaviest record-beating set (ties to the earlier). **`recapWeekDue(
+lastRecapWeek, now, sessions, sportSessions)`** — the Monday of last week when its recap hasn't been shown
+and anything was logged before the current week, else null (§5.1).
+
 **`epley1RM(reps, weight)`** — estimated one-rep max, `weight × (1 + reps/30)`. An estimate whose only job
 is to put sets logged at different rep counts on one axis.
 
@@ -431,6 +439,22 @@ the fixed bottom nav.
   latest entry is queued rather than the entire history back to 1.0.0, so the feature announces itself
   without dumping old release notes on returning users. The full history is always reachable from Settings
   (gift-icon link beside the GitHub link), newest first, regardless of what has been "seen".
+- **Weekly recap** — a sheet summarising the previous ISO week (Monday → Sunday), shown on the **first
+  launch of a new week**, whatever day that is — tying it to Mondays alone would silently skip every week
+  the app wasn't opened on one. Contents: the week's dates; three tiles — activities (gym sessions + sport
+  logs, the weekly goal's count), active days (distinct days with any activity) and new PRs; a "What you
+  did" list, one row per training done that week (badge, label, kind, `×count`, most often first, gym and
+  sport alike); and "New personal records", one row per exercise that **beat** an existing record that
+  week (`beatsPersonalRecord`, the same rule as the in-session toast, §5.4 — a first-ever set is not a PR),
+  showing its best such set and whether it was the heaviest ever or the best at its rep count. A week with
+  nothing logged still gets a recap, saying so. Never shown before anything was logged ahead of the current
+  week (a fresh install has no last week). After a longer absence only the most recent finished week is
+  offered, not a backlog. Tracked by a `localStorage` key (`ander-gym-last-recap-week`, the `dayKey` of the
+  last recapped Monday — device-local and outside backups, same reasoning as the "What's new" key);
+  dismissing it ("Let's go", "×", Escape or the backdrop) records the week. Decided once per launch, when
+  the store finishes loading, so an import or a session logged mid-week can't conjure one. Queued behind
+  the "What's new" popup so two sheets never stack. Derived by `recapWeekDue`/`weeklyRecap` (§4); nothing
+  new is stored in IndexedDB.
 
 **Acceptance:** with zero data and no trainings created yet, the page shows 0/3, no streak, no banner, and
 an empty state prompting the user to add a training day from the Trainings tab.

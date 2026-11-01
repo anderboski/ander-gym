@@ -453,6 +453,17 @@ export const en = {
   'changelog.title': 'Changelog',
   'changelog.viewAria': 'View changelog',
 
+  'recap.title': 'Last week',
+  'recap.done': 'Let’s go',
+  'recap.empty': 'Nothing logged last week. A fresh week starts now.',
+  'recap.activities': 'Activities',
+  'recap.activeDays': 'Active days',
+  'recap.records': 'New PRs',
+  'recap.byTraining': 'What you did',
+  'recap.newRecords': 'New personal records',
+  'recap.recordHeaviest': 'Heaviest ever',
+  'recap.recordReps': 'Best at {reps} reps',
+
   'home.greetingMorning': 'Good morning',
   'home.greetingDay': 'Welcome back',
   'home.greetingEvening': 'Good evening',

@@ -1,5 +1,6 @@
 import { TabBar } from './components/TabBar';
 import { WhatsNewGate } from './components/Changelog';
+import { WeeklyRecapGate } from './components/WeeklyRecap';
 import { useRoute } from './router';
 import { HomePage } from './pages/HomePage';
 import { StatsPage } from './pages/StatsPage';
@@ -28,7 +29,9 @@ export function App() {
       {route.name === 'history' && <HistoryPage />}
       {route.name === 'historyDetail' && <HistoryDetailPage sessionId={route.id} />}
       <TabBar />
-      <WhatsNewGate />
+      <WhatsNewGate>
+        <WeeklyRecapGate />
+      </WhatsNewGate>
     </div>
   );
 }
