@@ -42,6 +42,7 @@ import {
   DEFAULT_SETTINGS,
   SPORT_SESSION_ID_PREFIX,
   type ActiveSession,
+  type CalendarMonths,
   type Exercise,
   type NewSportSession,
   type Profile,
@@ -145,6 +146,7 @@ type Mutations = {
   deleteSession: (id: string) => Promise<void>;
 
   setWeeklyGoal: (goal: number) => Promise<void>;
+  setCalendarMonths: (months: CalendarMonths) => Promise<void>;
   /** Stars or unstars an exercise in the finder. */
   toggleFavorite: (exerciseId: string) => Promise<void>;
   /**
@@ -512,6 +514,11 @@ export function GymProvider({ children }: { children: React.ReactNode }) {
         const weeklyGoal = Math.max(1, Math.min(14, Math.round(goal)));
         await db.putSetting('weeklyGoal', weeklyGoal);
         setState((s) => ({ ...s, settings: { ...s.settings, weeklyGoal } }));
+      },
+
+      async setCalendarMonths(calendarMonths) {
+        await db.putSetting('calendarMonths', calendarMonths);
+        setState((s) => ({ ...s, settings: { ...s.settings, calendarMonths } }));
       },
 
       async toggleFavorite(exerciseId) {

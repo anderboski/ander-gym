@@ -459,6 +459,15 @@ export const CHANGELOG: ChangelogEntry[] = [
     es: [
       'Resumen semanal: la primera vez que abres la app cada semana aparece un resumen de la semana anterior — qué hiciste y cuántas veces, cuántos días estuviste activo y los récords personales que superaste.',
     ],
+  },  {
+    version: '1.31.0',
+    date: '2026-11-14',
+    en: [
+      'Two-month calendar: choose "2 months" under Calendar in Settings to see last month and this month stacked on Home. The arrows page through two months at a time.',
+    ],
+    es: [
+      'Calendario de dos meses: elige «2 meses» en Calendario, dentro de Ajustes, para ver el mes pasado y el actual uno encima del otro en Inicio. Las flechas avanzan de dos en dos meses.',
+    ],
   },
 ];
 

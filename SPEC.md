@@ -80,7 +80,7 @@ IndexedDB via `idb`. Database `ander-gym`, version 4.
 | `sessions` | `id` (uuid) | `{ id, trainingId, trainingLabel, startedAt, savedAt, entries }` — index on `startedAt` |
 | `activeSession` | literal `'current'` | `{ trainingId, trainingLabel, startedAt, entries }` |
 | `customExercises` | `id` (`c-<uuid>`) | Exercise fields + `isCustom: true`, `imageBlob?: Blob` |
-| `settings` | key string | `weeklyGoal` (default `3`), `lastExportAt`, `favoriteExerciseIds` (default `[]`), `schemaVersion` |
+| `settings` | key string | `weeklyGoal` (default `3`), `lastExportAt`, `favoriteExerciseIds` (default `[]`), `calendarMonths` (`1` or `2`, default `1` — see §5.1), `schemaVersion` |
 | `profile` | key string | `name` (default `''`), `birthdate` (default `null`), `heightCm` (default `null`), `photo` (`Blob`, default `null`) — see §5.7 |
 | `checkins` | `id` (`ck-<uuid>`) | `{ id, date, weightKg, photoBlobs: Blob[] }` — index on `date`, see §5.7 |
 | `sportSessions` | `id` (`ss-<uuid>`) | one of the `SportSession` shapes below — index on `date`, see §5.8 |
@@ -360,7 +360,15 @@ the fixed bottom nav.
   pushing to the Stats view (§5.6). Hidden until at least one session exists, so a fresh install keeps its
   empty state.
 - **Calendar** — below Today, a month grid (Monday-start, six fixed rows so paging never changes the card's
-  height). Prev/next chevrons above the grid step one month at a time, unbounded in either direction. A day
+  height). Prev/next chevrons above the grid step one month at a time, unbounded in either direction.
+  **Two-month view.** A "Calendar" row in the Settings sheet (a two-segment control, "1 month" / "2 months",
+  stored as `calendarMonths` in the `settings` store and carried in backups; a backup without it imports as
+  `1`) switches the card to two month grids stacked vertically in the same card, separated by a hairline:
+  the **previous month on top, the current month below**, so today opens in the lower grid with last month's
+  history above it. One pair of chevrons, on the top month's header, pages **both months by two** (Oct+Nov →
+  Aug+Sep), so no month ever appears twice. Each grid keeps its own six rows and dimmed spill-over days, and
+  every medallion across both grids shares the one flip clock. Everything below applies to every day in
+  either grid. A day
   with a saved gym session or a logged sport session shows a small badge with that training's icon, or its
   initial if no icon has been set; today's cell is outlined.
   A day with more than one activity — any mix of gym sessions and sport sessions — shows a **medallion**
@@ -402,8 +410,8 @@ the fixed bottom nav.
 - **Lifetime stats footer** — below the backup banner, a single centred line: total sessions ever saved,
   total kg lifted (`formatCompact`, matching Stats' chart figures), and "since `<month and year of the first
   saved session>`". Hidden until at least one session exists, matching the Stats shortcut and the calendar.
-- **Gear icon** (top right) — Settings sheet: a grouped card with the weekly goal stepper and the language
-  control, then export, import, storage usage (`navigator.storage.estimate()`), app version, a changelog
+- **Gear icon** (top right) — Settings sheet: a grouped card with the weekly goal stepper, the language
+  control and the calendar's one/two-month choice, then export, import, storage usage (`navigator.storage.estimate()`), app version, a changelog
   link, a "How to use" link (§5.9), and a link to the GitHub repo.
 - **Theme toggle** (top right, beside the gear icon) — sun/moon icon button that flips between light
   and dark, overriding the OS `prefers-color-scheme`. Persisted in `localStorage` (not the `settings`

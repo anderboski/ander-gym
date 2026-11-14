@@ -445,6 +445,9 @@ export function parseBackup(text: string): BackupFile {
       favoriteExerciseIds: Array.isArray(b.settings?.favoriteExerciseIds)
         ? b.settings.favoriteExerciseIds.filter((id): id is string => typeof id === 'string')
         : [],
+      // Absent from backups written before the setting existed — default
+      // rather than reject; no schema bump needed for an optional field.
+      calendarMonths: b.settings?.calendarMonths === 2 ? 2 : 1,
     },
     // Both absent entirely from a schema-1 backup (written before this
     // feature existed) — default rather than reject, same spirit as

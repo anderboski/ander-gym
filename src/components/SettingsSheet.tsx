@@ -10,6 +10,7 @@
  */
 import { useEffect, useRef, useState } from 'react';
 import { useGym } from '../data/store';
+import type { CalendarMonths } from '../data/types';
 import {
   BackupError,
   parseBackup,
@@ -49,6 +50,11 @@ const EXPORT_MESSAGE_KEYS: Record<Exclude<ExportOutcome, 'cancelled'>, Translati
   downloaded: 'common.backupDownloaded',
 };
 
+const CALENDAR_MONTH_OPTIONS: { months: CalendarMonths; label: TranslationKey }[] = [
+  { months: 1, label: 'settings.calendarOneMonth' },
+  { months: 2, label: 'settings.calendarTwoMonths' },
+];
+
 const GOAL_MIN = 1;
 const GOAL_MAX = 14;
 
@@ -68,7 +74,7 @@ function formatMb(bytes: number): string {
 type PendingImport = { name: string; backup: BackupFile; summary: BackupSummary };
 
 export function SettingsSheet({ onClose }: { onClose: () => void }) {
-  const { settings, sessions, setWeeklyGoal, exportNow, importFrom } = useGym();
+  const { settings, sessions, setWeeklyGoal, setCalendarMonths, exportNow, importFrom } = useGym();
   const { t, language, locale, setLanguage } = useLanguage();
 
   const fileInput = useRef<HTMLInputElement>(null);
@@ -211,6 +217,23 @@ export function SettingsSheet({ onClose }: { onClose: () => void }) {
                   onClick={() => setLanguage(l.code)}
                 >
                   {l.name}
+                </button>
+              ))}
+            </div>
+          </div>
+
+          <div className="settings-row">
+            <span className="settings-row-label">{t('settings.calendar')}</span>
+            <div className="segment" role="group" aria-label={t('settings.calendar')}>
+              {CALENDAR_MONTH_OPTIONS.map((o) => (
+                <button
+                  key={o.months}
+                  type="button"
+                  className="segment-btn"
+                  aria-pressed={settings.calendarMonths === o.months}
+                  onClick={() => void setCalendarMonths(o.months)}
+                >
+                  {t(o.label)}
                 </button>
               ))}
             </div>

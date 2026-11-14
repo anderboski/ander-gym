@@ -58,7 +58,7 @@ import { SportLogSheet } from '../components/SportLogSheet';
 import { useTransient } from '../hooks/useTransient';
 import { getTheme, otherTheme, setTheme, type Theme } from '../data/theme';
 import { daysAgoLabel, formatDay, formatDayWithWeekday, formatLongDate, formatMonthYear, useLanguage, type TranslationKey } from '../data/i18n';
-import type { Session, SportSession, Training, TrainingPlan } from '../data/types';
+import type { CalendarMonths, Session, SportSession, Training, TrainingPlan } from '../data/types';
 import './HomePage.css';
 
 const GREETING_KEYS: Record<ReturnType<typeof greetingBucket>, TranslationKey> = {
@@ -380,6 +380,7 @@ export function HomePage() {
                 plans={plansByDay}
                 onPlanDay={plannable.length > 0 ? setPlanningFor : undefined}
                 onConfirmPlan={confirmPlan}
+                months={settings.calendarMonths}
               />
             </section>
           )}
@@ -582,6 +583,9 @@ function GoalRing({ count, goal }: { count: number; goal: number }) {
 /** One calendar-day badge: a resolvable id to open, an icon, and a label for the day's aria description. */
 type DayBadge = { id: string; badge: string; label: string };
 
+/** One cell of a month grid, with every activity logged on that day. */
+type CalendarCell = { date: Date; inMonth: boolean; key: string; badges: DayBadge[] };
+
 /** How long each face of a multi-activity day's medallion shows before it flips to the next. */
 const MEDALLION_STEP_MS = 2500;
 
@@ -596,7 +600,8 @@ const PIP_CAP = 5;
  * an empty day up to today hands it to `onLogDay`, and a later one to
  * `onPlanDay`. A planned day is shaded with its training's badge; tapping it
  * acts on the plan when it is today and re-plans it when it is later. The
- * month in view is local state, independent of `now`.
+ * month in view is local state, independent of `now`. With `months` = 2 the
+ * previous month is stacked above it, and the chevrons page both together.
  */
 function HomeCalendar({
   sessions,
@@ -608,6 +613,7 @@ function HomeCalendar({
   plans,
   onPlanDay,
   onConfirmPlan,
+  months,
 }: {
   sessions: Session[];
   sportSessions: SportSession[];
@@ -622,168 +628,193 @@ function HomeCalendar({
   onPlanDay?: (date: string) => void;
   /** Today's planned cell acts on the plan, same as the Today card. */
   onConfirmPlan: (training: Training) => void;
+  /** How many months to show, stacked — the Settings sheet's Calendar choice. */
+  months: CalendarMonths;
 }) {
   const { t } = useLanguage();
-  const [month, setMonth] = useState<Date>(() => startOfMonth(now));
+  // The *last* month in view. In two-month mode the one above it is its
+  // predecessor, so today's month opens at the bottom with last month's
+  // history above it; paging moves by the whole window so no month repeats.
+  const [anchor, setAnchor] = useState<Date>(() => startOfMonth(now));
   const byDay = useMemo(() => sessionsByDay(sessions), [sessions]);
   const sportByDay = useMemo(() => sportSessionsByDay(sportSessions), [sportSessions]);
   const trainingsById = useMemo(() => new Map(trainings.map((tr) => [tr.id, tr])), [trainings]);
-  const grid = useMemo(() => monthGrid(month), [month]);
 
-  const cells = useMemo(
+  const shown = useMemo(
     () =>
-      grid.map(({ date, inMonth }) => {
-        const key = dayKey(date);
-        const badges: DayBadge[] = [...(byDay.get(key) ?? []), ...(sportByDay.get(key) ?? [])].map((s) => ({
-          id: s.id,
-          badge: trainingBadge(trainingsById.get(s.trainingId), s.trainingLabel),
-          label: s.trainingLabel,
-        }));
-        return { date, inMonth, key, badges };
+      Array.from({ length: months }, (_, i) => {
+        const month = addMonths(anchor, i - months + 1);
+        const cells = monthGrid(month).map(({ date, inMonth }): CalendarCell => {
+          const key = dayKey(date);
+          const badges: DayBadge[] = [...(byDay.get(key) ?? []), ...(sportByDay.get(key) ?? [])].map((s) => ({
+            id: s.id,
+            badge: trainingBadge(trainingsById.get(s.trainingId), s.trainingLabel),
+            label: s.trainingLabel,
+          }));
+          return { date, inMonth, key, badges };
+        });
+        return { month, cells };
       }),
-    [grid, byDay, sportByDay, trainingsById],
+    [anchor, months, byDay, sportByDay, trainingsById],
   );
 
-  // One counter shared by every medallion, so the whole month flips in step
-  // rather than each cell on its own phase. The timer only runs while the
-  // month in view has something to flip.
+  // One counter shared by every medallion — across both months when two are
+  // shown — so they all flip in step rather than each cell on its own phase.
+  // The timer only runs while something in view has something to flip.
   const [step, setStep] = useState(0);
-  const anyMulti = cells.some((c) => c.badges.length > 1);
+  const anyMulti = shown.some(({ cells }) => cells.some((c) => c.badges.length > 1));
   useEffect(() => {
     if (!anyMulti) return;
     const id = window.setInterval(() => setStep((n) => n + 1), MEDALLION_STEP_MS);
     return () => window.clearInterval(id);
   }, [anyMulti]);
 
-  const weekdays = grid.slice(0, 7).map(({ date }) => ({
+  // Every grid starts on the same Monday-based week, so any one gives the header.
+  const weekdays = (shown[0]?.cells ?? []).slice(0, 7).map(({ date }) => ({
     narrow: date.toLocaleDateString(locale, { weekday: 'narrow' }),
     full: date.toLocaleDateString(locale, { weekday: 'long' }),
   }));
 
+  function renderDay({ date, inMonth, key, badges }: CalendarCell) {
+    const classes = ['home-cal-day'];
+    if (!inMonth) classes.push('home-cal-day-out');
+    if (isSameDay(date, now)) classes.push('home-cal-day-today');
+
+    const multi = badges.length > 1;
+    const face = step % Math.max(badges.length, 1);
+    const current = badges[face];
+
+    if (!current) {
+      const dayLabel = date.toLocaleDateString(locale, { day: 'numeric', month: 'long' });
+      const todayKey = dayKey(now);
+      // `plans` only holds today onward, and logging anything on a day
+      // clears its plan, so a planned cell is always otherwise empty.
+      const planned = plans.get(key);
+      if (planned) {
+        return (
+          <button
+            type="button"
+            className={[...classes, 'home-cal-day-planned'].join(' ')}
+            key={key}
+            // Today's plan is due now; a later one can still be changed.
+            onClick={() => (key === todayKey ? onConfirmPlan(planned) : onPlanDay?.(key))}
+            aria-label={t('home.plannedAria', { date: dayLabel, label: planned.label })}
+          >
+            <span className="home-cal-daynum">{date.getDate()}</span>
+            <span className="home-cal-dot home-cal-dot-planned" aria-hidden="true">
+              {trainingBadge(planned)}
+            </span>
+          </button>
+        );
+      }
+      // A future day is for planning, not logging — sport logs are capped
+      // at today (§5.8) and a gym session can only start now. Keys compare
+      // as strings: `YYYY-MM-DD` sorts chronologically.
+      if (onPlanDay && key > todayKey) {
+        return (
+          <button
+            type="button"
+            className={[...classes, 'home-cal-day-loggable'].join(' ')}
+            key={key}
+            onClick={() => onPlanDay(key)}
+            aria-label={t('home.planAria', { date: dayLabel })}
+          >
+            <span className="home-cal-daynum">{date.getDate()}</span>
+          </button>
+        );
+      }
+      if (onLogDay && key <= todayKey) {
+        return (
+          <button
+            type="button"
+            className={[...classes, 'home-cal-day-loggable'].join(' ')}
+            key={key}
+            onClick={() => onLogDay(key)}
+            aria-label={t('home.logActivityAria', { date: dayLabel })}
+          >
+            <span className="home-cal-daynum">{date.getDate()}</span>
+          </button>
+        );
+      }
+      return (
+        <div className={classes.join(' ')} key={key}>
+          <span className="home-cal-daynum">{date.getDate()}</span>
+        </div>
+      );
+    }
+
+    classes.push('home-cal-day-trained');
+
+    return (
+      <button
+        type="button"
+        className={classes.join(' ')}
+        key={key}
+        // `current` comes from the same render that drew the face, so the
+        // activity a tap opens is always the one on screen.
+        onClick={() => navigate(`/history/${current.id}`)}
+        aria-label={`${date.toLocaleDateString(locale, { day: 'numeric', month: 'long' })}, ${badges.map((b) => b.label).join(', ')}`}
+      >
+        <span className="home-cal-daynum">{date.getDate()}</span>
+        <span className="home-cal-dot" aria-hidden="true">
+          {/* Keyed by id so each new face remounts and replays the flip;
+              the first face skips it, so opening Home doesn't set every
+              medallion turning at once. */}
+          <span key={current.id} className={multi && step > 0 ? 'home-cal-face home-cal-face-flip' : 'home-cal-face'}>
+            {current.badge}
+          </span>
+        </span>
+        {multi && (
+          <span className="home-cal-pips" aria-hidden="true">
+            {badges.slice(0, PIP_CAP).map((b, i) => (
+              <span className={i === face ? 'home-cal-pip home-cal-pip-on' : 'home-cal-pip'} key={b.id} />
+            ))}
+            {badges.length > PIP_CAP && <span className="home-cal-pip-more">+{badges.length - PIP_CAP}</span>}
+          </span>
+        )}
+      </button>
+    );
+  }
+
+  const paired = months > 1;
   return (
     <div className="card card-pad home-cal">
-      <div className="home-cal-head">
-        <div className="home-cal-title">{formatMonthYear(locale, month)}</div>
-        <div className="home-cal-nav">
-          <button className="icon-btn" aria-label={t('home.prevMonth')} onClick={() => setMonth((m) => addMonths(m, -1))}>
-            <ChevronLeftIcon />
-          </button>
-          <button className="icon-btn" aria-label={t('home.nextMonth')} onClick={() => setMonth((m) => addMonths(m, 1))}>
-            <ChevronRightIcon />
-          </button>
-        </div>
-      </div>
-
-      <div className="home-cal-weekdays">
-        {weekdays.map((w, i) => (
-          <div className="home-cal-weekday" key={i} aria-label={w.full}>
-            {w.narrow}
-          </div>
-        ))}
-      </div>
-
-      <div className="home-cal-grid">
-        {cells.map(({ date, inMonth, key, badges }) => {
-          const classes = ['home-cal-day'];
-          if (!inMonth) classes.push('home-cal-day-out');
-          if (isSameDay(date, now)) classes.push('home-cal-day-today');
-
-          const multi = badges.length > 1;
-          const face = step % Math.max(badges.length, 1);
-          const current = badges[face];
-
-          if (!current) {
-            const dayLabel = date.toLocaleDateString(locale, { day: 'numeric', month: 'long' });
-            const todayKey = dayKey(now);
-            // `plans` only holds today onward, and logging anything on a day
-            // clears its plan, so a planned cell is always otherwise empty.
-            const planned = plans.get(key);
-            if (planned) {
-              return (
+      {shown.map(({ month, cells }, i) => (
+        <div className="home-cal-month" key={dayKey(month)}>
+          <div className="home-cal-head">
+            <div className="home-cal-title">{formatMonthYear(locale, month)}</div>
+            {/* One pair of chevrons for the whole window, on the top month. */}
+            {i === 0 && (
+              <div className="home-cal-nav">
                 <button
-                  type="button"
-                  className={[...classes, 'home-cal-day-planned'].join(' ')}
-                  key={key}
-                  // Today's plan is due now; a later one can still be changed.
-                  onClick={() => (key === todayKey ? onConfirmPlan(planned) : onPlanDay?.(key))}
-                  aria-label={t('home.plannedAria', { date: dayLabel, label: planned.label })}
+                  className="icon-btn"
+                  aria-label={t(paired ? 'home.prevMonths' : 'home.prevMonth')}
+                  onClick={() => setAnchor((m) => addMonths(m, -months))}
                 >
-                  <span className="home-cal-daynum">{date.getDate()}</span>
-                  <span className="home-cal-dot home-cal-dot-planned" aria-hidden="true">
-                    {trainingBadge(planned)}
-                  </span>
+                  <ChevronLeftIcon />
                 </button>
-              );
-            }
-            // A future day is for planning, not logging — sport logs are capped
-            // at today (§5.8) and a gym session can only start now. Keys compare
-            // as strings: `YYYY-MM-DD` sorts chronologically.
-            if (onPlanDay && key > todayKey) {
-              return (
                 <button
-                  type="button"
-                  className={[...classes, 'home-cal-day-loggable'].join(' ')}
-                  key={key}
-                  onClick={() => onPlanDay(key)}
-                  aria-label={t('home.planAria', { date: dayLabel })}
+                  className="icon-btn"
+                  aria-label={t(paired ? 'home.nextMonths' : 'home.nextMonth')}
+                  onClick={() => setAnchor((m) => addMonths(m, months))}
                 >
-                  <span className="home-cal-daynum">{date.getDate()}</span>
+                  <ChevronRightIcon />
                 </button>
-              );
-            }
-            if (onLogDay && key <= todayKey) {
-              return (
-                <button
-                  type="button"
-                  className={[...classes, 'home-cal-day-loggable'].join(' ')}
-                  key={key}
-                  onClick={() => onLogDay(key)}
-                  aria-label={t('home.logActivityAria', { date: dayLabel })}
-                >
-                  <span className="home-cal-daynum">{date.getDate()}</span>
-                </button>
-              );
-            }
-            return (
-              <div className={classes.join(' ')} key={key}>
-                <span className="home-cal-daynum">{date.getDate()}</span>
               </div>
-            );
-          }
+            )}
+          </div>
 
-          classes.push('home-cal-day-trained');
+          <div className="home-cal-weekdays">
+            {weekdays.map((w, j) => (
+              <div className="home-cal-weekday" key={j} aria-label={w.full}>
+                {w.narrow}
+              </div>
+            ))}
+          </div>
 
-          return (
-            <button
-              type="button"
-              className={classes.join(' ')}
-              key={key}
-              // `current` comes from the same render that drew the face, so the
-              // activity a tap opens is always the one on screen.
-              onClick={() => navigate(`/history/${current.id}`)}
-              aria-label={`${date.toLocaleDateString(locale, { day: 'numeric', month: 'long' })}, ${badges.map((b) => b.label).join(', ')}`}
-            >
-              <span className="home-cal-daynum">{date.getDate()}</span>
-              <span className="home-cal-dot" aria-hidden="true">
-                {/* Keyed by id so each new face remounts and replays the flip;
-                    the first face skips it, so opening Home doesn't set every
-                    medallion turning at once. */}
-                <span key={current.id} className={multi && step > 0 ? 'home-cal-face home-cal-face-flip' : 'home-cal-face'}>
-                  {current.badge}
-                </span>
-              </span>
-              {multi && (
-                <span className="home-cal-pips" aria-hidden="true">
-                  {badges.slice(0, PIP_CAP).map((b, i) => (
-                    <span className={i === face ? 'home-cal-pip home-cal-pip-on' : 'home-cal-pip'} key={b.id} />
-                  ))}
-                  {badges.length > PIP_CAP && <span className="home-cal-pip-more">+{badges.length - PIP_CAP}</span>}
-                </span>
-              )}
-            </button>
-          );
-        })}
-      </div>
+          <div className="home-cal-grid">{cells.map(renderDay)}</div>
+        </div>
+      ))}
     </div>
   );
 }

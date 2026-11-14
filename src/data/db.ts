@@ -338,15 +338,19 @@ export async function putCustomExercise(exercise: CustomExercise): Promise<void>
 
 export async function getSettings(): Promise<Settings> {
   const db = await getDB();
-  const [weeklyGoal, lastExportAt, favoriteExerciseIds] = await Promise.all([
+  const [weeklyGoal, lastExportAt, favoriteExerciseIds, calendarMonths] = await Promise.all([
     db.get('settings', 'weeklyGoal'),
     db.get('settings', 'lastExportAt'),
     db.get('settings', 'favoriteExerciseIds'),
+    db.get('settings', 'calendarMonths'),
   ]);
   return {
     weeklyGoal: typeof weeklyGoal === 'number' ? weeklyGoal : DEFAULT_SETTINGS.weeklyGoal,
     lastExportAt: typeof lastExportAt === 'string' ? lastExportAt : null,
     favoriteExerciseIds: Array.isArray(favoriteExerciseIds) ? favoriteExerciseIds : [],
+    // Anything but an explicit 2 is the one-month default, so a missing key
+    // (every install before this setting existed) keeps the old calendar.
+    calendarMonths: calendarMonths === 2 ? 2 : DEFAULT_SETTINGS.calendarMonths,
   };
 }
 
@@ -463,6 +467,7 @@ export async function writeAll(snapshot: Snapshot): Promise<void> {
     settings.put(snapshot.settings.weeklyGoal, 'weeklyGoal'),
     settings.put(snapshot.settings.lastExportAt, 'lastExportAt'),
     settings.put(snapshot.settings.favoriteExerciseIds, 'favoriteExerciseIds'),
+    settings.put(snapshot.settings.calendarMonths, 'calendarMonths'),
     profile.put(snapshot.profile.name, 'name'),
     profile.put(snapshot.profile.birthdate, 'birthdate'),
     profile.put(snapshot.profile.heightCm, 'heightCm'),
