@@ -223,6 +223,7 @@ describe('settings', () => {
       weeklyGoal: 3,
       lastExportAt: null,
       favoriteExerciseIds: [],
+      calendarMonths: 1,
     });
   });
 
@@ -230,10 +231,12 @@ describe('settings', () => {
     await db.putSetting('weeklyGoal', 5);
     await db.putSetting('lastExportAt', '2026-08-01T00:00:00.000Z');
     await db.putSetting('favoriteExerciseIds', ['0001', '0002']);
+    await db.putSetting('calendarMonths', 2);
     expect(await db.getSettings()).toEqual({
       weeklyGoal: 5,
       lastExportAt: '2026-08-01T00:00:00.000Z',
       favoriteExerciseIds: ['0001', '0002'],
+      calendarMonths: 2,
     });
   });
 });
@@ -587,6 +590,30 @@ describe('backup round trip', () => {
     await applyBackup(restored, 'replace');
 
     expect((await db.getSettings()).favoriteExerciseIds).toEqual(['0001', '0002']);
+  });
+
+  it('round-trips the calendar month count', async () => {
+    await db.putSetting('calendarMonths', 2);
+
+    const restored = parseBackup(JSON.stringify(await buildBackup()));
+    await db.clearAll();
+    await applyBackup(restored, 'replace');
+
+    expect((await db.getSettings()).calendarMonths).toBe(2);
+  });
+
+  it('defaults the calendar to one month for a backup without the setting, or a bad value', async () => {
+    const base = {
+      schemaVersion: 1,
+      exportedAt: '2026-08-01T00:00:00.000Z',
+      trainings: [],
+      sessions: [],
+      customExercises: [],
+    };
+    expect(parseBackup(JSON.stringify({ ...base, settings: { weeklyGoal: 3 } })).settings.calendarMonths).toBe(1);
+    expect(
+      parseBackup(JSON.stringify({ ...base, settings: { weeklyGoal: 3, calendarMonths: 7 } })).settings.calendarMonths,
+    ).toBe(1);
   });
 
   it('tolerates a backup written before favorites existed', async () => {

@@ -240,12 +240,18 @@ export type Settings = {
   lastExportAt: string | null;
   /** Exercise ids starred from the Exercises finder, built-in or custom. */
   favoriteExerciseIds: string[];
+  /** How many months Home's calendar shows at once, stacked (SPEC §5.1). */
+  calendarMonths: CalendarMonths;
 };
+
+/** Home's calendar shows one month, or the previous and current month stacked. */
+export type CalendarMonths = 1 | 2;
 
 export const DEFAULT_SETTINGS: Settings = {
   weeklyGoal: 3,
   lastExportAt: null,
   favoriteExerciseIds: [],
+  calendarMonths: 1,
 };
 
 /**

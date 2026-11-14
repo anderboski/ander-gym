@@ -312,6 +312,20 @@
   display: flex;
 }
 
+/* Two-month mode (§5.1): the second month sits below the first inside the
+   same card, separated by a hairline like rows in a grouped card. */
+.home-cal-month + .home-cal-month {
+  margin-top: var(--s4);
+  padding-top: var(--s4);
+  border-top: 1px solid var(--border);
+}
+
+/* The lower month has no chevrons, so its title row would otherwise be
+   shorter than the 44 pt buttons make the top one. */
+.home-cal-month + .home-cal-month .home-cal-head {
+  min-height: 44px;
+}
+
 .home-cal-weekdays {
   display: grid;
   grid-template-columns: repeat(7, 1fr);
